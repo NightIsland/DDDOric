@@ -1,0 +1,4 @@
+# F2: the original's feel (M1).  Hold Accelerate from a standing start to top
+# speed, then jump at top speed
+1-300 accel
+290 jump

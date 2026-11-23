@@ -82,7 +82,7 @@ check("title strip: red paper, yellow film name", r.pixel(6, 0) == RED and r.pix
 def with_rider(want, r):
     """the reference scene plus the rider where the run's last trace line says"""
     s_ = parse(r.trace.decode().splitlines()[-1])
-    x = s_["x"] >> 8
+    x = scene_ref.px(s_["x"])
     for a_, v in scene_ref.rider_bytes(s_["track"], x, s_["h"], scene_ref.frame_for(x, s_["jt"])).items():
         want[a_ - 0xA000] ^= v
     return want
@@ -134,9 +134,9 @@ with open(rnd, "w") as f:
         f.write(f"{n}-{n + ln - 1} " + " ".join(rg.sample(["jump", "accel", "accel", "stop", "pause", "quit"],
                                                           rg.randint(1, 2))) + "\n")
         n += ln + rg.randint(0, 60)
-scripts = [(os.path.join(KEYS, s), n) for s, n in (("basic.keys", 400), ("wrapjump.keys", 300),
+scripts = [(os.path.join(KEYS, s), n) for s, n in (("basic.keys", 400), ("wrapjump.keys", 420),
                                                     ("pause.keys", 250), ("scene.keys", 800),
-                                                    ("airstop.keys", 260), ("heldjump.keys", 260))] + [(rnd, 6000)]
+                                                    ("airstop.keys", 300), ("heldjump.keys", 260))] + [(rnd, 6000)]
 total = 0
 for path, n in scripts:
     r = emu.run(TAP, frames=n + 1, keys=path, out=os.path.join(OUT, "trace-" + os.path.basename(path)))
@@ -163,7 +163,7 @@ def rules(lines):
                 errs.append(f"speed fell at {s['step']}")
             if s["ev"] & 0x04 and not prev["flags"] & 1:
                 errs.append(f"second stop at {s['step']}")
-            if s["ev"] & 0x08 and not restart and prev["jt"] and s["jt"] != (prev["jt"] + 1) % 60:
+            if s["ev"] & 0x08 and not restart and prev["jt"] and s["jt"] != (prev["jt"] + 1) % 85:
                 errs.append(f"wrap lost the jump at {s['step']}")
             if s["ev"] & 0x08 and not restart and s["speed"] < prev["speed"]:
                 errs.append(f"wrap lost speed at {s['step']}")
@@ -179,7 +179,7 @@ check("wrapjump.keys: a jump crosses onto the next track in the air", bool(wraps
       f"track {wraps[0]['track'] + 1}, step {wraps[0]['step']}, height {wraps[0]['h']}" if wraps else "no wrap in a jump")
 ast = [parse(l) for l in allr[4]]
 st_ = next((s for s in ast if s["ev"] & 0x04), None)
-after = [s for s in ast if st_ and st_["step"] <= s["step"] < st_["step"] + 65]
+after = [s for s in ast if st_ and st_["step"] <= s["step"] < st_["step"] + 90]
 check("airstop.keys: the stop works in mid-air; the bike drops straight down, lands, one stop only",
       st_ is not None and st_["jt"] > 0 and all(s["x"] == st_["x"] and s["speed"] == 0 for s in after)
       and any(s["ev"] & 0x02 for s in after) and sum(1 for s in ast if s["ev"] & 0x04) == 1,
@@ -195,6 +195,29 @@ r0 = emu.run(TAP, frames=60, keys=os.path.join(KEYS, "airstop.keys"), out=os.pat
 check("stop lamp: lit before the stop, out after it (Bob, BUILD 4)",
       r0.mem[0xBF68 + 19] == ord("*") and r.mem[0xBF68 + 19] == ord("+"),
       f"{chr(r0.mem[0xBF68 + 19])} then {chr(r.mem[0xBF68 + 19])}")
+# F2: the measured feel (docs/M1-MEASUREMENTS.md "In Oric units")
+fe = [parse(l) for l in ref_trace(os.path.join(KEYS, "feel.keys"), 400)]
+sp = {s["step"]: s["speed"] for s in fe}
+air = [s for s in fe if s["jt"]]
+travel = sum(250 for s in air)                  # x grows by speed each airborne step
+lap = [s["step"] for s in fe if s["ev"] & 0x08]
+check("feel: standing start, +1 a step to top speed 250 in 250 steps (5.0 s), then it holds",
+      fe[0]["speed"] == 1 and sp[249] == 249 and sp[250] == 250 and sp[300] == 250 and sp[399] == 250,
+      f"speed {fe[0]['speed']} at step 1, {sp[250]} at 250, {sp[399]} at 399")
+check("feel: jump 84 steps (1.68 s) in the air, apex 20 px, held 6 BBC steps (18 of ours)",
+      len(air) == 84 and max(s["h"] for s in air) == 20 and sum(1 for s in air if s["h"] == 20) == 18,
+      f"{len(air)} steps, apex {max(s['h'] for s in air) if air else 0}")
+check("feel: a track in 1.54 s at top speed; a top-speed jump carries 82 BBC bytes (234 px, past a track)",
+      any(b - a in (76, 77) for a, b in zip(lap, lap[1:]) if a > 260) and travel * 228 // (80 * 256) == 233,
+      f"wraps {lap[-3:]}, jump {travel / 256:.1f} bytes = {travel * 228 / 80 / 256:.0f} px")
+r = emu.run(TAP, frames=300, keys=os.path.join(KEYS, "feel.keys"), out=os.path.join(OUT, "engine"))
+per = {}
+for _, reg, v in r.ay:
+    per[reg] = v
+vols = {v for _, reg, v in r.ay[-40:] if reg == 8}
+check("engine: tone A period 1,250 - 4 x speed (50 Hz standing, 250 Hz flat out), buzzing volume",
+      per.get(0, 0) | per.get(1, 0) << 8 == 250 and vols == {10, 7},
+      f"period {per.get(0, 0) | per.get(1, 0) << 8}, volumes {sorted(vols)}")
 sc = [parse(l) for l in allr[3]]
 check("scene.keys: leaving track 4 finishes the scene", any(s["ev"] & 0x10 for s in sc))
 
@@ -268,7 +291,7 @@ for path, n in [(tj, 1500)] + scripts[:5]:
         last[a] = st
     torn, drawn, pace = tears(r)
     s_ = parse(r.trace.decode().splitlines()[-1])
-    x = s_["x"] >> 8
+    x = scene_ref.px(s_["x"])
     want = bytearray(blank)
     for a, v in scene_ref.rider_bytes(s_["track"], x, s_["h"], scene_ref.frame_for(x, s_["jt"])).items():
         want[a - 0xA000] ^= v

@@ -284,15 +284,14 @@ void status_update(void)
         shown_track = m.track;
         t[19] = '1' + m.track;
     }
-    if (m.speed != shown_speed) {           /* px per step, 2 decimals */
+    if (m.speed != shown_speed) {           /* 0 .. 250, the original's units */
         shown_speed = m.speed;
-        v = (m.speed * 25u) >> 6;           /* = speed * 100 / 256 */
+        v = m.speed;
         t[7] = '0';
         while (v >= 100) { v -= 100; ++t[7]; }
-        t[8] = '.';
-        t[9] = '0';
-        while (v >= 10) { v -= 10; ++t[9]; }
-        t[10] = '0' + v;
+        t[8] = '0';
+        while (v >= 10) { v -= 10; ++t[8]; }
+        t[9] = '0' + v;
     }
     if (m.stop_left != shown_stop) {
         shown_stop = m.stop_left;

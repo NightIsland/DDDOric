@@ -1,29 +1,33 @@
-/* physics.h - rider physics constants (DESIGN "Physics and core mechanics").
+/* physics.h - rider physics (DESIGN "Physics and core mechanics"), measured
+   in the BBC original by M1 (docs/M1-MEASUREMENTS.md, "In Oric units").
 
-   ALL PLACEHOLDERS: these are DESIGN's guesses, used by the F0 skeleton only so
-   the model has something to step.  M1 measures the BBC original and F2 puts the
-   real values here.  Units: positions and speeds in 1/256 pixel, one game step
-   = 20 ms (50 Hz). */
+   The model keeps the original's own units, run at 50 Hz, which is exactly
+   how the original moves (it adds the speed to x three times a 60 ms step):
+   - speed 0..250, +1 a step while Accelerate is held (start to top: 5.0 s);
+   - x in 1/256 BBC screen byte, x += speed every step; a track is 75 bytes;
+   - on screen, 1 BBC byte = 228 / 80 = 2.85 pixels (model_px). */
 #ifndef PHYSICS_H
 #define PHYSICS_H
 
 #define PLAY_W       228u                  /* play width in pixels (cells 2-39) */
-#define TRACK_W_FP   (PLAY_W * 256u)       /* one track in 1/256 px */
 #define NTRACKS      4
 
-#define SPEED_START  128u                  /* PLACEHOLDER 0.5 px/step  (M1) */
-#define SPEED_TOP    768u                  /* PLACEHOLDER 3.0 px/step  (M1) */
-#define SPEED_ACCEL  6u                    /* PLACEHOLDER ~0.025 px/step per held step (M1) */
-#define JUMP_STEPS   60u                   /* PLACEHOLDER 1.2 s jump  (M1) */
-#define JUMP_REPEAT  3u                    /* Space held: steps on the road between jumps (M1) */
-#define JUMP_APEX    24u                   /* PLACEHOLDER apex in px  (M1) */
+#define TRACK_BYTES  75u                   /* the rider wraps on reaching byte 75 */
+#define TRACK_W_FP   (TRACK_BYTES * 256u)  /* one track in 1/256 byte: 19,200 */
+#define SPEED_START  0u                    /* every take starts standing */
+#define SPEED_TOP    250u                  /* 2.78 px a step */
+#define SPEED_ACCEL  1u                    /* a step, while held, also in the air */
+#define JUMP_STEPS   85u                   /* 84 steps in the air (1.68 s), then land */
+#define JUMP_REPEAT  3u                    /* Space held: steps on the road between jumps */
+#define JUMP_APEX    20u
 
-/* PLACEHOLDER jump arc: height above the road at each step of a jump, a
-   parabola with JUMP_APEX at the middle (made by a one-off Python line). */
-#define JUMP_ARC_DATA \
-     0,  2,  3,  5,  6,  7,  9, 10, 11, 12, 13, 14, 15, 16, 17, \
-    18, 19, 19, 20, 21, 21, 22, 22, 23, 23, 23, 24, 24, 24, 24, \
-    24, 24, 24, 24, 24, 23, 23, 23, 22, 22, 21, 21, 20, 19, 19, \
-    18, 17, 16, 15, 14, 13, 12, 11, 10,  9,  7,  6,  5,  3,  2
+/* Height above the road at each step of a jump: the original's 28-entry arc
+   (M1 "Jump"), each entry held for 3 of our steps, as the original holds it
+   for one of its 60 ms steps. */
+#define A3(v) v, v, v
+#define JUMP_ARC_DATA 0, \
+    A3(3), A3(6), A3(8), A3(11), A3(13), A3(14), A3(16), A3(17), A3(18), A3(19), \
+    A3(19), A3(20), A3(20), A3(20), A3(20), A3(20), A3(20), A3(19), A3(19), A3(18), \
+    A3(17), A3(16), A3(14), A3(13), A3(11), A3(8), A3(6), A3(3)
 
 #endif

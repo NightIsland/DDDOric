@@ -4,8 +4,8 @@
    compiler for the native reference (tools/ref/ref.c); both print the same
    trace line per step (src/trace.c).  No screen, sound or key code in here.
 
-   F0 skeleton: one rider on four tracks with the speed, stop, jump and wrap
-   rules of DESIGN "Physics", on placeholder constants (src/physics.h).  No
+   F2: one rider on four tracks with the speed, stop, jump and wrap rules of
+   DESIGN "Physics", on the original's measured values (src/physics.h).  No
    hazards yet (F3). */
 #ifndef MODEL_H
 #define MODEL_H
@@ -35,8 +35,8 @@
 
 struct model {
     uint16_t step;          /* steps since model_init (wraps) */
-    uint16_t x;             /* rider's x on the track, 1/256 px, 0 .. TRACK_W_FP-1 */
-    uint16_t speed;         /* 1/256 px per step */
+    uint16_t x;             /* rider's x on the track, 1/256 BBC byte, 0 .. TRACK_W_FP-1 */
+    uint16_t speed;         /* 0 .. SPEED_TOP: 1/256 BBC byte per step */
     uint8_t  track;         /* 0-3, top to bottom */
     uint8_t  jump_t;        /* 0 on the ground, else step of the jump 1 .. JUMP_STEPS-1 */
     uint8_t  height;        /* px above the road */
@@ -53,5 +53,6 @@ extern struct model m;
 void model_init(void);
 void model_scene_start(void);
 void __fastcall__ model_step(uint8_t in);
+uint8_t model_px(void);     /* the rider's left edge in pixels, 0 .. 213 */
 
 #endif

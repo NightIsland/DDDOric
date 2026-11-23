@@ -92,6 +92,11 @@ def scene_bytes(billing=1):
     return mem
 
 
+def px(x):
+    """model_px (src/model.c): x in 1/256 BBC byte -> pixels, ~x * 228 / 80 / 256"""
+    return ((x >> 5) * 91) >> 8
+
+
 def frame_for(x, jt):
     """the rider picture main.c picks: jump in the air, wheels turn every 4 px"""
     return "jump" if jt else ("ride_b" if x & 4 else "ride_a")

@@ -42,7 +42,7 @@ takes the next number.
 | M1 | Measure the BBC original: speeds, acceleration, jump arc and time, start speed, wrap, hanging-hazard period, sea and snow handling, fee on a retake | — | docs only | done, PR open (`docs/M1-MEASUREMENTS.md`) |
 | F0 | Skeleton and harness: cc65 2.19 built for the cloud shell, `none.lib`, own crt0 and ld65 config at $0500, ROM-free IRQ hook, autorun `.tap`, Makefile with size report and `ORICUTRON=1`; Chuckie Egg's emulator adapted, PNG output, key scripts, debug port at $BFE0; native C model with per-step trace | — | crt0 + cfg ≤ 256 B | merged (BUILD 1); BUILD 3 fixes Bob's fading and tearing rider |
 | F1 | Display: HIRES init, per-line paper/ink columns, a track screen drawn from scene data, status line in the text-row bitmap font, one-pass pre-shifted sprite draw | F0 | code ≤ 1.5 KB; sprite ≤ 1,400 cycles | BUILD 4 merged (PR #6); BUILD 5–6 fixes in a follow-up PR |
-| F2 | One track: rider physics (DESIGN "Physics"), keys (Space, either Shift, Return), 50 Hz step, engine sound | F0, F1 | logic ≤ 4,000 cycles a step | not started |
+| F2 | One track: rider physics (DESIGN "Physics"), keys (Space, either Shift, Return), 50 Hz step, engine sound | F0, F1 | logic ≤ 4,000 cycles a step | BUILD 7, PR open |
 | F3 | Whole scene: four tracks, wrapping, block, runner, dangler, gap and ceiling block, crashes, fees, the one stop | F2 | whole step ≤ 16,000 cycles | not started |
 | F4 | Film frame: clapper card, takes, "Cut!", scene cleared, "You're fired", title screen, billing select, top five | F3 | | not started |
 | F5 | Film 1 (*Rush Hour Rumble*) complete at all six billings, tuned to M1's numbers; Bob judges the feel against the original | F4, M1 | | not started |
@@ -119,6 +119,28 @@ Briefs written by the architect when the previous feature is merged, from DESIGN
   removed; locking the step to the video frame would make it permanent on one track instead.
   Worst step 16,708 cycles (the C preparation); F1's assembly sprite brings it down.
 
+### F2: One track (BUILD 7, 23 Nov 2026)
+
+- **Physics** (`src/physics.h`): M1's measured values in the original's own units, run at 50 Hz,
+  which is exactly how the original moves: speed 0–250, +1 a step while Accelerate is held, in the
+  air too; x in 1/256 BBC byte, x += speed every step; a track is 75 bytes; the 28-entry jump arc
+  with each entry held 3 steps (84 steps in the air, apex 20 px); Space held jumps again 3 steps
+  after a landing; every take starts standing. On screen x is `model_px` = x × 228 / 80 / 256
+  (16-bit, 0.2% short), so the rider's left edge runs 0–212 px and he wraps before the screen edge.
+- **Checks** (`tests/keys/feel.keys`): standing start, top speed 250 after 250 steps (5.0 s), a
+  track in 76–77 steps at top speed (1.54 s), jump 84 steps with a 20 px apex held 18 steps, a
+  top-speed jump carrying 82 bytes (234 px, past the wrap). `wrapjump.keys` rewritten for the new
+  speeds.
+- **Keys:** Space, either Shift, Return, as before; Jump is a key-down or Space held, so a tap
+  shorter than a step is the only thing that can be missed (DESIGN's latch is not needed for that:
+  a tap would have to be under 20 ms).
+- **Sound** (`src/sound.s`): the engine on tone A ticks over at 50 Hz standing and rises to 250 Hz
+  flat out (period 1,250 − 4 × speed), its volume alternating 10/7 every 10 ms for a motorbike buzz;
+  silent while paused. Tone C sweeps for effects: take-off a hiss and rising whoosh, landing a low
+  thump, the stop a brake squeal. Noise still doubled in the Oricutron build (checked).
+- **Status:** speed now shows the original's 0–250.
+- Worst step 13,000 of 20,000 cycles.
+
 ### F1: Display (BUILD 4, 23 Nov 2026)
 
 No architect brief had been written; this follows the PLAN row and DESIGN "Screen structure",
@@ -182,9 +204,8 @@ No architect brief had been written; this follows the PLAN row and DESIGN "Scree
   Model: `road_t` counts road steps since a landing, `JUMP_REPEAT` = 3 in `src/physics.h`. Script
   `tests/keys/heldjump.keys` and a check. (PR #6 was merged with BUILD 4, so BUILD 5's fixes come
   in this pull request too.)
-- **Not in F1:** physics stay F0's placeholders (start speed 0.5 px a step, jump apex 24 px), so the
-  rider still moves off by himself and jumps 4 px higher than he will: F2 brings M1's values.
-  Hazards are scenery: nothing moves or collides until F3.
+- **Not in F1:** physics stayed F0's placeholders until F2. Hazards are scenery: nothing moves or
+  collides until F3.
 
 ### M1 (23 Nov 2026)
 

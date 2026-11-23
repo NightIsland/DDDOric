@@ -23,8 +23,8 @@ licence). Elsewhere put cc65 2.19 on `PATH` (macOS: `brew install cc65`). Everyt
 | `src/crt0.s`, `src/oric48.cfg` | ROM-free start-up and ld65 config: load and run at `$0500`, 512 B C stack below `$9800` (from Chuckie Egg, unchanged) |
 | `src/system.s` | VIA T1 10 ms tick; the IRQ hooked through the RAM vector `$FFFE` points at (`$0228` ROM 1.0, `$0244` ROM 1.1), polling fallback for any other ROM; `step_wait` (2 ticks = 50 Hz) |
 | `src/keys.s` | scan of the six keys the game uses (Space, either Shift, Return, P, Esc), table in DATA for redefinition |
-| `src/sound.s` | AY set-up, placeholder engine tone and noise bursts; `ORICUTRON` doubles noise periods |
-| `src/model.c`, `src/model.h`, `src/physics.h` | the game model in portable C; the physics constants are **placeholders** until M1 |
+| `src/sound.s` | AY set-up, engine, jump, landing and stop sounds; `ORICUTRON` doubles noise periods |
+| `src/model.c`, `src/model.h`, `src/physics.h` | the game model in portable C; the physics are M1's measured values (F2) |
 | `src/trace.c` | one trace line per step: Oric → debug port `$BFE0`, native → stdout |
 | `src/screen.c`, `src/screen.h` | the display: scene drawing, status rows, rider placement (F1) |
 | `src/scene.c`, `src/scene.h` | scene layouts and film palettes (F1: Rush Hour Rumble scene 1) |
