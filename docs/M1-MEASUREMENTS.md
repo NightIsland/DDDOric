@@ -64,7 +64,7 @@ Distances per step never change, only the time a step takes. We should not copy 
 | Rule | Measured (BBC) | How |
 | --- | --- | --- |
 | Stop | Return sets the speed to 0 at once | trace |
-| Stops allowed | **One per track**: the stop flag is set again at every wrap (and on every take), not once per screen | code (flag set in the wrap routine); trace (second press on the same track ignored) |
+| Stops allowed | **One per take**: the stop flag is set again on every retake and at the start of each new screen, not at a wrap | trace: stop used on track 1, flag still clear after the wrap, a second press on track 2 ignored; confirmed by Bob playing the original. (A first reading of the code had this as once per track; the flag is reset in the end-of-screen branch of the wrap routine, not on every wrap.) |
 | Stop in the air | **Allowed**: forward motion stops dead and the rider drops straight down through the rest of the arc | trace (stop 9 steps into a jump) |
 | Wrap | Same speed, same jump counter (so the same height), next track down; after track 4 the next screen starts | trace, code |
 | Gaps | Each step on the road, the game reads the screen under the rider; no road there means a fall | code; trace (fell into the first gap on skill level B) |
@@ -89,7 +89,7 @@ Distances per step never change, only the time a step takes. We should not copy 
 | Sea and snow handling | **Identical to land**: same +3 a step, same cap, same jump, same step time. Only the pictures change (wetbike, skis) | traces on screens 2 and 3 |
 | Takes | 3; the fourth crash ends the game | code (`CMP #4`), trace |
 | Take refund | **One take back** on reaching the land screen after each completed land, sea, snow round (screens 4, 7, 10, ...), if a take was lost ("contract extended") | code; confirmed: take 2 → take 1 on entering screen 4, unchanged on entering 2 and 3 |
-| Wages | Paid **per track completed**, not per hazard: **10 × the screen number** each time the rider wraps (10 on screen 1, 20 on screen 2, ...) | trace of the wages digits |
+| Wages | Paid **per track completed**, not per hazard: **10 × the screen number** each time the rider wraps (10 on screen 1, 20 on screen 2, ...) | trace of the wages digits: on screen 1 the wages stayed 0 after the rider cleared the house and went to 10 on the frame he wrapped; a rider placed at the end of track 4, passing no hazard at all, was still paid for the track |
 | Wages on a retake | **Paid again**: a retake that rides track 1 again pays for it again | trace: 10 → crash on track 2 → retake → 20 after track 1, 30 after track 2 |
 | Gold bars | Small bars on the road from screen 4; the pickup bonus was not measured | screenshots |
 
@@ -127,16 +127,18 @@ The same numbers in our pixels:
 These are not changed in DESIGN.md, because Bob decided them or they change the game; they are listed
 there for Bob.
 
-1. **Stop.** The original gives one stop per track, restored at every wrap, and it works in mid-air.
-   DESIGN has one per scene, ignored in the air.
-2. **Sea and snow.** The original handles exactly like land. DESIGN gives the jet-ski looser and the
-   skis a drag.
+1. **Stop.** The original gives one stop per take (restored on a retake or a new screen), and it
+   works in mid-air. DESIGN had one per scene, ignored in the air. Bob: follow the original.
+2. **Sea and snow.** The original handles exactly like land. DESIGN gave the jet-ski looser and the
+   skis a drag. Bob: follow the original.
 3. **Wages.** The original pays per track completed (10 × screen number) and pays again on a retake.
-   DESIGN pays per hazard, once per scene.
-4. **Held jump.** The original repeats the jump while Space is held. DESIGN does not repeat.
-5. **Takes.** The original gives a lost take back after every land, sea, snow round. DESIGN says no
-   extra takes "as in the original".
+   DESIGN pays per hazard, once per scene. Still open with Bob.
+4. **Held jump.** The original repeats the jump while Space is held. DESIGN did not repeat. Bob:
+   follow the original.
+5. **Takes.** The original gives a lost take back after every land, sea, snow round. DESIGN said no
+   extra takes "as in the original". Bob: follow the original.
 6. **Levels.** The original's level is 6 screens and the skill level only picks where you start in a
-   36-screen run. DESIGN's billing is a season of 12 screens.
+   36-screen run. DESIGN's billing is a season of 12 screens. Bob agreed; billings already work this
+   way.
 7. **Missed taps.** The original can miss a Space press shorter than one step (60 ms). DESIGN latches taps; that
    is an improvement worth keeping.
