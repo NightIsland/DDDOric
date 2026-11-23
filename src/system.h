@@ -13,8 +13,11 @@ extern uint8_t irq_mode;        /* 1 = IRQ handler hooked, 0 = unknown ROM: poll
 uint8_t keys_poll(void);        /* -> IN_* bits (src/model.h) */
 extern uint8_t key_row[6], key_col[6], key_bit[6];
 
-void __fastcall__ snd_engine(uint16_t period);   /* tone A, 0 = off (placeholder engine) */
+void __fastcall__ snd_engine(uint16_t period);   /* engine tone A, 0 = off */
 void __fastcall__ snd_burst(uint8_t period);     /* noise burst, period 1-15 */
+void snd_jump(void);                             /* take-off whoosh */
+void snd_land(void);                             /* landing thump */
+void snd_stop(void);                             /* brakes */
 
 /* harness debug port (docs/ORIC-LESSONS.md section 6): RAM never displayed */
 #define DBG_TRACE (*(volatile uint8_t *)0xBFE0)

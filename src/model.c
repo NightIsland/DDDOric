@@ -18,6 +18,13 @@ void model_scene_start(void)
     m.paused = 0;
 }
 
+/* x * 228 / 80 / 256 in 16 bits: (x / 32) * 91 / 256, 0.2% short of exact
+   (x < 19,200, so the product stays under 54,600; the rider ends at 213 px) */
+uint8_t model_px(void)
+{
+    return (uint8_t)(((m.x >> 5) * 91u) >> 8);
+}
+
 void model_init(void)
 {
     m.step = 0;
