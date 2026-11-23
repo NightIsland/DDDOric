@@ -43,7 +43,7 @@ takes the next number.
 | F0 | Skeleton and harness: cc65 2.19 built for the cloud shell, `none.lib`, own crt0 and ld65 config at $0500, ROM-free IRQ hook, autorun `.tap`, Makefile with size report and `ORICUTRON=1`; Chuckie Egg's emulator adapted, PNG output, key scripts, debug port at $BFE0; native C model with per-step trace | — | crt0 + cfg ≤ 256 B | merged (BUILD 1); BUILD 3 fixes Bob's fading and tearing rider |
 | F1 | Display: HIRES init, per-line paper/ink columns, a track screen drawn from scene data, status line in the text-row bitmap font, one-pass pre-shifted sprite draw | F0 | code ≤ 1.5 KB; sprite ≤ 1,400 cycles | BUILD 4 merged (PR #6); BUILD 5–6 fixes in a follow-up PR |
 | F2 | One track: rider physics (DESIGN "Physics"), keys (Space, either Shift, Return), 50 Hz step, engine sound | F0, F1 | logic ≤ 4,000 cycles a step | merged (BUILD 8, PR #8) |
-| F3 | Whole scene: four tracks, wrapping, block, runner, dangler, gap and ceiling block, crashes, fees, the one stop | F2 | whole step ≤ 16,000 cycles | BUILD 9, PR open; budget missed: average 16,100 riding flat out, worst 19,750 (see Results) |
+| F3 | Whole scene: four tracks, wrapping, block, runner, dangler, gap and ceiling block, crashes, fees, the one stop | F2 | whole step ≤ 16,000 cycles | BUILD 10, PR open; budget missed: average 16,100 riding flat out, worst 19,750 (see Results) |
 | F4 | Film frame: clapper card, takes, "Cut!", scene cleared, "You're fired", title screen, billing select, top five | F3 | | not started |
 | F5 | Film 1 (*Rush Hour Rumble*) complete at all six billings, tuned to M1's numbers; Bob judges the feel against the original | F4, M1 | | not started |
 | F6 | Films 2–6, jets and ramps, per-vehicle handling, music, key redefinition | F5 | memory ≤ 37 KB | not started |
@@ -170,6 +170,10 @@ Briefs written by the architect when the previous feature is merged, from DESIGN
   0 (the budget check compared garbage); the rope routine shared zero page with the sprite mover and
   shifted the ball one cell right (the pixel check caught it); `far` is a cc65 keyword.
 - Program ends at `$4497`; 20,841 bytes free below `$9800`.
+- **BUILD 10 (Bob: "the police car is driving the wrong way for the image; it shouldn't pass over
+  the truck"):** the car picture was mirrored; it now faces the way it drives. Scene 1's track 2 is
+  the police car's own lane, and its van moved to track 1 (drums at 120, van at 200).
+  `clear.keys` and `takeback.keys` re-timed for the new layout (searched on the native model).
 
 ### F2: One track (BUILD 7, 23 Nov 2026)
 

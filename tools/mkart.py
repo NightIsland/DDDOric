@@ -87,7 +87,7 @@ RIDER_W, RIDER_H = 12, 16
 # Solid shapes, wheels and windows cut out (Bob, BUILD 4: "less wireframe").
 # The van is parked facing right, the way Bob rides: cab and windscreen at the
 # front, headlamp, rear doors.  The police car faces left, oncoming, with its
-# lamp bar on the roof.
+# lamp bar on the roof (BUILD 9 had it mirrored: Bob saw it reversing).
 VAN = """
 .............#######....
 .............########...
@@ -122,7 +122,7 @@ DRUMS = """
 #.######.#.######
 .######...######.
 """
-POLICE_R = """
+POLICE = """
 ...........#.#..........
 ..........#####.........
 .......############.....
@@ -136,7 +136,6 @@ POLICE_R = """
 ####.##.#########.##.###
 .....##...........##....
 """
-POLICE = "\n".join(r[::-1] for r in POLICE_R.strip("\n").split("\n"))   # faces left
 BALL = """
 ....####....
 ..##..####..
