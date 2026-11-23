@@ -17,6 +17,7 @@
 
 void screen_init(void);
 void __fastcall__ rider_xor(uint8_t track, uint8_t xpx, uint8_t height);
+void rider_move(uint8_t ot, uint8_t ox, uint8_t oh, uint8_t nt, uint8_t nx, uint8_t nh);
 void status_update(void);
 
 #endif

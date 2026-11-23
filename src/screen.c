@@ -140,19 +140,73 @@ void screen_init(void)
 }
 
 /* the placeholder rider: a 6 x 12 block, XORed on and off */
+#define RIDER_H 12
+
+static uint8_t rider_line(uint8_t track, uint8_t height)   /* screen line of its lowest row */
+{
+    return TITLE_LINES + track * BAND_LINES + RIDER_BASE - height;
+}
+
 void __fastcall__ rider_xor(uint8_t track, uint8_t xpx, uint8_t height)
 {
     uint8_t s = xshift[xpx], c = xcell[xpx], n;
     uint8_t lm = 0x3F >> s, rm = (uint8_t)(0x3F << (6 - s)) & 0x3F;
-    uint8_t y = TITLE_LINES + track * BAND_LINES + RIDER_BASE - height;
+    uint8_t y = rider_line(track, height);
     uint8_t *p;
     if (c == 39)
         rm = 0;                             /* clip at the right edge */
-    for (n = 0; n < 12; ++n, --y) {
+    for (n = 0; n < RIDER_H; ++n, --y) {
         p = lineaddr[y] + c;
         p[0] ^= lm;
         if (rm)
             p[1] ^= rm;
+    }
+}
+
+/* Move the rider in one pass: every screen byte is written once, with old ^ new,
+   so the rider is never missing from the screen while the video scans it
+   (docs/ORIC-LESSONS.md section 7).  BUILD 1 erased, then redrew: whenever the
+   beam passed the rider between the two, it vanished for that frame, and as the
+   20,000-cycle step drifts against the 19,968-cycle video frame that happened
+   for about 2 s in every 12.5 s (Bob's "fading" bug).  A move to another track
+   or more than one cell along (wrap, restart) still uses two passes. */
+void rider_move(uint8_t ot, uint8_t ox, uint8_t oh, uint8_t nt, uint8_t nx, uint8_t nh)
+{
+    uint8_t co = xcell[ox], cn = xcell[nx], c0, so, sn, yo, yn, y, ytop, *p;
+    uint8_t ol, or, nl, nr, a0, a1, a2, d;
+
+    if (ot != nt || (uint8_t)(cn - co + 1) > 2) {
+        rider_xor(ot, ox, oh);
+        rider_xor(nt, nx, nh);
+        return;
+    }
+    so = xshift[ox];
+    sn = xshift[nx];
+    ol = 0x3F >> so;
+    or = co == 39 ? 0 : (uint8_t)(0x3F << (6 - so)) & 0x3F;
+    nl = 0x3F >> sn;
+    nr = cn == 39 ? 0 : (uint8_t)(0x3F << (6 - sn)) & 0x3F;
+    c0 = co < cn ? co : cn;
+    yo = rider_line(ot, oh);
+    yn = rider_line(nt, nh);
+    y = yo > yn ? yo : yn;                  /* lowest line of either */
+    ytop = (yo < yn ? yo : yn) - (RIDER_H - 1);
+    for (;; --y) {
+        a0 = a1 = a2 = 0;
+        if (y <= yo && y > yo - RIDER_H) {
+            d = co - c0;
+            if (d) { a1 = ol; a2 = or; } else { a0 = ol; a1 = or; }
+        }
+        if (y <= yn && y > yn - RIDER_H) {
+            d = cn - c0;
+            if (d) { a1 ^= nl; a2 ^= nr; } else { a0 ^= nl; a1 ^= nr; }
+        }
+        p = lineaddr[y] + c0;
+        if (a0) p[0] ^= a0;
+        if (a1) p[1] ^= a1;
+        if (a2) p[2] ^= a2;                 /* a2 is 0 whenever c0 + 2 > 39 */
+        if (y == ytop)
+            break;
     }
 }
 

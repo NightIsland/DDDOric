@@ -31,8 +31,7 @@ void main(void)
 
         nx = m.x >> 8;
         if (nx != ox || m.track != ot || m.height != oh) {
-            rider_xor(ot, ox, oh);
-            rider_xor(m.track, nx, m.height);
+            rider_move(ot, ox, oh, m.track, nx, m.height);
         }
         if (m.events & EV_JUMP)
             snd_burst(3);
