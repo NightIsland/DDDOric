@@ -1,38 +1,44 @@
-/* main.c - Stunt Man Bob, F0 skeleton (docs/PLAN.md F0).
+/* main.c - Stunt Man Bob (docs/PLAN.md F0, F1).
 
-   One empty four-track scene, the BUILD number, and a block for the rider run
-   by the game model (src/model.c) on placeholder physics.  Each 20 ms step:
-   MARK, read the keys, step the model, write its trace line, redraw, BUSY. */
+   F1: film 1's first scene drawn from its data, and the rider on his bike run
+   by the game model (src/model.c, placeholder physics until F2).  Hazards are
+   scenery until F3.  Each 20 ms step: MARK, read the keys, step the model,
+   write its trace line, redraw, BUSY. */
+#include "art.h"
 #include "model.h"
 #include "physics.h"
 #include "screen.h"
 #include "system.h"
 #include "trace.h"
 
+#ifndef BILLING_START
+#define BILLING_START 1         /* test builds: make CDEFS=-DBILLING_START=3 */
+#endif
+
 void main(void)
 {
-    uint8_t in, ot, ox, oh, nx;
+    uint8_t in, x;
     uint16_t speed = 0xFFFF;
 
     screen_init();
+    scene_draw(&scene_rhr1, BILLING_START);
     model_init();
+    status_update();
+    rider_draw(m.track, 0, 0, FR_RIDE_A);
     sys_init();
-    rider_xor(m.track, m.x >> 8, m.height);
 
     for (;;) {
         step_wait();
         DBG_MARK = 0;
         in = keys_poll();
-        ot = m.track;
-        ox = m.x >> 8;
-        oh = m.height;
         model_step(in);
         trace_step(in);
 
-        nx = m.x >> 8;
-        if (nx != ox || m.track != ot || m.height != oh) {
-            rider_move(ot, ox, oh, m.track, nx, m.height);
-        }
+        /* frame: the jump picture in the air; on the road the wheels turn
+           every 4 px travelled */
+        x = m.x >> 8;
+        rider_draw(m.track, x, m.height,
+                   m.jump_t ? FR_JUMP : (x & 4) ? FR_RIDE_B : FR_RIDE_A);
         if (m.events & EV_JUMP)
             snd_burst(3);
         else if (m.events & (EV_STOP | EV_LAND))

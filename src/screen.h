@@ -1,9 +1,13 @@
-/* screen.h - F0 placeholder display (docs/PLAN.md F0; DESIGN "Screen
-   structure").  F1 replaces it with the real display code. */
+/* screen.h - the display (docs/PLAN.md F1; DESIGN "Screen structure").
+
+   Lines 0-7 title strip, four 48-line track bands from line 8, status in text
+   rows 25-27.  In every HIRES line cell 0 holds the paper colour and cell 1 the
+   ink, so play uses cells 2-39 (228 pixels, x 0-227). */
 #ifndef SCREEN_H
 #define SCREEN_H
 
 #include <stdint.h>
+#include "scene.h"
 
 #define HIRES       ((uint8_t *)0xA000)
 #define CHARSET     ((uint8_t *)0x9800)
@@ -12,12 +16,12 @@
 
 #define TITLE_LINES 8
 #define BAND_LINES  48
-#define RIDER_BASE  43          /* band line of the rider's lowest line */
+#define RIDER_TOP   28          /* band line of the rider's top row on the road */
 #define ROAD_LINE   44          /* first road line of a band */
 
 void screen_init(void);
-void __fastcall__ rider_xor(uint8_t track, uint8_t xpx, uint8_t height);
-void rider_move(uint8_t ot, uint8_t ox, uint8_t oh, uint8_t nt, uint8_t nx, uint8_t nh);
+void scene_draw(const struct scene *s, uint8_t billing);
+void rider_draw(uint8_t track, uint8_t xpx, uint8_t height, uint8_t frame);
 void status_update(void);
 
 #endif
