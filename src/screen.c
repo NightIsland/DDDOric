@@ -390,6 +390,25 @@ void hazards_list(const struct scene *sc)
     }
 }
 
+/* Bob, BUILD 13: the police car's lamps flash red and blue.  Its top two
+   lines (the lamps, then the lamp bar) get their own ink, swapped every 8
+   steps: one ink cell each, so it costs nothing.  (Anything else on those
+   two lines of its band takes the colour too: the rider's neck, passing.) */
+void lamps(uint8_t phase)
+{
+    uint8_t i, a = 1, b = 4, *p;            /* red, blue */
+    if (phase) {
+        a = 4;
+        b = 1;
+    }
+    for (i = 0; i < nmov; ++i)
+        if (mv_kind[i] == HZ_RUNNER) {
+            p = LINE(mv_band[i]);
+            p[0] = a;
+            p[40] = b;
+        }
+}
+
 /* A step has room for the rider and one or two hazards (each ~5,500 cycles).
    Each hazard is drawn only if the step still has HZ_ROOM x 256 cycles left
    for it and the status line; one that doesn't fit waits, first in line next

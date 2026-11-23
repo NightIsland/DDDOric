@@ -190,6 +190,12 @@ Briefs written by the architect when the previous feature is merged, from DESIGN
     read 1.3% with this build's step phase, 0.7% with BUILD 12's.
   - 86 checks pass; 9,200 bytes free.
 
+- **BUILD 14 (Bob: "draw the blue and/or red lights on top of the police car, blinking
+  ideally"):** the car's top two lines (the lamps, wider now, and the lamp bar) get their own
+  ink, red and blue, swapped every 8 steps: two ink-cell writes a step. Anything else on those
+  two lines of the band takes the colour too (the rider's neck as he passes). The torn-frame
+  check leaves colour cells out; a check sees the swap.
+
 ### F3: Whole scene (BUILD 9, 23 Nov 2026)
 
 - **Hazards move** (`src/model.c`, from `src/scene.h`'s records, so the native model has them too):
