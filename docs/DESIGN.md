@@ -12,8 +12,9 @@ scene is a fixed screen of four stacked tracks ridden left to right, top to bott
 jump, accelerate, stop. The play should feel like Daredevil Dennis (BBC Micro, 1984); everything you
 see and hear is our own.
 
-Numbers marked **(guess)** are starting values to tune against the original in the emulator, not
-measured facts.
+Numbers marked **(guess)** are starting values, not measured facts. Numbers marked **(M1)** were
+measured in the BBC original frame by frame; the method and the full results are in
+`docs/M1-MEASUREMENTS.md`.
 
 - **Speed plus timing is the whole game.** A jump is a fixed arc; its length comes only from how fast
   you are going, and you can still accelerate in the air.
@@ -34,17 +35,17 @@ frame by frame (JSBeeb, see PLAN M1) and the measured value written here.
 | --- | --- | --- |
 | Track structure | 4 stacked tracks per screen, no scrolling; leaving the right edge drops you to the left of the next track | Same |
 | Wrapping | Same height above the road, same point in the jump arc, same speed | Same (confirmed by Bob) |
-| Accelerate | Held key builds speed over about 2 s, also in mid-air | Start speed to top speed in 2.0 s (guess) |
+| Accelerate | Held key adds speed every step, also in mid-air; standing to top speed in 5.0 s (M1) | Same: 0 to top in 5.0 s (M1) |
 | Releasing Accelerate | The bike holds its current speed; it never slows by itself | Same (confirmed by Bob) |
-| Jump | Fixed arc, no steering; length set by speed at take-off | Same, plus mid-air acceleration stretches it |
-| Jump at top speed | Carries nearly the full screen width | About 180 of 228 pixels (guess) |
-| Stop | Return stops the bike dead, once per scene | Same |
+| Jump | Fixed arc, no steering, 1.68 s and 20 lines high at every speed; length set by speed, and accelerating in the air stretches it (M1) | Same |
+| Jump at top speed | Carries just over one whole track, so it crosses the wrap (M1) | About 234 px of travel (M1) |
+| Stop | Return stops the bike dead, once per track (given back at every wrap), also in mid-air (M1) | Once per scene, on the ground (Bob's decision; see M1 differences) |
 | Ceiling | Some fixed obstacles hang from the top of the track and catch a jump | Same: ceiling blocks |
-| Handling | Sea felt a little looser, snow dragged a little (Bob's memory, not yet measured) | Per-vehicle handling, see Vehicles |
-| Lives | 3 takes, then back to the menu | 3 takes per run |
-| Score | 10 wages per hazard cleared | £10 per hazard, more on harder billings |
+| Handling | Identical on land, sea and snow; only the pictures change (M1). Bob remembered sea looser and snow dragging | Per-vehicle handling, see Vehicles (for Bob to confirm after M1) |
+| Lives | 3 takes, then back to the menu; one lost take is given back after each land, sea, snow round (M1) | 3 takes per run |
+| Score | Wages per track completed, 10 × the screen number, paid again on a retake (M1) | £10 per hazard, more on harder billings |
 | Crash | Burst, rider flung away, pause, same screen restarts | Same, with "Cut!" and the clapper |
-| Difficulty | 6 skill levels; each is one pass through the 3 scenes, then the next level starts by itself; harder levels remove track | 6 billings; each is one season of 6 films, then the next billing starts by itself; gaps from billing 3 (guess) |
+| Difficulty | 36 screens in a fixed order cycling land, sea, snow; the skill level picks the starting screen (1, 7, 13, 19, 25, 31), so a level is 6 screens; gaps from screen 5, flying hazards from screen 4 (M1) | 6 billings; each is one season of 6 films, then the next billing starts by itself; gaps from billing 3 (guess) |
 
 ## Screen structure
 
@@ -67,7 +68,7 @@ the text rows underneath. Nothing scrolls; only the rider, moving hazards and ef
   own palette (green for Western scrub, red for horror, cyan for sci-fi).
 - **Shared colour.** The rider and a hazard on the same lines share one ink. We accept that rather
   than spend attribute cells; inverse cells (bit 7) can pick out a single hazard where it matters.
-- **Jump room.** The rider stands on lines 28–43 of a band; a jump's apex of 24 pixels (guess) stays
+- **Jump room.** The rider stands on lines 28–43 of a band; a jump's apex of 20 pixels (M1) stays
   inside the band, so a jump never draws over the track above.
 
 ## Controls
@@ -95,18 +96,19 @@ layout: one hand on Space, the other with a finger on Shift and one ready on Ret
 ## Physics and core mechanics
 
 The game runs a fixed step of 50 per second from the 10 ms timer, with positions and speeds in fixed
-point (1/256 pixel), so every run with the same keys plays out exactly the same. All values below are
-guesses until measured against the original.
+point (1/256 pixel), so every run with the same keys plays out exactly the same. The values below are
+the original's, measured in M1 and converted: one BBC game step (60 ms) is three of our steps, and one
+BBC screen byte is 2.85 of our pixels.
 
-| Quantity | Value (guess) | What it means in play |
+| Quantity | Value (M1) | What it means in play |
 | --- | --- | --- |
-| Start speed | 0.5 px per step (25 px/s) | Speed at the start of each take; a track takes about 9 s |
-| Top speed | 3.0 px per step (150 px/s) | A track takes about 1.5 s flat out |
-| Acceleration | +0.025 px per step, each step Accelerate is held | Start to top in 2 s on a standard vehicle |
+| Start speed | 0 | Each take starts with the bike standing; Accelerate moves it off |
+| Top speed | 2.78 px per step (139 px/s) | A track (213 px of travel before the wrap) takes 1.54 s flat out |
+| Acceleration | +0.0111 px per step, each step Accelerate is held (the original's speed 0–250, +1 per step) | Standing to top speed in 5.0 s |
 | Releasing Accelerate | No change | The bike holds whatever speed it has reached |
-| Jump time | 60 steps (1.2 s), the same at every speed | |
-| Jump height | 24 px at the apex, from a 60-entry arc table | Clears any obstacle up to 20 px tall |
-| Jump length | speed × 60 steps | 30 px at start speed, 180 px at top speed, up to 75 px if you accelerate from start speed all the way through |
+| Jump time | 84 steps (1.68 s), the same at every speed | |
+| Jump height | 20 px at the apex, from the original's 28-step arc with each entry held 3 steps | Clears obstacles up to 16 px tall with room to spare |
+| Jump length | speed × 84 steps | 117 px at half speed, 234 px at top speed (just over a track), more if you accelerate in the air |
 
 Speed only ever goes up, except for the one stop, so every scene is a question of how fast to be by
 when.
@@ -149,18 +151,20 @@ which is where the one stop earns its keep.
 
 **Vehicles.** Each vehicle has its own look, engine sound and handling, where handling is three
 numbers: acceleration, top speed and jump time. Most vehicles use the standard handling. On water
-acceleration is a little looser and on snow it drags, as Bob remembers from the original (to be
-measured), and the sci-fi hover bike floats.
+acceleration is a little looser and on snow it drags, as Bob remembers, and the sci-fi hover bike
+floats. M1 found the original's wetbike and skis handle exactly like its bike, so these differences
+are our own addition, for Bob to confirm. The guesses below are scaled to the measured standard
+handling (+0.0111 px per step, top 2.78 px per step, jump 84 steps).
 
 | Film | Vehicle | Handling (guess) |
 | --- | --- | --- |
 | Action, scene 1 | Motorbike | Standard |
-| Action, scene 2 | Jet-ski | Looser: acceleration +0.035 px per step |
+| Action, scene 2 | Jet-ski | Looser: acceleration +0.0156 px per step |
 | Western | Horse | Standard |
 | Horror | Rattling hearse-trike | Standard |
-| Sci-fi | Hover bike | Floaty: jump time 72 steps, same height |
+| Sci-fi | Hover bike | Floaty: jump time 100 steps, same height |
 | Fantasy | Chariot | Standard |
-| Spy (snow) | Skis | Drags: acceleration +0.018 px per step, top speed 2.6 px per step |
+| Spy (snow) | Skis | Drags: acceleration +0.008 px per step, top speed 2.4 px per step |
 
 ## Films, scenes and progression
 
@@ -191,6 +195,10 @@ first screen must be passed on the ground.
 | 4 Stunt Man | More gaps | Fast | £40 |
 | 5 Stunt Coordinator | Gaps in front of most hazards | Fast | £50 |
 | 6 Legend | Most track broken | Fastest | £60 |
+
+In the original (M1) runners and danglers move at the same speed per step on every level (runner
+0.95 px per step, dangler 1 px per 3 steps in our units); only the layouts get harder, and gaps start
+on its fifth screen. "Slow" above can be read as the original's speed, with faster ones our own.
 
 Each scene is stored once with every gap it can have; each gap is tagged with the lowest billing that
 shows it, so one layout serves all six billings. Every scene must be proved beatable at every billing
@@ -229,9 +237,10 @@ about 12 × 16 pixels with two riding frames, a jump frame and a crash frame per
   restored. Fees already earned are kept, but each hazard pays only once per scene, so a retake earns
   only for hazards beyond the point where you fell. Example at Extra: take 1 clears 5 hazards (£50)
   and crashes on the 6th; take 2 pays nothing for the first 5, then £10 for each new one. A crash
-  costs a take and the one-take bonus, never money already earned. Still to check: whether the
-  original pays again on a retake.
-- **No extra takes**, as in the original.
+  costs a take and the one-take bonus, never money already earned. The original instead pays per
+  track and pays again on a retake (M1); for Bob to confirm which we keep.
+- **No extra takes.** The original gives a lost take back after each land, sea, snow round (M1); for
+  Bob to confirm which we keep.
 - **Best fees.** A top-five table with three initials, kept until the machine is switched off.
 
 ## Sound and music
@@ -320,4 +329,4 @@ The build order is in `docs/PLAN.md`.
 | Oricutron builds | Noise played an octave lower to match real hardware |
 | Level codes | Optional extra after film 1 |
 | Measuring | Time the BBC original frame by frame to set speeds, arc and handling |
-| Still to check | Whether the original pays again for hazards on a retake |
+| After M1 | Where the original differs from this design (stop per track, identical sea and snow, wages per track, held jump repeats, take refund, 6-screen levels): `docs/M1-MEASUREMENTS.md`, for Bob |
