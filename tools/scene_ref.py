@@ -16,16 +16,18 @@ COLOURS = dict(BLACK=0, RED=1, GREEN=2, YELLOW=3, BLUE=4, MAGENTA=5, CYAN=6, WHI
 KINDS = dict(HZ_NONE=0, HZ_BLOCK=1, HZ_RUNNER=2, HZ_DANGLER=3, HZ_GAP=4, HZ_CEILING=5, HZ_JET=6, HZ_RAMP=7)
 ART = {f"ART_{n.upper()}": i for i, (n, _) in enumerate(mkart.SCENERY)}
 TITLE, BAND, RIDER_TOP, ROAD = 8, 48, 28, 44
+DANGLE_TOP = 6                              # src/model.h
 FRAMES = [n for n, _ in mkart.RIDER_FRAMES]
 
 
-def load_scene():
+def load_scene(name="scene_rhr1"):
     src = open(os.path.join(ROOT, "src", "scene.c")).read()
     pal = src[src.index("pal_city = {"):src.index("};", src.index("pal_city = {"))]
     names = re.findall(r"\b(BLACK|RED|GREEN|YELLOW|BLUE|MAGENTA|CYAN|WHITE)\b", pal.split("{", 1)[1])
     cols = [COLOURS[n] for n in names]
     title_paper, title_ink, paper, ink = cols[0], cols[1], cols[2:50], cols[50:98]
-    body = src[src.index("scene_rhr1 = {"):]
+    body = src[src.index(name + " = {"):]
+    body = body[:body.index("\n};")]
     tracks = []
     for tb in re.findall(r"\{((?:\s*\{[^{}]*\},?)+)\s*\}", body)[:4]:
         recs = []
@@ -34,12 +36,15 @@ def load_scene():
             val = lambda v: int(v) if v.isdigit() else {**KINDS, **ART}[v]  # noqa: E731
             recs.append(tuple(val(v) for v in f))
         tracks.append(recs)
+    tracks += [[] for _ in range(4 - len(tracks))]
     return dict(title_paper=title_paper, title_ink=title_ink, paper=paper, ink=ink, tracks=tracks)
 
 
-def scene_bytes(billing=1):
-    """{address: byte} for HIRES lines 0-199 (title text left blank)"""
-    sc = load_scene()
+def scene_bytes(billing=1, name="scene_rhr1"):
+    """{address: byte} for HIRES lines 0-199 (title text left blank): the
+    scene as set up, without its moving hazards (police car, wrecking ball:
+    hazard_bytes) but with the top of a dangler's rope"""
+    sc = load_scene(name)
     mem = bytearray([0x40] * 8000)
 
     def setpx(x, y):
@@ -72,13 +77,12 @@ def scene_bytes(billing=1):
                     if (c - 2) % 4 < 2:
                         mem[(y0 + i) * 40 + c] = 0x7F
         for kind, x, a, b in recs:
-            if kind in (1, 2):
+            if kind == 1:
                 blit(a, x, y0 + ROAD - 1)
             elif kind == 3:
                 rows, w, h = mkart.scenery(mkart.SCENERY[a][0])
-                for y in range(y0, y0 + 6):
+                for y in range(y0, y0 + DANGLE_TOP):
                     setpx(x + w // 2, y)
-                blit(a, x, y0 + 5 + h)
             elif kind == 5:
                 rows, w, h = mkart.scenery(mkart.SCENERY[a][0])
                 blit(a, x, y0 + b)
@@ -97,9 +101,53 @@ def px(x):
     return ((x >> 5) * 91) >> 8
 
 
-def frame_for(x, jt):
-    """the rider picture main.c picks: jump in the air, wheels turn every 4 px"""
-    return "jump" if jt else ("ride_b" if x & 4 else "ride_a")
+def frame_for(x, jt, crash_t=0):
+    """the rider picture main.c picks: crashed; jump in the air; wheels turn every 4 px"""
+    return "crash" if crash_t else "jump" if jt else ("ride_b" if x & 4 else "ride_a")
+
+
+def sprite_bytes(name, x, top):
+    """{address: xor mask} of a moving hazard's picture with its left edge at
+    x px and its top at screen line top (tools/mkart.py SPRITES)"""
+    nc, sh = mkart.sprite(name)
+    img = sh[x % 6]
+    out = {}
+    for col in range(nc):
+        c = 2 + x // 6 + col
+        for r, v in enumerate(img[col]):
+            if v and c <= 39:
+                out[0xA000 + (top + r) * 40 + c] = v
+    return out
+
+
+def hazard_bytes(name="scene_rhr1", pos=None):
+    """{address: xor mask} of the scene's moving hazards where pos says:
+    pos[i] = x px of a runner, or the drop of a dangler, for the i-th moving
+    hazard in scene order.  Runners sit on the road; a dangler's rope runs
+    from its band's top line down to the ball."""
+    sc = load_scene(name)
+    out, i = {}, 0
+    for t, recs in enumerate(sc["tracks"]):
+        y0 = TITLE + t * BAND
+        for kind, x, a, b in recs:
+            if kind not in (2, 3):
+                continue
+            art = mkart.SCENERY[a][0]
+            rows, w, h = mkart.scenery(art)
+            p = pos[i]
+            i += 1
+            if kind == 2:
+                pic = sprite_bytes(art, p, y0 + ROAD - h)
+            else:
+                top = y0 + DANGLE_TOP + p
+                pic = sprite_bytes(art, x, top)
+                rx = x + w // 2
+                for y in range(y0 + DANGLE_TOP, top):
+                    ad = 0xA000 + y * 40 + 2 + rx // 6
+                    pic[ad] = pic.get(ad, 0) ^ (0x20 >> (rx % 6))
+            for ad, v in pic.items():
+                out[ad] = out.get(ad, 0) ^ v
+    return out
 
 
 def rider_bytes(track, x, h, frame):

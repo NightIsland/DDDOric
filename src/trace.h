@@ -1,9 +1,10 @@
 /* trace.h - one state line per game step, the same on the Oric and natively
    (docs/PLAN.md F0; docs/ORIC-LESSONS.md section 6 "Trace equality").
 
-   Line: "SSSS T XXXX VVVV JJ HH FF EE II\n" in hex: step, track, x, speed,
-   jump step, height, flags (bit 0 stop unused, bit 1 paused, bits 4-7 scenes
-   mod 16), events, input.  On the Oric each byte goes to the harness debug
+   Line: "SSSS T XXXX VVVV JJ HH FF EE II E2 CC TN FFFF HZ\n" in hex: step, track,
+   x, speed, jump step, height, flags (bit 0 stop unused, bit 1 paused, bits
+   4-7 scenes mod 16), events, input; F3: ev2, crash pause left, takes left
+   (high nibble) and take number, fee, a checksum of every hazard's position.  On the Oric each byte goes to the harness debug
    port $BFE0 (plain RAM on real hardware); natively to stdout. */
 #ifndef TRACE_H
 #define TRACE_H

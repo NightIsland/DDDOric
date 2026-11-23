@@ -70,9 +70,9 @@ $(B)/$(NAME).tap: $(B)/$(NAME).bin tools/mktap.py
 ref: build/ref/ref
 emu: build/emu/emu
 
-build/ref/ref: tools/ref/ref.c src/model.c src/trace.c $(HDRS)
+build/ref/ref: tools/ref/ref.c src/model.c src/trace.c src/scene.c $(HDRS)
 	@mkdir -p build/ref
-	$(HOSTCC) -O2 -Wall -Wextra -I src -o $@ tools/ref/ref.c src/model.c src/trace.c
+	$(HOSTCC) -O2 -Wall -Wextra -I src -I build/gen -o $@ tools/ref/ref.c src/model.c src/trace.c src/scene.c
 
 build/emu/emu: tools/emu/emu.c
 	@mkdir -p build/emu
@@ -82,6 +82,7 @@ test:
 	$(MAKE) build/$(NAME).tap
 	$(MAKE) ORICUTRON=1 build/oricutron/$(NAME).tap
 	$(MAKE) B=build/b3 CDEFS=-DBILLING_START=3 build/b3/$(NAME).tap
+	$(MAKE) B=build/empty CDEFS=-DSCENE=scene_test build/empty/$(NAME).tap
 	$(MAKE) build/emu/emu build/ref/ref
 	python3 tools/test_f0.py
 

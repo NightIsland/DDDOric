@@ -131,6 +131,14 @@ with 96 redefinable characters.
   it tested the flags left by the `cmp` instead of reloading `a`, so `x` was always 1. Use a table
   (`x = tbl[b]`) or an explicit `if`, and check status displays in the harness.
 - Watch sign: `move_y <<= 1` on a negative number is undefined in C; write `* 2`.
+- **An assembly function returning `uint8_t` must leave X = 0** (Stunt Man Bob, BUILD 9): cc65
+  promotes the result as A/X, so `if (f() < 34)` compared a 16-bit garbage value and the check
+  passed at random.
+- `far` and `near` are cc65 keywords: don't name variables after them.
+- Structs read through pointers are slow in cc65 (`ldy #n / lda (ptr),y` plus runtime calls);
+  flat byte arrays indexed by a slot number cut a collision loop from ~2,800 to ~1,000 cycles.
+- Run the native reference under `-fsanitize=address,undefined` too: indexing `h[0][i]` past the
+  first row of a 2-D array worked in cc65 and at `-O0`, and crashed at `-O2`.
 
 ## 6. The verification method (worth reusing)
 
@@ -160,6 +168,11 @@ with 96 redefinable characters.
 | IRQ tick with sound envelopes | 99 idle, ≤ 360 |
 | whole game frame (logic + drawing), worst of 295k frames | 17,259 of 30,000 |
 
+- **No vsync, so time the step from the VIA:** T1's high byte plus the tick count says how many
+  cycles are left before the next step; drawing that won't fit waits a step (Stunt Man Bob F3).
+- **Writing at the beam's pace:** a loop of `lda buf,x / sta (p),y` writes 4 bytes a line in 67
+  cycles, but 6 bytes take 91, slower than the beam's 64. For wider boxes, write the bytes into
+  unrolled `lda #byte / sta line,y` code (7 cycles a byte, padded to 67 a line) and run it.
 - Pre-shifting sprites (4 copies when the x mapping gives 4 phases) beat draw-time shifting by
   45–51% in cycles for ~3.5 KB more data: memory was not the constraint at 48K.
 - Two XOR passes (erase, draw) leave a sprite absent for up to 4,000 cycles (20% of a video frame):

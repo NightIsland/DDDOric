@@ -49,3 +49,11 @@ const struct scene scene_rhr1 = {
             { HZ_DANGLER, 176, ART_BALL, 0 } },
     },
 };
+
+/* The test track: the same street with nothing on it, for the harness's
+   physics and drawing checks (make test builds it as build/empty with
+   -DSCENE=scene_test; tools/ref/ref.c takes "test"). */
+const struct scene scene_test = {
+    "TEST TRACK", 1, &pal_city,
+    {   { { HZ_NONE, 0, 0, 0 } } },
+};

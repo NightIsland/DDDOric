@@ -19,7 +19,7 @@
 ; ay_write is for code running with IRQs off (the handler, or between
 ; php/sei .. plp): the AY's address latch is shared with the sound handler.
 
-        .export         _sys_init, _step_wait, _ticks, _irq_mode, ay_write
+        .export         _sys_init, _step_wait, _ticks, _irq_mode, ay_write, _step_left
         .import         snd_tick, snd_init
         .include        "zeropage.inc"
 
@@ -131,6 +131,37 @@ _step_wait:
         sta     _ticks
         rts
 
+; uint8_t step_left(void) - time left in this step before step_wait would
+; return at once, in units of 256 cycles (0 = none), so drawing can put off
+; what doesn't fit (PLAN F3).  Ticks still to come, plus T1's count to the
+; next one: reading T1's high byte leaves the IRQ flag alone.  Polling
+; fallback: 255 (no timer to go by).
+_step_left:
+        lda     _irq_mode
+        bne     @ok
+        lda     #255
+        ldx     #0
+        rts
+@ok:    php
+        sei
+        lda     VIA_T1CH
+        ldx     _ticks
+        bit     VIA_IFR         ; a tick due but not yet counted?
+        bvc     @n
+        inx
+        lda     VIA_T1CH        ; T1 has restarted: read it again
+@n:     plp
+        cpx     #STEP_TICKS - 1
+        beq     @r              ; last tick of the step: T1's count
+        bcs     @none
+        clc
+        adc     #>TICK          ; one more tick to come
+@r:     ldx     #0              ; cc65 reads a char result as A with X = 0
+        rts
+@none:  lda     #0
+        tax
+        rts
+
 ; ay_write: AY register A := Y.  IRQs must be off.  Clobbers A.
 ay_write:
         sta     VIA_ORA
@@ -144,3 +175,30 @@ ay_write:
         lda     #$DD
         sta     VIA_PCR
         rts
+
+; Trace output for the harness (src/trace.c): a byte as two hex digits, and
+; the same with a space, straight to the debug port $BFE0 from tables.
+        .export         _hex2, _hex2sp
+
+_hex2:  tax
+        lda     hexhi,x
+        sta     $BFE0
+        lda     hexlo,x
+        sta     $BFE0
+        rts
+
+_hex2sp:
+        jsr     _hex2
+        lda     #' '
+        sta     $BFE0
+        rts
+
+        .segment        "RODATA"
+hexhi:
+        .repeat 256, I
+        .byte   .strat("0123456789abcdef", I >> 4)
+        .endrep
+hexlo:
+        .repeat 256, I
+        .byte   .strat("0123456789abcdef", I & 15)
+        .endrep

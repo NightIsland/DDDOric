@@ -11,6 +11,9 @@
 #include "system.h"
 #include "trace.h"
 
+#ifndef SCENE
+#define SCENE scene_rhr1        /* test builds: make CDEFS=-DSCENE=scene_test */
+#endif
 #ifndef BILLING_START
 #define BILLING_START 1         /* test builds: make CDEFS=-DBILLING_START=3 */
 #endif
@@ -21,10 +24,12 @@ void main(void)
     uint16_t speed = 0xFFFF;
 
     screen_init();
-    scene_draw(&scene_rhr1, BILLING_START);
-    model_init();
+    scene_draw(&SCENE, BILLING_START);
+    model_init(&SCENE, BILLING_START);
     status_update();
     rider_draw(m.track, 0, 0, FR_RIDE_A);
+    hazards_list(&SCENE);
+    hazards_draw();
     sys_init();
 
     for (;;) {
@@ -37,19 +42,27 @@ void main(void)
         /* frame: the jump picture in the air; on the road the wheels turn
            every 4 px travelled */
         x = model_px();
-        rider_draw(m.track, x, m.height,
+        rider_draw(m.track, x, m.height, m.crash_t ? FR_CRASH :
                    m.jump_t ? FR_JUMP : (x & 4) ? FR_RIDE_B : FR_RIDE_A);
+        hazards_draw();
+        if (m.events & EV_CRASH)
+            snd_crash();
+        else if (m.ev2 & EV2_FEE)
+            snd_fee();
         if (m.events & EV_STOP)
             snd_stop();
         else if (m.events & EV_JUMP)
             snd_jump();
         else if (m.events & EV_LAND)
             snd_land();
-        if (m.speed != speed || (m.events & (EV_PAUSE | EV_QUIT | EV_SCENE))) {
+        if (m.speed != speed || (m.events & (EV_PAUSE | EV_QUIT | EV_SCENE | EV_CRASH)) || m.ev2) {
             /* engine: ticking over at 50 Hz standing, rising to 320 Hz at top
                speed (period = 62,500 / f); silent while paused */
             speed = m.speed;
-            snd_engine(m.paused ? 0 : 1250 - 4 * speed);
+            if (m.paused || m.crash_t)      /* silent in the crash pause too */
+                snd_engine(0);
+            else
+                snd_engine(1250 - 4 * speed);
         }
         status_update();
         DBG_BUSY = 0;

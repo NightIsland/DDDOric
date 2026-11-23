@@ -1,0 +1,13 @@
+# F3: crash into the drums on take 1 (no jump), then clear scenes 1, 2 and 3
+# with clear.keys' timings from each scene's start (the retake at step 210,
+# then every 432 steps): the third scene cleared gives the lost take back
+1-1600 accel
+331 jump
+417 jump
+524 jump
+763 jump
+849 jump
+956 jump
+1195 jump
+1281 jump
+1388 jump
