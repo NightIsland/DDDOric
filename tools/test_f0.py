@@ -71,8 +71,13 @@ import scene_ref  # noqa: E402
 r = emu.run(TAP, frames=50, out=os.path.join(OUT, "screen"))
 emu.write_png(os.path.join(OUT, "f1-screen.png"), r.rgb, 2)
 RED, YEL = (255, 0, 0), (255, 255, 0)
+roads = [8 + 48 * b + 44 for b in range(4)]
 check("ULA in HIRES mode, mode cell $BFDF = $1E", "hires=1" in r.summary and r.mem[0xBFDF] == 0x1E)
-check("title strip: red paper, yellow film name", r.pixel(0, 0) == RED and r.pixel(239, 7) == RED
+BLK = (0, 0, 0)
+check("left edge: cell 0 black on every line, picture from pixel 6 (Bob, BUILD 4)",
+      all(r.pixel(x, y) == BLK for y in range(200) for x in range(6)) and r.pixel(6, 0) == RED
+      and all(r.pixel(6, y) == YEL for y in roads))
+check("title strip: red paper, yellow film name", r.pixel(6, 0) == RED and r.pixel(239, 7) == RED
       and any(r.pixel(x, y) == YEL for x in range(12, 90) for y in range(1, 8)))
 def with_rider(want, r):
     """the reference scene plus the rider where the run's last trace line says"""
@@ -90,8 +95,8 @@ check("scene drawn from its data: lines 8-199 = reference + rider (billing 1)", 
       f"{len(bad)} wrong bytes" + (f", first line {bad[0] // 40} cell {bad[0] % 40}" if bad else ""))
 check("title strip colour cells", all(got[y * 40:y * 40 + 2] == want[y * 40:y * 40 + 2] for y in range(8)))
 roads = [8 + 48 * b + 44 for b in range(4)]
-check("four kerbs, yellow across the play width (no gaps at billing 1)",
-      all(r.pixel(x, y) == YEL for y in roads for x in range(12, 240)), str(roads))
+check("four kerbs, yellow from pixel 6 to the right edge (no gaps at billing 1)",
+      all(r.pixel(x, y) == YEL for y in roads for x in range(6, 240)), str(roads))
 B3 = os.path.join(B, "b3", "stuntbob.tap")
 r3 = emu.run(B3, frames=5, out=os.path.join(OUT, "screen-b3"))
 emu.write_png(os.path.join(OUT, "f1-screen-billing3.png"), r3.rgb, 2)
@@ -130,7 +135,8 @@ with open(rnd, "w") as f:
                                                           rg.randint(1, 2))) + "\n")
         n += ln + rg.randint(0, 60)
 scripts = [(os.path.join(KEYS, s), n) for s, n in (("basic.keys", 400), ("wrapjump.keys", 300),
-                                                    ("pause.keys", 250), ("scene.keys", 800))] + [(rnd, 6000)]
+                                                    ("pause.keys", 250), ("scene.keys", 800),
+                                                    ("airstop.keys", 260))] + [(rnd, 6000)]
 total = 0
 for path, n in scripts:
     r = emu.run(TAP, frames=n + 1, keys=path, out=os.path.join(OUT, "trace-" + os.path.basename(path)))
@@ -171,6 +177,18 @@ wj = [parse(l) for l in allr[1]]
 wraps = [s for s in wj if s["ev"] & 0x08 and s["jt"]]
 check("wrapjump.keys: a jump crosses onto the next track in the air", bool(wraps) and wraps[0]["track"] >= 1,
       f"track {wraps[0]['track'] + 1}, step {wraps[0]['step']}, height {wraps[0]['h']}" if wraps else "no wrap in a jump")
+ast = [parse(l) for l in allr[4]]
+st_ = next((s for s in ast if s["ev"] & 0x04), None)
+after = [s for s in ast if st_ and st_["step"] <= s["step"] < st_["step"] + 65]
+check("airstop.keys: the stop works in mid-air; the bike drops straight down, lands, one stop only",
+      st_ is not None and st_["jt"] > 0 and all(s["x"] == st_["x"] and s["speed"] == 0 for s in after)
+      and any(s["ev"] & 0x02 for s in after) and sum(1 for s in ast if s["ev"] & 0x04) == 1,
+      f"stop at step {st_['step']}, jump step {st_['jt']}, height {st_['h']}" if st_ else "no stop")
+r = emu.run(TAP, frames=200, keys=os.path.join(KEYS, "airstop.keys"), out=os.path.join(OUT, "lamp"))
+r0 = emu.run(TAP, frames=60, keys=os.path.join(KEYS, "airstop.keys"), out=os.path.join(OUT, "lamp0"))
+check("stop lamp: lit before the stop, out after it (Bob, BUILD 4)",
+      r0.mem[0xBF68 + 19] == ord("*") and r.mem[0xBF68 + 19] == ord("+"),
+      f"{chr(r0.mem[0xBF68 + 19])} then {chr(r.mem[0xBF68 + 19])}")
 sc = [parse(l) for l in allr[3]]
 check("scene.keys: leaving track 4 finishes the scene", any(s["ev"] & 0x10 for s in sc))
 
@@ -232,7 +250,7 @@ def tears(r):
 
 
 tj = os.path.join(KEYS, "topjumps.keys")
-for path, n in [(tj, 1500)] + scripts[:4]:
+for path, n in [(tj, 1500)] + scripts[:5]:
     r = emu.run(TAP, frames=n, keys=path, wlog=True, out=os.path.join(OUT, "rider-" + os.path.basename(path)))
     quits = {parse(l)["step"] for l in r.trace.decode().splitlines() if parse(l)["ev"] & 0x40}
     last, twice = {}, 0

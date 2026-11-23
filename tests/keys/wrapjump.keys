@@ -1,6 +1,5 @@
 # fast, then a jump that crosses the right edge onto track 3 (keeping its
-# height and arc); accelerate in the air; Return in the air is ignored
+# height and arc); accelerate in the air
 1-90 accel
 150 jump
-156 stop
 160-175 accel

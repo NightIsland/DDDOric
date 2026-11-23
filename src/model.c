@@ -60,12 +60,12 @@ void __fastcall__ model_step(uint8_t in)
             m.speed = SPEED_TOP;
     }
 
+    if ((edge & IN_STOP) && m.stop_left) {  /* the one stop per take: dead stop, */
+        m.speed = 0;                        /* also in mid-air, where the bike  */
+        m.stop_left = 0;                    /* drops straight down through the  */
+        m.events |= EV_STOP;                /* rest of the arc (M1, Bob)        */
+    }
     if (m.jump_t == 0) {
-        if ((edge & IN_STOP) && m.stop_left) {     /* the one stop: dead stop */
-            m.speed = 0;
-            m.stop_left = 0;
-            m.events |= EV_STOP;
-        }
         if (edge & IN_JUMP) {               /* jump from the ground only */
             m.jump_t = 1;
             m.events |= EV_JUMP;

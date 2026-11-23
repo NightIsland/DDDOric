@@ -89,6 +89,19 @@ static void title(uint8_t col, const char *s)
     }
 }
 
+/* Colours of line y (Bob, BUILD 4: everything must start at the same column).
+   An attribute cell shows as paper in the colour it sets, and every line starts
+   white on black, so: cell 0 sets the ink (shows black); cell 1 sets the paper
+   if it isn't black (shows in it), else it is an ordinary blank cell.  The
+   picture's left edge is then at pixel 6 on every line; play starts at cell 2. */
+static uint8_t *line_colours(uint8_t y, uint8_t paper, uint8_t ink)
+{
+    uint8_t *p = LINE(y);
+    p[0] = ink;
+    p[1] = paper ? PAPER(paper) : 0x40;
+    return p;
+}
+
 /* OR a scenery picture into the screen: left edge at x, last row on line `bottom` */
 static void blit(uint8_t art, uint8_t x, uint8_t bottom)
 {
@@ -124,11 +137,8 @@ void scene_draw(const struct scene *s, uint8_t billing)
     char num[2];
 
     memset(HIRES, 0x40, 200 * 40);          /* bit 6 set in every bitmap byte */
-    for (y = 0; y < TITLE_LINES; ++y) {
-        p = LINE(y);
-        p[0] = PAPER(pal->title_paper);
-        p[1] = pal->title_ink;
-    }
+    for (y = 0; y < TITLE_LINES; ++y)
+        line_colours(y, pal->title_paper, pal->title_ink);
     title(2, s->film);
     title(31, "SCENE");
     num[0] = '0' + s->number;
@@ -138,11 +148,9 @@ void scene_draw(const struct scene *s, uint8_t billing)
     for (t = 0; t < 4; ++t) {
         y = TITLE_LINES + t * BAND_LINES;
         for (i = 0; i < BAND_LINES; ++i, ++y) {
-            p = LINE(y);
-            p[0] = PAPER(pal->paper[i]);
-            p[1] = pal->ink[i];
-            if (i == ROAD_LINE)
-                memset(p + 2, 0x7F, 38);                /* kerb */
+            p = line_colours(y, pal->paper[i], pal->ink[i]);
+            if (i == ROAD_LINE)                         /* kerb, from cell 1 */
+                memset(p + 1, 0x7F, 39);                /* (road paper is black) */
             else if (i == ROAD_LINE + 2)
                 for (j = 2; j < 40; j += 4)             /* lane marks */
                     p[j] = p[j + 1] = 0x7F;
@@ -265,6 +273,7 @@ void rider_draw(uint8_t track, uint8_t x, uint8_t height, uint8_t frame)
 }
 
 static uint8_t shown_track = 0xFF, shown_stop = 0xFF, shown_pause = 0xFF;
+static const char lamp[2] = { '+', '*' };  /* stop used, stop left */
 static uint16_t shown_speed = 0xFFFF;
 
 void status_update(void)
@@ -287,7 +296,8 @@ void status_update(void)
     }
     if (m.stop_left != shown_stop) {
         shown_stop = m.stop_left;
-        TEXTROW(0)[19] = m.stop_left ? '*' : '+';
+        TEXTROW(0)[19] = lamp[shown_stop];  /* not "?:": cc65 2.19 tested the
+                                               wrong flags there (Bob, BUILD 4) */
     }
     if (m.paused != shown_pause) {
         shown_pause = m.paused;

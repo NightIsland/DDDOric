@@ -55,15 +55,17 @@ def scene_bytes(billing=1):
                 if b and x + i < 228:
                     setpx(x + i, bottom - h + 1 + r)
 
+    def colours(y, paper, ink):            # cell 0 ink; cell 1 paper unless black
+        mem[y * 40], mem[y * 40 + 1] = ink, (16 + paper if paper else 0x40)
+
     for y in range(TITLE):
-        mem[y * 40], mem[y * 40 + 1] = 16 + sc["title_paper"], sc["title_ink"]
+        colours(y, sc["title_paper"], sc["title_ink"])
     for t, recs in enumerate(sc["tracks"]):
         y0 = TITLE + t * BAND
         for i in range(BAND):
-            mem[(y0 + i) * 40] = 16 + sc["paper"][i]
-            mem[(y0 + i) * 40 + 1] = sc["ink"][i]
+            colours(y0 + i, sc["paper"][i], sc["ink"][i])
             if i == ROAD:
-                for c in range(2, 40):
+                for c in range(1, 40):
                     mem[(y0 + i) * 40 + c] = 0x7F
             if i == ROAD + 2:
                 for c in range(2, 40):

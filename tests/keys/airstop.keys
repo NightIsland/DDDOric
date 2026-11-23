@@ -1,0 +1,8 @@
+# Bob's BUILD 4 report: the stop must work in mid-air.  Move off, jump, stop 9
+# steps into the jump (the bike drops straight down through the rest of the
+# arc), a second stop is ignored, then move off again
+1-60 accel
+80 jump
+89 stop
+120 stop
+160-200 accel
