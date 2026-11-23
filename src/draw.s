@@ -32,7 +32,7 @@
 
         .export         _spr_region, _line_lo, _line_hi, _line_addr, _spr_move, _spr_erase
         .export         _rope_or, _rope_and
-        .exportzp       _rp_b, _rp_y, _rp_c
+        .exportzp       _rp_b, _rp_y, _rp_c, _r_fast
         .export         _sp_on, _sp_y, _sp_c, _sp_w, _sp_h, _sp_lo, _sp_hi
         .exportzp       _n_y, _n_c, _n_img
         .exportzp       _r_top, _r_h, _r_c0, _r_w, _r_ph
@@ -61,6 +61,8 @@ _n_y:   .res 1                  ; spr_move: the new top line,
 _n_c:   .res 1                  ;   cell,
 _n_img: .res 2                  ;   picture
 sn:     .res 1                  ;   and the sprite's number
+_r_fast: .res 1                 ; spr_region: 1 = the box holds only the old picture on a
+                                ; blank background (Bob, BUILD 11): no reading, no XOR out
 _rp_b:  .res 1                  ; rope_or / rope_and: the pixel's bit (and: its inverse),
 _rp_y:  .res 1                  ;   first line,
 _rp_c:  .res 1                  ;   cell
@@ -279,7 +281,8 @@ _spr_erase:
 ; void spr_region(void): prepare the box from the zero-page arguments, then
 ; write it (cycles measured by the harness: PLAN F1 Results).
 _spr_region:
-; 1. read the box and note the line addresses
+; 1. read the box and note the line addresses (fast: blank bytes, and the old
+;    picture needn't be taken out)
         ldy     _r_top
         lda     _line_lo,y
         clc
@@ -290,6 +293,28 @@ _spr_region:
         sta     p+1
         ldx     _r_h
         dex
+        lda     _r_fast
+        beq     @rd
+@fill:  lda     p               ; 4-cell box only
+        sta     alo,x
+        lda     p+1
+        sta     ahi,x
+        lda     #$40
+        sta     buf0,x
+        sta     buf1,x
+        sta     buf2,x
+        sta     buf3,x
+        lda     p
+        clc
+        adc     #40
+        sta     p
+        bcc     @fn
+        inc     p+1
+@fn:    dex
+        bpl     @fill
+        lda     #0
+        sta     _a_img+1
+        beq     @xor
 @rd:    lda     p
         sta     alo,x
         lda     p+1
@@ -323,7 +348,7 @@ _spr_region:
 
 ; 2. XOR in pictures A and B.  Same place (the rider on the road, within a
 ;    cell: most steps): both in one pass.
-        lda     #0
+@xor:   lda     #0
         sta     jb+1
         lda     _a_img+1
         beq     @onlyb

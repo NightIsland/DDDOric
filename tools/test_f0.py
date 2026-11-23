@@ -344,6 +344,71 @@ check("F3 rules: crash = dead stop, a take lost, 1.5 s pause, then the retake fr
       not errs and any(s["ev"] & 0x80 for s in evs) and any(s["ev2"] & 0x08 for s in evs),
       "; ".join(errs[:3]) or f"{sum(1 for s in evs if s['ev'] & 0x80)} crashes, "
       f"{sum(1 for s in evs if s['ev2'] & 0x08)} firings")
+# Bob, BUILD 10: a crash only on a real touch.  An independent replay of the
+# hazards (police car 244/256 px a step leftwards, wrapping in 0..228-w; ball
+# 1 line every 3 steps, 0..25 and back) and the pictures' pixels from
+# tools/mkart.py: every step crashes exactly when a bike pixel meets a hazard
+# pixel (billing 1: no gaps).
+import mkart  # noqa: E402
+
+
+def pixels(rows, x0, y0):
+    return {(x0 + c, y0 + r) for r, row in enumerate(rows) for c, b in enumerate(row) if b}
+
+
+def touch_errors(lines):
+    errs, prev, st = [], None, None
+
+    def start():
+        return {i: [x * 256, 0, 3] for i, (t, k, x, a) in enumerate(MOVING)}   # fx, drop, timer
+    for l in lines:
+        s_ = parse(l)
+        if st is None:
+            st = start()
+        moved = not (prev and (prev["crash_t"] or prev["flags"] & 2)) and not s_["ev"] & 0x60
+        if moved:
+            for i, (t, k, x, a) in enumerate(MOVING):
+                h = st[i]
+                if k == 2:
+                    mx = (228 - mkart.scenery(mkart.SCENERY[a][0])[1]) * 256
+                    h[0] = (h[0] - 244) % mx
+                else:
+                    h[2] -= 1
+                    if h[2] == 0:
+                        h[2] = 3
+                        h[1] += 1 if h[1] < 25 and not (len(h) > 3 and h[3]) else -1
+                        if h[1] == 25:
+                            h.append(1)
+                        elif h[1] == 0 and len(h) > 3:
+                            del h[3:]
+        if s_["ev"] & 0x50 or s_["ev2"] & 0x0c:
+            st = start()
+        elif moved:
+            px_ = scene_ref.px(s_["x"])
+            frame = "jump" if s_["jt"] else ("ride_b" if px_ & 4 else "ride_a")
+            bike = pixels(mkart.bits(dict(mkart.RIDER_FRAMES)[frame]), px_, 28 - s_["h"])
+            hit = False
+            for k, x, a, b in SC["tracks"][s_["track"]]:
+                if k in (1, 2, 3, 5):
+                    rows, w, hh = mkart.scenery(mkart.SCENERY[a][0])
+                    if k == 2:
+                        i = MOVING.index((s_["track"], k, x, a))
+                        x, y = st[i][0] >> 8, 44 - hh
+                    elif k == 3:
+                        i = MOVING.index((s_["track"], k, x, a))
+                        y = 6 + st[i][1]
+                    else:
+                        y = 44 - hh if k == 1 else b + 1 - hh
+                    hit |= bool(bike & pixels(rows, x, y))
+            if hit != bool(s_["ev"] & 0x80):
+                errs.append(f"step {s_['step']}: touch {hit}, crash {bool(s_['ev'] & 0x80)}")
+        prev = s_
+    return errs
+
+
+errs = sum((touch_errors(t) for t in rhr.values()), [])
+check("crashes only on a real touch: a bike pixel on a hazard pixel, every step of every trace (Bob, BUILD 10)",
+      not errs, "; ".join(errs[:3]))
 cl = [parse(l) for l in rhr["clear.keys"]]
 end = next((s for s in cl if s["ev"] & 0x10), None)
 check("clear.keys: scene 1 ridden clean flat out (3 jumps): 4 tracks x $10 + one-take bonus $50",
@@ -462,7 +527,7 @@ for path, n in [(tj, 1500)] + scripts[:5]:
     bad = [i for i in range(320, 8000) if want[i] != got[i]]
     all_torn, all_drawn = all_torn + torn, all_drawn + drawn
     check(f"rider {os.path.basename(path)}: one write per byte per step; screen = scene + rider",
-          twice == 0 and not bad and pace < 68,
+          twice == 0 and not bad and pace < 70,   # 67, or 68 when the loop branch crosses a page
           f"{twice} double writes, {torn} torn of {drawn} drawing steps, burst {pace:.0f} cycles a line, "
           f"{len(bad)} wrong bytes")
 # A 67-cycle burst can still be caught by a beam less than 45 cycles above the

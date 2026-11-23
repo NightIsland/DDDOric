@@ -262,6 +262,17 @@ def write_h(path):
         o.append(f"#define SPR_{name.upper()}_COLS {nc}")
         o.append(f"#define SPR_{name.upper()}_H {len(sprite(name)[1][0][0])}")
         o.append(f"extern const uint8_t spr_{name}[];")
+    # pixel-touch crashes (Bob, BUILD 10): every picture as column masks,
+    # bit r = row r from the top, for src/model.c (Oric and native alike)
+    def cols(rows):
+        return [sum(1 << r for r in range(len(rows)) if rows[r][c]) for c in range(len(rows[0]))]
+    o.append("#define HIT_RIDER_DATA " + ", ".join(f"{v}u" for n, _ in RIDER_FRAMES[:3] for v in cols(bits(dict(RIDER_FRAMES)[n]))))
+    hs, ofs = [], []
+    for n, _ in SCENERY:
+        ofs.append(len(hs))
+        hs += cols(scenery(n)[0])
+    o.append("#define HIT_SCENERY_DATA " + ", ".join(f"{v}u" for v in hs))
+    o.append("#define HIT_SCENERY_OFS " + ", ".join(str(v) for v in ofs))
     o += ["", "extern const uint8_t rider_art[];", "extern const uint8_t * const scenery_art[];",
           "extern const uint8_t scenery_w[], scenery_h[];", "", "#endif"]
     open(path, "w").write("\n".join(o) + "\n")
