@@ -212,7 +212,7 @@ void screen_init(void)
     TEXTROW(1)[0] = 6;                      /* cyan */
     TEXTROW(2)[0] = 7;                      /* white */
     put(0, 1, "TAKE 1 @@@   STOP     FEE $0");
-    put(1, 1, "SPEED       TRACK      BEST $0");
+    put(1, 13, "TRACK      BEST $0");     /* no speed (Bob, BUILD 12): you judge it */
     put(2, 1, "BUILD");
     TEXTROW(2)[7] = '0' + BUILD_VERSION / 10;
     TEXTROW(2)[8] = '0' + BUILD_VERSION % 10;
@@ -472,7 +472,7 @@ void hazards_draw(void)
 static uint8_t shown_track = 0xFF, shown_stop = 0xFF, shown_msg = 0xFF;
 static uint8_t shown_take = 0xFF, shown_takes = 0xFF;
 static const char lamp[2] = { '+', '*' };  /* stop used, stop left */
-static uint16_t shown_speed = 0xFFFF, shown_fee = 0xFFFF, shown_best = 0xFFFF;
+static uint16_t shown_fee = 0xFFFF, shown_best = 0xFFFF;
 static const char * const msgs[8] = {
     "SPACE SHIFT RETURN P ESC", "PAUSED - ANY KEY        ",
     "CUT! RETAKE COMING      ", "CUT! YOU ARE FIRED      ",
@@ -521,26 +521,16 @@ void play_reset(void)
     sp_on[SPR_RIDER] = 0;
     last_frame = FR_CRASH;
     shown_track = shown_stop = shown_msg = shown_take = shown_takes = 0xFF;
-    shown_speed = shown_fee = shown_best = 0xFFFF;
+    shown_fee = shown_best = 0xFFFF;
 }
 
 void status_update(void)
 {
     uint8_t *t = TEXTROW(1), msg;
-    uint16_t v;
     big = 0;
     if (m.track != shown_track) {
         shown_track = m.track;
         t[19] = '1' + m.track;
-    }
-    if (m.speed != shown_speed) {           /* 0 .. 250, the original's units */
-        shown_speed = m.speed;
-        v = m.speed;
-        t[7] = '0';
-        while (v >= 100) { v -= 100; ++t[7]; }
-        t[8] = '0';
-        while (v >= 10) { v -= 10; ++t[8]; }
-        t[9] = '0' + v;
     }
     if (m.best != shown_best && big_ok()) {
         shown_best = m.best;

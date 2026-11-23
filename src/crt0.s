@@ -4,6 +4,7 @@
 ; From here on the ROM is never called: IRQs off for good, own stack, BSS
 ; zeroed, then main().  DATA is not copied: the tape load puts it at its run
 ; address and the program is entered exactly once (never restarted in place).
+; Zero page is cleared too, so no variable there starts with the ROM's values.
 
         .export         __STARTUP__ : absolute = 1
         .export         _exit
@@ -19,6 +20,11 @@
         txs                     ; 6502 stack: all of page 1
         lda     #$7F
         sta     $030E           ; VIA IER: disable every VIA interrupt source
+        lda     #0              ; zero page as zerobss leaves BSS: all 0 (BUILD 13:
+        tax                     ; the ROM leaves its own values there, and the
+@zp:    sta     $00,x           ; rider's first draw read one of them; the
+        inx                     ; emulator's RAM started at 0, Oricutron's not)
+        bne     @zp
         lda     #<(__MAIN_START__ + __MAIN_SIZE__ + __STACKSIZE__)
         sta     c_sp
         lda     #>(__MAIN_START__ + __MAIN_SIZE__ + __STACKSIZE__)

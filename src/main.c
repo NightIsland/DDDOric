@@ -40,12 +40,15 @@ static void mode_show(uint8_t was)
     case M_FIRED: frame_fired(); break;
     case M_NAME:  frame_name(); break;
     case M_WRAP:  frame_wrap(); break;
+    case M_ASK:   popup_ask(); break;
     }
+    if (was == M_ASK && m.mode == M_PLAY)
+        popup_restore();
 }
 
 void main(void)
 {
-    uint8_t in, key, x, frame, shown = M_TITLE;
+    uint8_t in, key, x, frame, shown = M_TITLE, paused = 0;
     uint16_t engine = 1, period;
 
     screen_init();
@@ -72,7 +75,24 @@ void main(void)
         switch (m.mode) {
         case M_PLAY:
         case M_CUT:
-        case M_ASK:
+            if (m.paused != paused) {       /* the "PAUSED" popup */
+                paused = m.paused;
+                if (paused)
+                    popup_pause();
+                else
+                    popup_restore();
+            }
+            /* nothing is drawn under a popup: nothing moves then */
+            if (paused || (m.mode == M_CUT && m.crash_t <= CUT_SHOW)) {
+                if (m.crash_t == CUT_SHOW) {    /* "CUT!" pops up */
+                    popup_cut();
+                    if (m.sound)
+                        snd_squawk(0);
+                } else if (m.crash_t == CUT_SHOW - 8 && m.sound) {
+                    snd_squawk(1);
+                }
+                break;
+            }
             /* frame: the jump picture in the air; on the road the wheels
                turn every 4 px travelled */
             x = model_px();
@@ -85,13 +105,6 @@ void main(void)
                 frame = FR_RIDE_B;
             rider_draw(m.track, x, m.height, frame);
             hazards_draw();
-            if (m.crash_t == CUT_SHOW) {    /* the megaphone pops up: "CUT!" */
-                frame_cut();
-                if (m.sound)
-                    snd_squawk(0);
-            } else if (m.crash_t == CUT_SHOW - 8 && m.sound) {
-                snd_squawk(1);
-            }
             break;
         case M_TITLE:
             frame_title_step();

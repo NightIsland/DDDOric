@@ -59,12 +59,13 @@ def steady(lines):
     """the riding steps (play, the crash pause, the quit question) after the
     first three of a new screen (the step that draws it whole overruns, so the
     next one starts late in its 20 ms), less the step "CUT!" pops up in the
-    title strip: the steps the beam-paced drawing and the step budget are for"""
+    title strip, and the steps a pause or quit popup comes or goes: the steps
+    the beam-paced drawing and the step budget are for"""
     out, prev = set(), []
     for l in lines:
         s_ = parse(l)
         rid = s_["mode"] in (PLAY, CUT, ASK)
-        if rid and len(prev) == 3 and all(prev) and s_["crash_t"] != CUT_SHOW:
+        if rid and len(prev) == 3 and all(prev) and s_["crash_t"] != CUT_SHOW and not s_["ev"] & 0x60:
             out.add(s_["step"])
         prev = (prev + [rid])[-3:]
     return out
@@ -480,7 +481,7 @@ got = r.mem[0xA000:0xA000 + 8000]
 bad = [i for i in range(320, 8000) if want[i] != got[i]]
 check("clear.keys screen after 400 steps = scene + rider + police car + wrecking ball and rope", not bad,
       f"{len(bad)} wrong bytes" + (f", first line {bad[0] // 40} cell {bad[0] % 40}" if bad else ""))
-r = emu.run(TAP, frames=200, keys=os.path.join(KEYS, "takeback.keys"), out=os.path.join(OUT, "f3-crash"))
+r = emu.run(TAP, frames=150, keys=os.path.join(KEYS, "takeback.keys"), out=os.path.join(OUT, "f3-crash"))
 emu.write_png(os.path.join(OUT, "f3-crash.png"), r.rgb, 2)
 row0 = r.mem[0xBF68:0xBF68 + 40]
 want = with_hazards(with_rider(scene_ref.scene_bytes(1), r), r)
@@ -550,11 +551,12 @@ bn = bytes(rf.mem[syms["_best_name"]:syms["_best_name"] + 15]).decode()
 check("top five: $90 goes in fifth with the initials typed, BOB; the title shows it",
       bf == [250, 200, 150, 100, 90] and bn == "DIRCAMSFXMUABOB" and text_at(rf, 16, 190, "BOB")
       and text_at(rf, 21, 190, "$90"), f"{bf} {bn}")
-check("\"CUT!\" with the megaphone in the title strip; \"THAT'S A PRINT!\" tallies $40 + $50 bonus; "
+check("popups over the scene (Bob, BUILD 12): \"CUT!\" with a big megaphone; \"THAT'S A PRINT!\" tallies $40 + $50 bonus; "
       "\"YOU'RE FIRED!\" shows the fee",
-      text_at(shots["print"], 32, 70, "$40") and text_at(shots["print"], 32, 84, "$50")
-      and any(shots["cut"].mem[0xA000 + y * 40 + 6] != 0x40 for y in range(1, 8))
-      and text_at(shots["fired"], 16, 66, "FINAL FEE"))
+      text_at(shots["print"], 32, 90, "$40") and text_at(shots["print"], 32, 102, "$50")
+      and all(any(shots["cut"].mem[0xA000 + y * 40 + c] != 0x40 for y in range(74, 98)) for c in range(11, 17))
+      and text_at(shots["cut"], 2 + (38 - 16) // 2, 110, "RETAKE COMING UP")
+      and text_at(shots["fired"], 16, 84, "FINAL FEE"))
 rc_ = shots["fired"]
 cut_t = rc_.marks[next(s_["step"] for s_ in ft if s_["mode"] == CUT and s_["crash_t"] == CUT_SHOW) - 1]
 tones = []
@@ -579,13 +581,35 @@ if wrap:
     emu.write_png(os.path.join(OUT, "f4-wrap.png"), rw.rgb, 2)
     check("season.keys on the Oric: same trace; the wrap card lists the six films",
           rw.trace.decode().splitlines() == ref_trace(sk, wrap["step"] + 4)
-          and text_at(rw, 2 + (38 - 16) // 2, 68, "RUSH HOUR RUMBLE") and text_at(rw, 2 + (38 - 10) // 2, 128, "COLD FRONT"))
+          and text_at(rw, 2 + (38 - 16) // 2, 64, "RUSH HOUR RUMBLE") and text_at(rw, 2 + (38 - 10) // 2, 124, "COLD FRONT"))
 qk = os.path.join(KEYS, "quit.keys")
 qt = [parse(l) for l in ref_trace(qk, 200)]
 md = {s_["step"]: s_["mode"] for s_ in qt}
 check("quit.keys: L twice = billing 3 ($250 a track); Esc asks, N rides on, Esc then Y = the title",
       md[99] == PLAY and md[100] == ASK and md[110] == PLAY and md[150] == ASK and md[160] == TITLE
       and qt[30]["billing"] == 3, f"modes {[md[k] for k in (99, 100, 110, 150, 160)]}, billing {qt[30]['billing']}")
+ra = emu.run(TAP, frames=105, keys=qk, out=os.path.join(OUT, "f4-ask"))
+emu.write_png(os.path.join(OUT, "f4-ask.png"), ra.rgb, 2)
+rn = emu.run(TAP, frames=114, keys=qk, out=os.path.join(OUT, "f4-ask-n"))
+want = with_hazards(with_rider(scene_ref.scene_bytes(3), rn), rn)
+got = rn.mem[0xA000:0xA000 + 8000]
+bad = [i for i in range(320, 8000) if want[i] != got[i]]
+check("quit.keys: \"QUIT?\" pops up over the scene; after N the scene is back as it was",
+      text_at(ra, 2 + (38 - 25) // 2, 109, "Y: THE TITLE   N: RIDE ON") and not bad, f"{len(bad)} wrong bytes")
+pk = os.path.join(KEYS, "pause.keys")
+rp = emu.run(TAP, frames=85, keys=pk, out=os.path.join(OUT, "f4-pause"))
+emu.write_png(os.path.join(OUT, "f4-pause.png"), rp.rgb, 2)
+check("pause: \"PAUSED\" pops up (its screen comes back on resuming: the rider checks on pause.keys)",
+      text_at(rp, 2 + (38 - 15) // 2, 107, "ANY KEY GOES ON"))
+# Bob, BUILD 12: no rider on the first start in Oricutron, whose RAM is not
+# all 0 at load (the emulator's was).  crt0 clears zero page now.
+junk_ok = []
+for seed in (1, 2, 3):
+    rj = emu.run(TAP, frames=50, keys=START, junk=seed, out=os.path.join(OUT, f"junk{seed}"))
+    want = with_hazards(with_rider(scene_ref.scene_bytes(1), rj), rj)
+    junk_ok.append(rj.mem[0xA000 + 320:0xA000 + 8000] == want[320:8000])
+check("RAM full of junk at load (as on a booted Oric): the first scene and rider still = reference (Bob, BUILD 12)",
+      all(junk_ok), str(junk_ok))
 rq = emu.run(TAP, frames=200, keys=qk, out=os.path.join(OUT, "f4-quit"))
 eng = [v for c, reg, v in rq.ay if reg == 8 and v and rq.marks[30] <= c < rq.marks[150]]
 check("quit.keys: S turns the sound off (no engine while riding), S again on (the menu says ON)",
@@ -683,10 +707,13 @@ check("rider: under 1% torn frames over all the scripts", all_torn * 100 < all_d
 
 # F3: the moving hazards drawn with the rider in the full scene (the police
 #     car's 6-cell box through the 67-cycle template, src/draw.s burst6)
-# (torn frames counted over the three together, as for the rider alone: F4's
-# cards move the steps' phase against the video, and where the clusters fall)
+# (torn frames counted over the four together, as for the rider alone: F4's
+# cards move the steps' phase against the video, and with it where the
+# clusters fall; BUILD 13: the three short scripts alone read 1.3%, so the
+# long season run is in the sample too)
 sc_torn = sc_draw = 0
-for path, n in ((os.path.join(KEYS, "clear.keys"), 430), (os.path.join(KEYS, "takeback.keys"), 1950), (rnd, RND_N)):
+for path, n in ((os.path.join(KEYS, "clear.keys"), 430), (os.path.join(KEYS, "takeback.keys"), 1950), (rnd, RND_N),
+                (os.path.join(KEYS, "season.keys"), 7700)):
     r = emu.run(TAP, frames=n, keys=path, wlog=True, out=os.path.join(OUT, "scene-" + os.path.basename(path)))
     torn, ndraw, pace = tears(r, steady(r.trace.decode().splitlines()))
     sc_torn, sc_draw = sc_torn + torn, sc_draw + ndraw
@@ -696,7 +723,7 @@ for path, n in ((os.path.join(KEYS, "clear.keys"), 430), (os.path.join(KEYS, "ta
     check(f"scene {os.path.basename(path)}: one pass at the beam's pace; screen = reference",
           pace < 70 and not bad, f"{torn} torn of {ndraw} drawing steps, slowest burst "
           f"{pace:.0f} cycles a line, {len(bad)} wrong bytes")
-check("scene: rider and hazards under 1% torn frames over the three scripts", sc_torn * 100 < sc_draw,
+check("scene: rider and hazards under 1% torn frames over the four scripts", sc_torn * 100 < sc_draw,
       f"{sc_torn} torn of {sc_draw} drawing steps")
 
 print(f"\n{'ALL PASS' if not fails else f'{fails} FAILED'}")

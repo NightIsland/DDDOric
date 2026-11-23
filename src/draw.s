@@ -380,30 +380,8 @@ _spr_region:
         cmp     #3
         beq     @b4
         jmp     burst6
-@b4:    php
-        sei
-        ldx     _r_h
-        dex
-@w:     lda     alo,x           ; 4
-        sta     p               ; 3
-        lda     ahi,x           ; 4
-        sta     p+1             ; 3
-        ldy     #0              ; 2
-        lda     buf0,x          ; 4
-        sta     (p),y           ; 6
-        iny                     ; 2
-        lda     buf1,x          ; 4
-        sta     (p),y           ; 6
-        iny                     ; 2
-        lda     buf2,x          ; 4
-        sta     (p),y           ; 6
-        iny                     ; 2
-        lda     buf3,x          ; 4
-        sta     (p),y           ; 6
-        dex                     ; 2
-        bpl     @w              ; 3
-        plp
-        rts
+@b4:    jmp     burst4
+
 
 ; burst6: the 6-cell box (5-column pictures: the police car).  A loop through
 ; buffers can't write 6 bytes a line at the beam's pace (it took 91 cycles a
@@ -664,3 +642,34 @@ _bulbs: sta     bk
         cpx     #NBULB
         bcc     @b
         rts
+
+; burst4 lives in LOWCODE, right after crt0 at $05xx, so its loop branch
+; never crosses a page (that costs a cycle a line: 68, and BUILD 13 measured
+; more torn frames with it when the code moved).
+        .segment        "LOWCODE"
+burst4: php
+        sei
+        ldx     _r_h
+        dex
+@w4:    lda     alo,x           ; 4
+        sta     p               ; 3
+        lda     ahi,x           ; 4
+        sta     p+1             ; 3
+        ldy     #0              ; 2
+        lda     buf0,x          ; 4
+        sta     (p),y           ; 6
+        iny                     ; 2
+        lda     buf1,x          ; 4
+        sta     (p),y           ; 6
+        iny                     ; 2
+        lda     buf2,x          ; 4
+        sta     (p),y           ; 6
+        iny                     ; 2
+        lda     buf3,x          ; 4
+        sta     (p),y           ; 6
+        dex                     ; 2
+        bpl     @w4             ; 3
+        plp
+        rts
+        .assert >(@w4) = >(*), error, "burst4's loop crosses a page"
+        .segment        "CODE"

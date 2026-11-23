@@ -44,7 +44,7 @@ takes the next number.
 | F1 | Display: HIRES init, per-line paper/ink columns, a track screen drawn from scene data, status line in the text-row bitmap font, one-pass pre-shifted sprite draw | F0 | code ≤ 1.5 KB; sprite ≤ 1,400 cycles | BUILD 4 merged (PR #6); BUILD 5–6 fixes in a follow-up PR |
 | F2 | One track: rider physics (DESIGN "Physics"), keys (Space, either Shift, Return), 50 Hz step, engine sound | F0, F1 | logic ≤ 4,000 cycles a step | merged (BUILD 8, PR #8) |
 | F3 | Whole scene: four tracks, wrapping, block, runner, dangler, gap and ceiling block, crashes, fees, the one stop | F2 | whole step ≤ 16,000 cycles | merged (BUILD 11, PR #10); budget missed: average 16,100 riding flat out, worst 19,750 (see Results) |
-| F4 | Film frame: clapper card, takes, "Cut!", scene cleared, "You're fired", title screen, billing select, top five | F3 | riding steps stay under 20,000 cycles | BUILD 12, PR open |
+| F4 | Film frame: clapper card, takes, "Cut!", scene cleared, "You're fired", title screen, billing select, top five | F3 | riding steps stay under 20,000 cycles | BUILD 13, PR open |
 | F5 | Film 1 (*Rush Hour Rumble*) complete at all six billings, tuned to M1's numbers; Bob judges the feel against the original | F4, M1 | | not started |
 | F6 | Films 2–6, jets and ramps, per-vehicle handling, music, key redefinition | F5 | memory ≤ 37 KB | not started |
 | X1 | Optional: level codes from a seed, with a solver run over thousands of seeds in the harness | F5 | ≤ 2 KB | not started |
@@ -169,6 +169,26 @@ Briefs written by the architect when the previous feature is merged, from DESIGN
   frame is ~5 KB of cc65 code (`src/frame.c` 4.5 KB); F6's films and music may need it smaller.
 - **Not yet:** K (redefine keys) is F6 with the rest of the key work; the top five is shown
   whole rather than scrolling; jingles are F6.
+
+- **BUILD 13 (Bob on BUILD 12: "the clapperboard stripes on the top bar should point the other
+  way; on the first start the rider isn't drawn; the megaphone and Cut! should be larger, a popup
+  over the screen, and all the messages like that; remove SPEED"):**
+  - The missing rider: Oricutron's RAM is not all 0 when the program loads (the ROM has used
+    zero page), and a drawing variable there was read before it was set; the harness emulator
+    started from 0, so no test saw it. `crt0` now clears zero page, and the emulator's new
+    `--junk SEED` fills RAM before loading: a check draws the first scene from three junk seeds.
+  - The board's stripes slant against the arm's, so a shut clapper shows chevrons.
+  - "CUT!" (a big megaphone and the word), "THAT'S A PRINT!", "YOU'RE FIRED!", the initials,
+    "THAT'S A WRAP!", "PAUSED" and "QUIT?" are popups over the scene: a box of lines with its
+    own paper and ink set by attribute cells 2-3 and the line's own put back at cells 38-39.
+    Pause and quit save what they cover (up to 36 lines, 1.4 KB) and put it back; nothing is
+    drawn under a popup. The clapper card and the title stay full screen.
+  - SPEED is off the status line.
+  - The 4-cell burst's loop moved to `LOWCODE` (just after crt0) with an `.assert`: the code
+    had grown so its branch crossed a page (68 cycles a line). Torn frames are now counted over
+    four scene scripts including the long season run (69 of 8,612): the three short ones alone
+    read 1.3% with this build's step phase, 0.7% with BUILD 12's.
+  - 86 checks pass; 9,200 bytes free.
 
 ### F3: Whole scene (BUILD 9, 23 Nov 2026)
 
