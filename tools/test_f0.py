@@ -136,7 +136,7 @@ with open(rnd, "w") as f:
         n += ln + rg.randint(0, 60)
 scripts = [(os.path.join(KEYS, s), n) for s, n in (("basic.keys", 400), ("wrapjump.keys", 300),
                                                     ("pause.keys", 250), ("scene.keys", 800),
-                                                    ("airstop.keys", 260))] + [(rnd, 6000)]
+                                                    ("airstop.keys", 260), ("heldjump.keys", 260))] + [(rnd, 6000)]
 total = 0
 for path, n in scripts:
     r = emu.run(TAP, frames=n + 1, keys=path, out=os.path.join(OUT, "trace-" + os.path.basename(path)))
@@ -184,6 +184,12 @@ check("airstop.keys: the stop works in mid-air; the bike drops straight down, la
       st_ is not None and st_["jt"] > 0 and all(s["x"] == st_["x"] and s["speed"] == 0 for s in after)
       and any(s["ev"] & 0x02 for s in after) and sum(1 for s in ast if s["ev"] & 0x04) == 1,
       f"stop at step {st_['step']}, jump step {st_['jt']}, height {st_['h']}" if st_ else "no stop")
+hj = [parse(l) for l in allr[5]]
+lands = [s["step"] for s in hj if s["ev"] & 0x02 and s["step"] < 250]
+jumps = [s["step"] for s in hj if s["ev"] & 0x01]
+gaps = [min(j - l for j in jumps if j > l) for l in lands if any(j > l for j in jumps)]
+check("heldjump.keys: Space held jumps again 3 steps after each landing (Bob, BUILD 5)",
+      len(jumps) >= 3 and gaps and all(g == 3 for g in gaps), f"jumps at {jumps}, landings at {lands}")
 r = emu.run(TAP, frames=200, keys=os.path.join(KEYS, "airstop.keys"), out=os.path.join(OUT, "lamp"))
 r0 = emu.run(TAP, frames=60, keys=os.path.join(KEYS, "airstop.keys"), out=os.path.join(OUT, "lamp0"))
 check("stop lamp: lit before the stop, out after it (Bob, BUILD 4)",

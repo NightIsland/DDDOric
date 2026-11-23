@@ -15,6 +15,7 @@
 #define SPEED_TOP    768u                  /* PLACEHOLDER 3.0 px/step  (M1) */
 #define SPEED_ACCEL  6u                    /* PLACEHOLDER ~0.025 px/step per held step (M1) */
 #define JUMP_STEPS   60u                   /* PLACEHOLDER 1.2 s jump  (M1) */
+#define JUMP_REPEAT  3u                    /* Space held: steps on the road between jumps (M1) */
 #define JUMP_APEX    24u                   /* PLACEHOLDER apex in px  (M1) */
 
 /* PLACEHOLDER jump arc: height above the road at each step of a jump, a

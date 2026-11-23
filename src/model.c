@@ -13,6 +13,7 @@ void model_scene_start(void)
     m.speed = SPEED_START;
     m.jump_t = 0;
     m.height = 0;
+    m.road_t = 255;
     m.stop_left = 1;
     m.paused = 0;
 }
@@ -66,12 +67,17 @@ void __fastcall__ model_step(uint8_t in)
         m.events |= EV_STOP;                /* rest of the arc (M1, Bob)        */
     }
     if (m.jump_t == 0) {
-        if (edge & IN_JUMP) {               /* jump from the ground only */
+        /* jump from the ground only: a key-down, or Space held, which jumps
+           again after JUMP_REPEAT steps on the road (M1: one BBC step) */
+        if ((edge & IN_JUMP) || ((in & IN_JUMP) && m.road_t >= JUMP_REPEAT)) {
             m.jump_t = 1;
             m.events |= EV_JUMP;
+        } else if (m.road_t != 255) {
+            ++m.road_t;
         }
     } else if (++m.jump_t >= JUMP_STEPS) {
         m.jump_t = 0;
+        m.road_t = 1;                       /* the landing step is on the road */
         m.events |= EV_LAND;
     }
     m.height = jump_arc[m.jump_t];
