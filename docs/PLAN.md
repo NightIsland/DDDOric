@@ -39,7 +39,7 @@ takes the next number.
 
 | ID | Feature | Depends on | Budget | State |
 | --- | --- | --- | --- | --- |
-| M1 | Measure the BBC original: speeds, acceleration, jump arc and time, start speed, wrap, hanging-hazard period, sea and snow handling, fee on a retake | — | docs only | not started |
+| M1 | Measure the BBC original: speeds, acceleration, jump arc and time, start speed, wrap, hanging-hazard period, sea and snow handling, fee on a retake | — | docs only | done, PR open (`docs/M1-MEASUREMENTS.md`) |
 | F0 | Skeleton and harness: cc65 2.19 built for the cloud shell, `none.lib`, own crt0 and ld65 config at $0500, ROM-free IRQ hook, autorun `.tap`, Makefile with size report and `ORICUTRON=1`; Chuckie Egg's emulator adapted, PNG output, key scripts, debug port at $BFE0; native C model with per-step trace | — | crt0 + cfg ≤ 256 B | not started |
 | F1 | Display: HIRES init, per-line paper/ink columns, a track screen drawn from scene data, status line in the text-row bitmap font, one-pass pre-shifted sprite draw | F0 | code ≤ 1.5 KB; sprite ≤ 1,400 cycles | not started |
 | F2 | One track: rider physics (DESIGN "Physics"), keys (Space, either Shift, Return), 50 Hz step, engine sound | F0, F1 | logic ≤ 4,000 cycles a step | not started |
@@ -78,4 +78,18 @@ Briefs written by the architect when the previous feature is merged, from DESIGN
 
 ## Results
 
-(none yet)
+### M1 (23 Nov 2026)
+
+Measured in headless JSBeeb, frame by frame, with RAM traces (`tools/m1/`). Full numbers and method:
+`docs/M1-MEASUREMENTS.md`; DESIGN's guessed physics replaced with measured values in Oric units.
+
+- One BBC game step is 60 ms (80 ms on its busiest screens). Speed 0 to 250, +3 a step while Shift is
+  held, in the air too; it never drops by itself. Start speed 0; standing to top speed in 5.0 s; a
+  track in 1.54 s flat out.
+- Jump: 28 steps (1.68 s) at every speed, apex 20 lines; length 0.33 × speed bytes, just over a track
+  at top speed. Holding Space repeats the jump. Wrap keeps speed and arc.
+- Dangler period 3.0 s; runner 4.5 s per track; the same speeds on every level.
+- Sea and snow handle exactly like land.
+- For Bob: the original gives one stop per track (also in mid-air), pays wages per track completed
+  (10 × screen number) and again on a retake, gives a take back after each land, sea, snow round, and
+  its skill levels are start points in one 36-screen run of 6 screens a level.
