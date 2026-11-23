@@ -18,7 +18,7 @@
 
 /* our 5x7 font, bits 4-0 (from Oric Chuckie Egg's f0test), plus icons:
    '$' pound sign, '*' stop lamp lit, '+' stop lamp out, '@' clapper */
-static const char glyph_chars[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ:-.=,/!$*+@";
+static const char glyph_chars[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ:-.=,/!$*+@'?";
 static const uint8_t glyphs[][7] = {
     {0x0E,0x11,0x13,0x15,0x19,0x11,0x0E}, {0x04,0x0C,0x04,0x04,0x04,0x04,0x0E},
     {0x0E,0x11,0x01,0x02,0x04,0x08,0x1F}, {0x1F,0x02,0x04,0x02,0x01,0x11,0x0E},
@@ -44,6 +44,7 @@ static const uint8_t glyphs[][7] = {
     {0x04,0x04,0x04,0x04,0x04,0x00,0x04},
     {0x06,0x09,0x08,0x1C,0x08,0x08,0x1F}, {0x0E,0x1F,0x1F,0x1F,0x1F,0x1F,0x0E},
     {0x0E,0x11,0x11,0x11,0x11,0x11,0x0E}, {0x1F,0x15,0x1F,0x00,0x1F,0x11,0x1F},
+    {0x04,0x04,0x08,0x00,0x00,0x00,0x00}, {0x0E,0x11,0x01,0x02,0x04,0x00,0x04},
 };
 
 /* src/draw.s */
@@ -68,7 +69,7 @@ static uint8_t xcell[PLAY_W], xshift[PLAY_W];
 
 #define LINE(y) line_addr(y)
 
-static const uint8_t *glyph(char c)
+const uint8_t *glyph(char c)
 {
     const char *p = strchr(glyph_chars, c);
     return p ? glyphs[p - glyph_chars] : 0;
@@ -97,7 +98,7 @@ static void title(uint8_t col, const char *s)
    white on black, so: cell 0 sets the ink (shows black); cell 1 sets the paper
    if it isn't black (shows in it), else it is an ordinary blank cell.  The
    picture's left edge is then at pixel 6 on every line; play starts at cell 2. */
-static uint8_t *line_colours(uint8_t y, uint8_t paper, uint8_t ink)
+uint8_t *line_colours(uint8_t y, uint8_t paper, uint8_t ink)
 {
     uint8_t *p = LINE(y);
     p[0] = ink;
@@ -472,10 +473,14 @@ static uint8_t shown_track = 0xFF, shown_stop = 0xFF, shown_msg = 0xFF;
 static uint8_t shown_take = 0xFF, shown_takes = 0xFF;
 static const char lamp[2] = { '+', '*' };  /* stop used, stop left */
 static uint16_t shown_speed = 0xFFFF, shown_fee = 0xFFFF, shown_best = 0xFFFF;
-static const char * const msgs[4] = {
+static const char * const msgs[8] = {
     "SPACE SHIFT RETURN P ESC", "PAUSED - ANY KEY        ",
-    "CUT! RETAKE COMING      ", "CUT! YOU ARE FIRED      "
+    "CUT! RETAKE COMING      ", "CUT! YOU ARE FIRED      ",
+    "QUIT TO THE TITLE? Y/N  ", "PRESS 1 TO START        ",
+    "ANY GAME KEY: GO ON     ", "TYPE YOUR INITIALS      "
 };
+/* the message for each mode (M_*); M_PLAY and M_CUT pick their own */
+static const uint8_t mode_msg[9] = { 5, 6, 0, 2, 6, 6, 7, 6, 4 };
 static const char icons[4][4] = { "   ", "@  ", "@@ ", "@@@" };   /* takes left */
 
 /* v in 5 cells from p, left-aligned (no division: cc65's is slow) */
@@ -507,6 +512,16 @@ static uint8_t big_ok(void)
     if (big || step_left() < ST_ROOM)
         return 0;
     return big = 1;
+}
+
+/* a new screen for play: the rider is not on it yet, and every status field
+   is written afresh */
+void play_reset(void)
+{
+    sp_on[SPR_RIDER] = 0;
+    last_frame = FR_CRASH;
+    shown_track = shown_stop = shown_msg = shown_take = shown_takes = 0xFF;
+    shown_speed = shown_fee = shown_best = 0xFFFF;
 }
 
 void status_update(void)
@@ -549,7 +564,11 @@ void status_update(void)
         shown_fee = m.fee;
         put_num(t + 28, m.fee);
     }
-    msg = m.paused ? 1 : m.crash_t ? (m.takes ? 2 : 3) : 0;
+    msg = mode_msg[m.mode];
+    if (m.paused)
+        msg = 1;
+    else if (m.mode == M_CUT && !m.takes)
+        msg = 3;
     if (msg != shown_msg && big_ok()) {
         shown_msg = msg;
         put(2, 11, msgs[msg]);

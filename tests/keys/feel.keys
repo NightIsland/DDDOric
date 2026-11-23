@@ -1,4 +1,8 @@
 # F2: the original's feel (M1).  Hold Accelerate from a standing start to top
 # speed, then jump at top speed
-1-300 accel
-290 jump
+# F4: from the title screen: 1 starts, a tap on Space skips the clapper card,
+# so play starts at step 3 (the rest is shifted 2 steps from F3)
+1 1
+2 jump
+3-302 accel
+292 jump

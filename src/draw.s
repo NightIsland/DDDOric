@@ -31,7 +31,7 @@
 ; line has the highest index and the burst counts X down to 0.
 
         .export         _spr_region, _line_lo, _line_hi, _line_addr, _spr_move, _spr_erase
-        .export         _rope_or, _rope_and
+        .export         _rope_or, _rope_and, _bulbs, _bulb_lo, _bulb_hi
         .exportzp       _rp_b, _rp_y, _rp_c, _r_fast
         .export         _sp_on, _sp_y, _sp_c, _sp_w, _sp_h, _sp_lo, _sp_hi
         .exportzp       _n_y, _n_c, _n_img
@@ -628,3 +628,39 @@ xorpic: lda     0,x
         dex
         bne     @col
 @done:  rts
+
+; ---------------------------------------------------------------- F4
+; The title marquee's chasing lights (src/frame.c): bulb n's middle line is
+; at bulb_lo/hi[n] + 40; its top and bottom lines are the same lit or not.
+; void __fastcall__ bulbs(uint8_t phase): every third bulb lit, from `phase`
+; (0-2).  ~1,700 cycles (cc65's loop took 15,800).
+NBULB = 48
+        .segment        "BSS"
+_bulb_lo:       .res NBULB
+_bulb_hi:       .res NBULB
+bk:             .res 1
+
+        .segment        "RODATA"
+bulb_mid:       .byte   $5E, $52, $52           ; lit, unlit, unlit
+
+        .segment        "CODE"
+_bulbs: sta     bk
+        ldx     #0
+@b:     lda     _bulb_lo,x
+        sta     ptr1
+        lda     _bulb_hi,x
+        sta     ptr1+1
+        ldy     bk
+        lda     bulb_mid,y
+        ldy     #40
+        sta     (ptr1),y
+        ldy     bk
+        iny
+        cpy     #3
+        bcc     @k
+        ldy     #0
+@k:     sty     bk
+        inx
+        cpx     #NBULB
+        bcc     @b
+        rts

@@ -21,7 +21,7 @@ static void __fastcall__ hex4sp(uint16_t v)
     hex2sp((uint8_t)v);
 }
 
-void __fastcall__ trace_step(uint8_t in)
+void trace_step(uint8_t in, uint8_t key)
 {
     hex4sp(m.step);
     OUT("0123"[m.track]);
@@ -37,6 +37,9 @@ void __fastcall__ trace_step(uint8_t in)
     hex2sp(m.crash_t);
     hex2sp((uint8_t)((m.takes << 4) | m.take_no));
     hex4sp(m.fee);
-    hex2(m.hz_sum);
+    hex2sp(m.hz_sum);
+    hex2sp((uint8_t)(m.mode | (m.billing << 4)));      /* F4 */
+    hex2sp(m.t);
+    hex2(key);
     OUT('\n');
 }

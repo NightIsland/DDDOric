@@ -1,0 +1,16 @@
+# F4: the title screen's menu and quitting.  L twice: billing 3 (Double: the
+# gaps show, $250 a track); S: sound off.  1 starts, Space skips the card,
+# then ride (Esc counts only with no game key held): Esc asks "QUIT TO THE TITLE? Y/N", N rides on; Esc again, Y goes
+# back to the title, where S turns the sound back on.
+5 L
+10 L
+15 S
+25 1
+30 jump
+31-90 accel
+100 quit
+110 N
+115-140 accel
+150 quit
+160 Y
+180 S

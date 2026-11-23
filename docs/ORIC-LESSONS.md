@@ -137,6 +137,10 @@ with 96 redefinable characters.
 - `far` and `near` are cc65 keywords: don't name variables after them.
 - Structs read through pointers are slow in cc65 (`ldy #n / lda (ptr),y` plus runtime calls);
   flat byte arrays indexed by a slot number cut a collision loop from ~2,800 to ~1,000 cycles.
+- **cc65 byte loops cost ~100-300 cycles a screen byte** (Stunt Man Bob F4: a 48-bulb loop took
+  15,800 cycles, a clapper card 1.1 M). For text, point at the character set (glyph = `$9800 +
+  code x 8`, no lookup) and write it in assembly (15-50 cycles a byte); keep `%`, `*` and `/` out
+  of inner loops (step a counter instead); hoist pointer arithmetic out with `register` pointers.
 - Run the native reference under `-fsanitize=address,undefined` too: indexing `h[0][i]` past the
   first row of a 2-D array worked in cc65 and at `-O0`, and crashed at `-O2`.
 
@@ -168,6 +172,9 @@ with 96 redefinable characters.
 | IRQ tick with sound envelopes | 99 idle, ≤ 360 |
 | whole game frame (logic + drawing), worst of 295k frames | 17,259 of 30,000 |
 
+- **A step that overruns moves the step's phase against the video** (T1 ticks every 10 ms, a step
+  is two of them, so after an overrun the step can start half a video frame later). Beam-paced
+  drawing then tears in different places: count torn frames over many scripts, not one.
 - **No vsync, so time the step from the VIA:** T1's high byte plus the tick count says how many
   cycles are left before the next step; drawing that won't fit waits a step (Stunt Man Bob F3).
 - **Writing at the beam's pace:** a loop of `lda buf,x / sta (p),y` writes 4 bytes a line in 67

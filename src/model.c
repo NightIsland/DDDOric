@@ -4,6 +4,8 @@
 #include "art.h"
 
 struct model m;
+uint16_t best_fee[NBEST] = { 250, 200, 150, 100, 50 };     /* the film crew's */
+char best_name[NBEST][3] = { {'D','I','R'}, {'C','A','M'}, {'S','F','X'}, {'M','U','A'}, {'G','A','F'} };
 
 uint8_t hz_px[NHAZ], hz_drop[NHAZ];
 static const struct scene *sc;
@@ -164,10 +166,15 @@ uint8_t model_px(void)
     return m.px;
 }
 
+/* billing b starts at the season's scene (b - 1) x 12 + 1 (DESIGN "Scoring") */
 static void run_start(void)
 {
+    uint8_t b;
     m.scenes = 0;
     m.run_scene = 1;
+    for (b = m.billing; b > 1; --b)
+        m.run_scene += SEASON;
+    m.scene_fee = 0;
     m.takes = TAKES;
     m.take_no = 1;
     m.fee = 0;
@@ -210,8 +217,6 @@ void model_init(const struct scene *s, uint8_t billing)
             break;
         case HZ_GAP:
             hw[i] = h->a;
-            if (billing < h->b)
-                hk[i] = HZ_NONE;
             break;
         case HZ_CEILING:
             htop[i] = h->b + 1 - hh[i];     /* b: its bottom row's band line */
@@ -225,37 +230,166 @@ void model_init(const struct scene *s, uint8_t billing)
     m.step = 0;
     m.best = 0;
     m.keys_prev = 0;
+    m.key_prev = 0;
     m.events = 0;
     m.ev2 = 0;
     m.crash_t = 0;
+    m.sound = 1;
+    m.mode = M_TITLE;
+    m.t = 0;
+    model_billing(billing);
     run_start();
     model_scene_start();
 }
 
-void __fastcall__ model_step(uint8_t in)
+/* gaps show from the billing in their record's b (DESIGN "Billings") */
+void model_billing(uint8_t billing)
 {
-    uint8_t edge = in & (uint8_t)~m.keys_prev;
+    uint8_t i;
+    const struct hazard *h = &sc->h[0][0];
+    m.billing = billing;
+    for (i = 0; i < NHAZ; ++i, ++h)
+        if (h->kind == HZ_GAP) {
+            hk[i] = HZ_NONE;
+            if (billing >= h->b)
+                hk[i] = HZ_GAP;
+        }
+}
 
-    m.keys_prev = in;
-    m.events = 0;
-    m.ev2 = 0;
-    ++m.step;
+static void go(uint8_t mode)
+{
+    m.mode = mode;
+    m.t = 0;
+}
 
-    if (m.crash_t) {                        /* the crash pause: everything waits */
-        if (--m.crash_t)
-            return;
-        if (!m.takes) {                     /* fired: F4 shows it; for now the run restarts */
-            if (m.fee > m.best)
-                m.best = m.fee;
+static void best_keep(void)
+{
+    if (m.fee > m.best)
+        m.best = m.fee;
+}
+
+/* after "YOU'RE FIRED!": a place in the top five? (ties go below) */
+static void fired_next(void)
+{
+    uint8_t i, j;
+    for (i = 0; i < NBEST && m.fee <= best_fee[i]; ++i)
+        ;
+    if (i == NBEST) {
+        go(M_TITLE);
+        return;
+    }
+    for (j = NBEST - 1; j > i; --j) {
+        best_fee[j] = best_fee[j - 1];
+        best_name[j][0] = best_name[j - 1][0];
+        best_name[j][1] = best_name[j - 1][1];
+        best_name[j][2] = best_name[j - 1][2];
+    }
+    best_fee[i] = m.fee;
+    best_name[i][0] = best_name[i][1] = best_name[i][2] = '-';
+    m.name_slot = i;
+    m.name_len = 0;
+    go(M_NAME);
+}
+
+/* everything but riding: the title screen, the cards, the crash pause, the
+   initials and the quit question.  edge: game keys gone down; kd: a key code
+   gone down (0: none).  Returns 1 when the step is a riding step. */
+static uint8_t frame_step(uint8_t edge, uint8_t kd)
+{
+    char *nm;
+    switch (m.mode) {
+    case M_TITLE:
+        if (kd == '1') {
             run_start();
+            model_scene_start();
+            m.ev2 = EV2_RUN;
+            go(M_CARD);
+        } else if (kd == 'L') {             /* (not "?:": ORIC-LESSONS 5) */
+            if (m.billing == BILLINGS)
+                m.billing = 0;
+            model_billing(m.billing + 1);
+        } else if (kd == 'S') {
+            m.sound ^= 1;
+        }
+        return 0;
+    case M_CARD:                            /* any game key skips a card */
+        if ((edge & IN_GAME) || m.t >= CARD_STEPS) {
+            m.ev2 = EV2_ACTION;
+            go(M_PLAY);
+        }
+        return 0;
+    case M_CUT:                             /* the crash pause: everything waits */
+        if (--m.crash_t)
+            return 0;
+        model_scene_start();
+        if (!m.takes) {
+            best_keep();
             m.ev2 = EV2_FIRED;
+            go(M_FIRED);
         } else {
             ++m.take_no;
             m.ev2 = EV2_RETAKE;
+            go(M_CARD);
         }
-        model_scene_start();
-        return;
+        return 0;
+    case M_PRINT:
+    case M_WRAP:
+        if ((edge & IN_GAME) || m.t >= SHOW_STEPS) {
+            if (m.mode == M_PRINT && m.scenes % SEASON == 0) {
+                go(M_WRAP);
+                return 0;
+            }
+            if (m.mode == M_WRAP && m.billing < BILLINGS)
+                model_billing(m.billing + 1);
+            m.scene_fee = 0;
+            go(M_CARD);
+        }
+        return 0;
+    case M_FIRED:
+        if ((edge & IN_GAME) || m.t >= SHOW_STEPS)
+            fired_next();
+        return 0;
+    case M_NAME:
+        nm = best_name[m.name_slot];
+        if (kd >= 'A' && kd <= 'Z') {
+            nm[m.name_len] = kd;
+            if (++m.name_len == 3)
+                go(M_TITLE);
+        } else if (kd == K_DEL && m.name_len) {
+            nm[--m.name_len] = '-';
+        } else if (kd == K_RETURN) {
+            go(M_TITLE);
+        }
+        return 0;
+    case M_ASK:                             /* Y: back to the title; N or Esc: ride on */
+        if (kd == 'Y') {
+            best_keep();
+            m.events = EV_QUIT;
+            go(M_TITLE);
+        } else if (kd == 'N' || kd == K_ESC) {
+            m.events = EV_QUIT;
+            go(M_PLAY);
+        }
+        return 0;
     }
+    return 1;
+}
+
+void model_step(uint8_t in, uint8_t key)
+{
+    uint8_t edge = in & (uint8_t)~m.keys_prev, kd = 0;
+
+    m.keys_prev = in;
+    if (key != m.key_prev)
+        kd = key;
+    m.key_prev = key;
+    m.events = 0;
+    m.ev2 = 0;
+    ++m.step;
+    ++m.t;
+
+    if (m.mode != M_PLAY && !frame_step(edge, kd))
+        return;
 
     if (m.paused) {                         /* any key-down resumes */
         if (edge) {
@@ -270,9 +404,10 @@ void __fastcall__ model_step(uint8_t in)
             m.events = EV_PAUSE;
             return;
         }
-        if (edge & IN_QUIT) {
-            model_scene_start();
+        if (edge & IN_QUIT) {               /* Esc: "QUIT? Y/N" */
             m.events = EV_QUIT;
+            m.key_prev = K_ESC;             /* held now: not yet an answer */
+            go(M_ASK);
             return;
         }
     }
@@ -311,21 +446,28 @@ void __fastcall__ model_step(uint8_t in)
         m.x -= TRACK_W_FP;
         m.events |= EV_WRAP;
         m.fee += 10 * m.run_scene;          /* rule 5: each finished track pays */
+        m.scene_fee += 10 * m.run_scene;
         m.ev2 |= EV2_FEE;
-        if (++m.track == NTRACKS) {         /* scene cleared */
+        if (++m.track == NTRACKS) {         /* scene cleared: "THAT'S A PRINT!" */
+            m.bonus = 0;
             if (m.take_no == 1) {
-                m.fee += BONUS_X * 10 * m.run_scene;
+                m.bonus = BONUS_X * 10 * m.run_scene;
+                m.fee += m.bonus;
+                m.scene_fee += m.bonus;
                 m.ev2 |= EV2_BONUS;
             }
             ++m.scenes;
             ++m.run_scene;
+            m.gave_take = 0;
             if (m.scenes % 3 == 0 && m.takes < TAKES) {
                 ++m.takes;
+                m.gave_take = 1;
                 m.ev2 |= EV2_TAKE;
             }
             m.take_no = 1;
             model_scene_start();
             m.events |= EV_SCENE;
+            go(M_PRINT);
             return;
         }
     }
@@ -335,5 +477,6 @@ void __fastcall__ model_step(uint8_t in)
         --m.takes;
         m.crash_t = CRASH_STEPS;
         m.events |= EV_CRASH;
+        go(M_CUT);
     }
 }

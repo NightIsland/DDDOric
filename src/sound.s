@@ -20,6 +20,7 @@
 
         .export         snd_init, snd_tick, _snd_engine, _snd_burst
         .export         _snd_jump, _snd_land, _snd_stop, _snd_crash, _snd_fee
+        .export         _snd_clack, _snd_squawk
         .import         ay_write
 
 MIXER    = %01101010            ; port A out; tone A, tone C, noise B on
@@ -208,3 +209,27 @@ _snd_fee:
         ldx     #>70
         ldy     #<-2
         jmp     sw_set
+
+; F4, the film frame (DESIGN "Sound"):
+
+; void snd_clack(void): the clapper arm snaps shut: a sharp, short clack.
+_snd_clack:
+        lda     #2
+        jsr     _snd_burst
+        lda     #8              ; quieter, so it dies in 80 ms
+        sta     burst_vol
+        rts
+
+; void __fastcall__ snd_squawk(uint8_t note): "CUT!" through the megaphone,
+; two notes (main.c plays 0 then 1): a nasal tone that bends a little.
+_snd_squawk:
+        cmp     #0
+        bne     @two
+        lda     #<150           ; ~415 Hz
+        ldx     #>150
+        ldy     #2
+        jmp     sweep15
+@two:   lda     #<200           ; ~310 Hz
+        ldx     #>200
+        ldy     #3
+        jmp     sweep15
