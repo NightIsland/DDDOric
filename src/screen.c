@@ -163,51 +163,77 @@ void __fastcall__ rider_xor(uint8_t track, uint8_t xpx, uint8_t height)
     }
 }
 
-/* Move the rider in one pass: every screen byte is written once, with old ^ new,
-   so the rider is never missing from the screen while the video scans it
-   (docs/ORIC-LESSONS.md section 7).  BUILD 1 erased, then redrew: whenever the
-   beam passed the rider between the two, it vanished for that frame, and as the
-   20,000-cycle step drifts against the 19,968-cycle video frame that happened
-   for about 2 s in every 12.5 s (Bob's "fading" bug).  A move to another track
-   or more than one cell along (wrap, restart) still uses two passes. */
+/* Move the rider (Bob's reports on BUILD 1 and 2).  There is no vertical sync on a
+   stock Oric, and the 20,000-cycle step drifts against the 19,968-cycle video
+   frame, so the beam sweeps through every point of the step every 12.5 s.
+   - BUILD 1 erased, then redrew: when the beam passed the rider in between, it
+     vanished for that frame ("fading", ~2 s in every 12.5 s).
+   - BUILD 2 wrote each byte once (old ^ new), but from C: the writes spread over
+     ~7,000 cycles, so in a quarter of all steps the beam crossed the rider while it
+     was half moved ("tearing").
+   - BUILD 3: C works out every byte's old ^ new mask first (rm_* below), then the
+     assembly loop rider_apply (src/draw.s) writes them all in a burst of about 70
+     cycles a line, so the beam rarely meets a half-moved rider and, when it does,
+     only for a line or two.  F1's pre-shifted sprite code keeps the same rule. */
+#define RM_MAX 40
+uint8_t rm_n, rm_lo[RM_MAX], rm_hi[RM_MAX], rm_a0[RM_MAX], rm_a1[RM_MAX], rm_a2[RM_MAX];
+void rider_apply(void);
+
+static void rm_masks(uint8_t xpx, uint8_t *l, uint8_t *r)
+{
+    uint8_t s = xshift[xpx];
+    *l = 0x3F >> s;
+    *r = xcell[xpx] == 39 ? 0 : (uint8_t)(0x3F << (6 - s)) & 0x3F;
+}
+
+static uint8_t ra_y, ra_c, ra_a0, ra_a1, ra_a2;    /* rm_add's arguments (static: cheaper in cc65) */
+
+static void rm_add(void)
+{
+    uint8_t i = rm_n++;
+    uint16_t a = (uint16_t)lineaddr[ra_y] + ra_c;
+    rm_lo[i] = (uint8_t)a;
+    rm_hi[i] = (uint8_t)(a >> 8);
+    rm_a0[i] = ra_a0;
+    rm_a1[i] = ra_a1;
+    rm_a2[i] = ra_a2;
+}
+
 void rider_move(uint8_t ot, uint8_t ox, uint8_t oh, uint8_t nt, uint8_t nx, uint8_t nh)
 {
-    uint8_t co = xcell[ox], cn = xcell[nx], c0, so, sn, yo, yn, y, ytop, *p;
-    uint8_t ol, or, nl, nr, a0, a1, a2, d;
+    uint8_t co = xcell[ox], cn = xcell[nx], c0, yo, yn, y, ytop, n;
+    uint8_t ol, or, nl, nr, a0, a1, a2;
 
-    if (ot != nt || (uint8_t)(cn - co + 1) > 2) {
-        rider_xor(ot, ox, oh);
-        rider_xor(nt, nx, nh);
-        return;
-    }
-    so = xshift[ox];
-    sn = xshift[nx];
-    ol = 0x3F >> so;
-    or = co == 39 ? 0 : (uint8_t)(0x3F << (6 - so)) & 0x3F;
-    nl = 0x3F >> sn;
-    nr = cn == 39 ? 0 : (uint8_t)(0x3F << (6 - sn)) & 0x3F;
-    c0 = co < cn ? co : cn;
+    rm_masks(ox, &ol, &or);
+    rm_masks(nx, &nl, &nr);
     yo = rider_line(ot, oh);
     yn = rider_line(nt, nh);
-    y = yo > yn ? yo : yn;                  /* lowest line of either */
-    ytop = (yo < yn ? yo : yn) - (RIDER_H - 1);
-    for (;; --y) {
-        a0 = a1 = a2 = 0;
-        if (y <= yo && y > yo - RIDER_H) {
-            d = co - c0;
-            if (d) { a1 = ol; a2 = or; } else { a0 = ol; a1 = or; }
+    rm_n = 0;
+    if (ot != nt || (uint8_t)(cn - co + 1) > 2) {      /* apart: two separate blocks */
+        ra_a2 = 0;
+        for (n = 0; n < RIDER_H; ++n) {
+            ra_y = yo - n; ra_c = co; ra_a0 = ol; ra_a1 = or; rm_add();
+            ra_y = yn - n; ra_c = cn; ra_a0 = nl; ra_a1 = nr; rm_add();
         }
-        if (y <= yn && y > yn - RIDER_H) {
-            d = cn - c0;
-            if (d) { a1 ^= nl; a2 ^= nr; } else { a0 ^= nl; a1 ^= nr; }
+    } else {                                            /* overlapping: old ^ new per byte */
+        c0 = co < cn ? co : cn;
+        y = yo > yn ? yo : yn;
+        ytop = (yo < yn ? yo : yn) - (RIDER_H - 1);
+        for (;; --y) {
+            a0 = a1 = a2 = 0;
+            if (y <= yo && y > yo - RIDER_H) {
+                if (co != c0) { a1 = ol; a2 = or; } else { a0 = ol; a1 = or; }
+            }
+            if (y <= yn && y > yn - RIDER_H) {
+                if (cn != c0) { a1 ^= nl; a2 ^= nr; } else { a0 ^= nl; a1 ^= nr; }
+            }
+            ra_y = y; ra_c = c0; ra_a0 = a0; ra_a1 = a1; ra_a2 = a2;
+            rm_add();                                   /* a2 is 0 whenever c0 + 2 > 39 */
+            if (y == ytop)
+                break;
         }
-        p = lineaddr[y] + c0;
-        if (a0) p[0] ^= a0;
-        if (a1) p[1] ^= a1;
-        if (a2) p[2] ^= a2;                 /* a2 is 0 whenever c0 + 2 > 39 */
-        if (y == ytop)
-            break;
     }
+    rider_apply();
 }
 
 static uint8_t shown_track = 0xFF, shown_stop = 0xFF, shown_pause = 0xFF;

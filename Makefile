@@ -31,7 +31,7 @@ HOSTCC := cc
 NAME   := stuntbob
 
 OBJS := $(B)/crt0.o $(B)/main.o $(B)/model.o $(B)/trace.o $(B)/screen.o \
-        $(B)/system.o $(B)/keys.o $(B)/sound.o
+        $(B)/system.o $(B)/keys.o $(B)/sound.o $(B)/draw.o
 HDRS := $(wildcard src/*.h)
 
 .PHONY: all test ref emu clean
