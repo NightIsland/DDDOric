@@ -6,7 +6,8 @@
 #include <stdint.h>
 
 void sys_init(void);            /* VIA, AY, 10 ms T1 tick, IRQ hook */
-void step_wait(void);           /* end of a 20 ms game step */
+void step_wait(void);
+uint8_t step_left(void);      /* time left in the step, x 256 cycles */           /* end of a 20 ms game step */
 extern uint8_t ticks;           /* 10 ms ticks since step_wait last reset it */
 extern uint8_t irq_mode;        /* 1 = IRQ handler hooked, 0 = unknown ROM: polling */
 
@@ -18,6 +19,8 @@ void __fastcall__ snd_burst(uint8_t period);     /* noise burst, period 1-15 */
 void snd_jump(void);                             /* take-off whoosh */
 void snd_land(void);                             /* landing thump */
 void snd_stop(void);                             /* brakes */
+void snd_crash(void);                            /* crash */
+void snd_fee(void);                              /* fee paid */
 
 /* harness debug port (docs/ORIC-LESSONS.md section 6): RAM never displayed */
 #define DBG_TRACE (*(volatile uint8_t *)0xBFE0)

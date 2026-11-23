@@ -12,6 +12,7 @@
 #include "model.h"
 #include "physics.h"
 #include "version.h"
+#include "system.h"
 
 #define PAPER(c) (16 + (c))
 
@@ -47,11 +48,13 @@ static const uint8_t glyphs[][7] = {
 
 /* src/draw.s */
 extern uint8_t line_lo[200], line_hi[200];
-extern uint8_t r_top, r_h, r_c0, a_row, a_col, b_row, b_col;
+extern uint8_t r_top, r_h, r_c0, r_w, r_ph, a_row, a_col, b_row, b_col;
 extern const uint8_t *a_img, *b_img;
 #pragma zpsym ("r_top")
 #pragma zpsym ("r_h")
 #pragma zpsym ("r_c0")
+#pragma zpsym ("r_w")
+#pragma zpsym ("r_ph")
 #pragma zpsym ("a_img")
 #pragma zpsym ("a_row")
 #pragma zpsym ("a_col")
@@ -159,13 +162,11 @@ void scene_draw(const struct scene *s, uint8_t billing)
         for (hz = s->h[t], j = 0; j < SC_MAX; ++j, ++hz) {
             switch (hz->kind) {
             case HZ_BLOCK:
-            case HZ_RUNNER:
                 blit(hz->a, hz->x, y + ROAD_LINE - 1);
                 break;
-            case HZ_DANGLER:                            /* drawn up: rope + weight */
-                mid = hz->x + scenery_w[hz->a] / 2;
-                vline(mid, y, y + 5);
-                blit(hz->a, hz->x, y + 5 + scenery_h[hz->a]);
+            case HZ_DANGLER:                            /* the rope's top part; the */
+                mid = hz->x + scenery_w[hz->a] / 2;     /* rest and the weight move */
+                vline(mid, y, y + DANGLE_TOP - 1);      /* (hazards_draw)           */
                 break;
             case HZ_CEILING:                            /* hung from the band top */
                 blit(hz->a, hz->x, y + hz->b);
@@ -209,8 +210,8 @@ void screen_init(void)
     TEXTROW(0)[0] = 3;                      /* yellow */
     TEXTROW(1)[0] = 6;                      /* cyan */
     TEXTROW(2)[0] = 7;                      /* white */
-    put(0, 1, "TAKE 1 @@@   STOP     FEE $0   BEST $0");
-    put(1, 1, "SPEED       TRACK      BILLING 1 EXTRA");
+    put(0, 1, "TAKE 1 @@@   STOP     FEE $0");
+    put(1, 1, "SPEED       TRACK      BEST $0");
     put(2, 1, "BUILD");
     TEXTROW(2)[7] = '0' + BUILD_VERSION / 10;
     TEXTROW(2)[8] = '0' + BUILD_VERSION % 10;
@@ -218,68 +219,225 @@ void screen_init(void)
     MODE_CELL = 0x1E;                       /* HIRES, 50 Hz: switches the ULA */
 }
 
-/* The rider: where it is drawn now (r_on = 0: not drawn). */
-static uint8_t r_on, r_y, r_c;
-static const uint8_t *r_img;
+/* Sprites: the rider (0) and the moving hazards (1 on), each moved with
+   src/draw.s in one pass at the beam's pace.  Their state lives in draw.s. */
+#define SPR_RIDER 0
+#define SPR_MOV   1
+extern uint8_t sp_on[], sp_y[], sp_c[], sp_w[], sp_h[], sp_lo[], sp_hi[];
+extern uint8_t n_y, n_c;
+extern const uint8_t *n_img;
+#pragma zpsym ("n_y")
+#pragma zpsym ("n_c")
+#pragma zpsym ("n_img")
+void __fastcall__ spr_move(uint8_t n);
+void __fastcall__ spr_erase(uint8_t n);
+#define GHOST 8                 /* sprite n + GHOST: n's old picture, still to take off */
 
 #define RT(t) (TITLE_LINES + (t) * BAND_LINES + RIDER_TOP)
 static const uint8_t rider_top[4] = { RT(0), RT(1), RT(2), RT(3) };
 static const uint8_t shift_ofs[6] = { 0, 48, 96, 144, 192, 240 };
-static const uint8_t * const frame_art[3] = {
-    rider_art, rider_art + RIDER_FRAME_BYTES, rider_art + 2 * RIDER_FRAME_BYTES
+#define PO (SPR_POLICE_COLS * SPR_POLICE_H)
+static const uint16_t police_ofs[6] = { 0, PO, 2 * PO, 3 * PO, 4 * PO, 5 * PO };
+static const uint8_t * const frame_art[4] = {
+    rider_art, rider_art + RIDER_FRAME_BYTES, rider_art + 2 * RIDER_FRAME_BYTES,
+    rider_art + 3 * RIDER_FRAME_BYTES
 };
 
 void rider_draw(uint8_t track, uint8_t x, uint8_t height, uint8_t frame)
 {
-    uint8_t y = rider_top[track] - height;
-    uint8_t c = xcell[x];
-    const uint8_t *img = frame_art[frame] + shift_ofs[xshift[x]];
-
-    if (r_on && y == r_y && c == r_c && img == r_img)
-        return;
-    if (r_on && (uint8_t)(y - r_y + 15) < 31 && (uint8_t)(c - r_c + 1) <= 2) {
-        /* overlapping: one box holds both, old ^ new in one burst */
-        r_top = y < r_y ? y : r_y;
-        r_h = (y < r_y ? r_y - y : y - r_y) + RIDER_H;
-        r_c0 = c < r_c ? c : r_c;
-        a_img = r_img;
-        a_row = r_y - r_top;
-        a_col = r_c - r_c0;
-        b_img = img;
-        b_row = y - r_top;
-        b_col = c - r_c0;
-        spr_region();
-    } else {
-        /* apart (first draw, a wrap, a new scene): draw the new one first, then
-           take the old one off, so the rider is never missing from a frame */
-        r_top = y;
-        r_h = RIDER_H;
-        r_c0 = c;
-        a_img = img;
-        a_row = a_col = 0;
-        b_img = 0;
-        spr_region();
-        if (r_on) {
-            r_top = r_y;
-            r_c0 = r_c;
-            a_img = r_img;
-            spr_region();
-        }
-    }
-    r_on = 1;
-    r_y = y;
-    r_c = c;
-    r_img = img;
+    sp_w[SPR_RIDER] = 3;
+    sp_h[SPR_RIDER] = RIDER_H;
+    n_y = rider_top[track] - height;
+    n_c = xcell[x];
+    n_img = frame_art[frame] + shift_ofs[xshift[x]];
+    spr_move(SPR_RIDER);
 }
 
-static uint8_t shown_track = 0xFF, shown_stop = 0xFF, shown_pause = 0xFF;
+/* A dangler's rope runs from its band's top line to just above the weight.
+   The weight is a sprite; the rope is single pixels: added below the old top
+   after the weight has moved down, taken away above the old top before it
+   moves up, so the sprite's XOR never meets a rope pixel. */
+extern uint8_t rp_b, rp_y, rp_c;
+#pragma zpsym ("rp_b")
+#pragma zpsym ("rp_y")
+#pragma zpsym ("rp_c")
+void __fastcall__ rope_or(uint8_t y1);
+void __fastcall__ rope_and(uint8_t y1);
+
+static void rope(uint8_t x, uint8_t y0, uint8_t y1, uint8_t on)
+{
+    rp_y = y0;
+    rp_c = xcell[x];
+    rp_b = 0x20 >> xshift[x];
+    if (on) {
+        rope_or(y1);
+    } else {
+        rp_b = ~rp_b;
+        rope_and(y1);
+    }
+}
+
+/* The moving hazards of the scene, listed once by hazards_list (at most 4
+   per scene, DESIGN "Speed"), so the per-step loop does no searching. */
+#define MAXMOV 6
+static uint8_t nmov, mv_slot[MAXMOV], mv_kind[MAXMOV], mv_band[MAXMOV], mv_rope[MAXMOV];
+static uint8_t mv_c[MAXMOV];
+static const uint8_t *mv_img[MAXMOV];
+static uint8_t rr, mv_x[MAXMOV];       /* hazards_draw: first in line; drawn x */
+
+void hazards_list(const struct scene *sc)
+{
+    const struct hazard *h = &sc->h[0][0];
+    uint8_t i;
+    nmov = rr = 0;
+    for (i = 0; i < NHAZ && nmov < MAXMOV; ++i, ++h) {
+        if (h->kind != HZ_RUNNER && h->kind != HZ_DANGLER)
+            continue;
+        mv_slot[nmov] = i;
+        mv_kind[nmov] = h->kind;
+        mv_band[nmov] = TITLE_LINES + (i / SC_MAX) * BAND_LINES;
+        if (h->kind == HZ_RUNNER) {
+            sp_w[SPR_MOV + nmov] = SPR_POLICE_COLS;
+            sp_h[SPR_MOV + nmov] = SPR_POLICE_H;              /* runners: their top line */
+            mv_band[nmov] += ROAD_LINE - SPR_POLICE_H;
+        } else {
+            sp_w[SPR_MOV + nmov] = SPR_BALL_COLS;       /* danglers: x is fixed */
+            sp_h[SPR_MOV + nmov] = 16;
+            mv_rope[nmov] = h->x + scenery_w[h->a] / 2;
+            mv_c[nmov] = xcell[h->x];
+            mv_img[nmov] = spr_ball + shift_ofs[xshift[h->x]];
+        }
+        sp_on[SPR_MOV + nmov] = 0;
+        sp_on[SPR_MOV + nmov + GHOST] = 0;
+        ++nmov;
+    }
+}
+
+/* A step has room for the rider and one or two hazards (each ~5,500 cycles).
+   Each hazard is drawn only if the step still has HZ_ROOM x 256 cycles left
+   for it and the status line; one that doesn't fit waits, first in line next
+   step, while the others are still tried (its picture is then a step behind
+   the game: collisions go by the game, never the picture).  A hazard that
+   goes far (a police car wrapping round, a retake) costs two draws: the new
+   picture this step, the old one taken off the next, so for one step both
+   show, and no step needs room for more than one draw. */
+#define HZ_ROOM 34
+
+void hazards_draw(void)
+{
+    uint8_t n, i = rr, x, y, oy, top, sn, jump2, next = 0xFF;
+    for (n = nmov; n; --n, ++i) {
+        if (i >= nmov)
+            i = 0;
+        sn = SPR_MOV + i;
+        if (sp_on[sn + GHOST]) {            /* the old picture of a far move */
+            if (step_left() < HZ_ROOM) {
+                if (next == 0xFF)
+                    next = i;
+                continue;
+            }
+            spr_erase(sn + GHOST);
+            continue;
+        }
+        if (mv_kind[i] == HZ_RUNNER) {
+            x = hz_px[mv_slot[i]];
+            if (x == mv_x[i] && sp_on[sn])
+                continue;
+            jump2 = (uint8_t)(x - mv_x[i] + 8) >= 17;
+            n_y = mv_band[i];
+            n_c = xcell[x];
+            n_img = spr_police + police_ofs[xshift[x]];
+            y = oy = 0;
+        } else {
+            top = mv_band[i] + DANGLE_TOP;
+            y = top + hz_drop[mv_slot[i]];
+            oy = top;
+            if (sp_on[sn])
+                oy = sp_y[sn];
+            if (y == oy && sp_on[sn])
+                continue;
+            jump2 = (uint8_t)(y - oy + 15) >= 31;
+            n_y = y;
+            n_c = mv_c[i];
+            n_img = mv_img[i];
+        }
+        if (step_left() < HZ_ROOM) {
+            if (next == 0xFF)
+                next = i;
+            continue;
+        }
+        if (jump2 && sp_on[sn]) {             /* leave the old picture as a ghost */
+            sp_on[sn + GHOST] = 1;
+            sp_y[sn + GHOST] = sp_y[sn];
+            sp_c[sn + GHOST] = sp_c[sn];
+            sp_lo[sn + GHOST] = sp_lo[sn];
+            sp_hi[sn + GHOST] = sp_hi[sn];
+            sp_w[sn + GHOST] = sp_w[sn];
+            sp_h[sn + GHOST] = sp_h[sn];
+            sp_on[sn] = 0;
+        }
+        if (mv_kind[i] == HZ_RUNNER) {
+            mv_x[i] = x;
+            spr_move(sn);
+        } else {                            /* (far only up: a retake) */
+            if (y < oy)
+                rope(mv_rope[i], y, oy, 0);
+            spr_move(sn);
+            if (y > oy)
+                rope(mv_rope[i], oy, y, 1);
+        }
+    }
+    rr = i;
+    if (next != 0xFF)
+        rr = next;
+}
+
+static uint8_t shown_track = 0xFF, shown_stop = 0xFF, shown_msg = 0xFF;
+static uint8_t shown_take = 0xFF, shown_takes = 0xFF;
 static const char lamp[2] = { '+', '*' };  /* stop used, stop left */
-static uint16_t shown_speed = 0xFFFF;
+static uint16_t shown_speed = 0xFFFF, shown_fee = 0xFFFF, shown_best = 0xFFFF;
+static const char * const msgs[4] = {
+    "SPACE SHIFT RETURN P ESC", "PAUSED - ANY KEY        ",
+    "CUT! RETAKE COMING      ", "CUT! YOU ARE FIRED      "
+};
+static const char icons[4][4] = { "   ", "@  ", "@@ ", "@@@" };   /* takes left */
+
+/* v in 5 cells from p, left-aligned (no division: cc65's is slow) */
+static const uint16_t pow10[4] = { 10000, 1000, 100, 10 };
+static void put_num(uint8_t *p, uint16_t v)
+{
+    uint8_t i, d, started = 0, n = 0;
+    for (i = 0; i < 4; ++i) {
+        for (d = '0'; v >= pow10[i]; v -= pow10[i])
+            ++d;
+        if (d != '0' || started) {
+            p[n++] = d;
+            started = 1;
+        }
+    }
+    p[n++] = '0' + (uint8_t)v;
+    while (n < 5)
+        p[n++] = ' ';
+}
+
+/* The status line: only what has changed.  The longer fields (best, fee,
+   message: ~1,500 cycles each) go one a step, when the step has ST_ROOM x 256
+   cycles left: a restart changes all three at once. */
+#define ST_ROOM 10
+static uint8_t big;
+
+static uint8_t big_ok(void)
+{
+    if (big || step_left() < ST_ROOM)
+        return 0;
+    return big = 1;
+}
 
 void status_update(void)
 {
-    uint8_t *t = TEXTROW(1);
+    uint8_t *t = TEXTROW(1), msg;
     uint16_t v;
+    big = 0;
     if (m.track != shown_track) {
         shown_track = m.track;
         t[19] = '1' + m.track;
@@ -293,13 +451,31 @@ void status_update(void)
         while (v >= 10) { v -= 10; ++t[8]; }
         t[9] = '0' + v;
     }
+    if (m.best != shown_best && big_ok()) {
+        shown_best = m.best;
+        put_num(t + 30, m.best);
+    }
+    t = TEXTROW(0);
     if (m.stop_left != shown_stop) {
         shown_stop = m.stop_left;
-        TEXTROW(0)[19] = lamp[shown_stop];  /* not "?:": cc65 2.19 tested the
+        t[19] = lamp[shown_stop];           /* not "?:": cc65 2.19 tested the
                                                wrong flags there (Bob, BUILD 4) */
     }
-    if (m.paused != shown_pause) {
-        shown_pause = m.paused;
-        put(2, 11, m.paused ? "PAUSED - ANY KEY        " : "SPACE SHIFT RETURN P ESC");
+    if (m.take_no != shown_take) {
+        shown_take = m.take_no;
+        t[6] = '0' + (m.take_no > 9 ? 9 : m.take_no);
+    }
+    if (m.takes != shown_takes) {
+        shown_takes = m.takes;
+        memcpy(t + 8, icons[m.takes], 3);
+    }
+    if (m.fee != shown_fee && big_ok()) {
+        shown_fee = m.fee;
+        put_num(t + 28, m.fee);
+    }
+    msg = m.paused ? 1 : m.crash_t ? (m.takes ? 2 : 3) : 0;
+    if (msg != shown_msg && big_ok()) {
+        shown_msg = msg;
+        put(2, 11, msgs[msg]);
     }
 }

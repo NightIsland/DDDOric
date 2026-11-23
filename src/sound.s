@@ -19,7 +19,7 @@
 ; address latch with the key scan).
 
         .export         snd_init, snd_tick, _snd_engine, _snd_burst
-        .export         _snd_jump, _snd_land, _snd_stop
+        .export         _snd_jump, _snd_land, _snd_stop, _snd_crash, _snd_fee
         .import         ay_write
 
 MIXER    = %01101010            ; port A out; tone A, tone C, noise B on
@@ -152,7 +152,7 @@ sweep:  pha
         lda     #13
 sw_go:  sta     sw_new
         pla
-        php
+sw_set: php
         sei
         sta     sw_lo
         stx     sw_hi
@@ -190,3 +190,21 @@ _snd_stop:
         ldx     #>42
         ldy     #1
         jmp     sweep15
+
+; void snd_crash(void): a crash: a long rough burst and a falling tone.
+_snd_crash:
+        lda     #15
+        jsr     _snd_burst
+        lda     #<180
+        ldx     #>180
+        ldy     #45
+        jmp     sweep15
+
+; void snd_fee(void): a track finished and paid: a short high blip.
+_snd_fee:
+        lda     #6
+        sta     sw_new
+        lda     #<70
+        ldx     #>70
+        ldy     #<-2
+        jmp     sw_set

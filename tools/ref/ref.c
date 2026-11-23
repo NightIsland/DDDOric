@@ -3,7 +3,7 @@
    the harness emulator must print exactly the same lines for the same script
    (docs/PLAN.md F0; tools/README.md).
 
-   usage: ref SCRIPT STEPS > trace.txt
+   usage: ref SCRIPT STEPS [test] > trace.txt   (test: the empty test track)
 
    Key scripts: tools/keyscript.py has the grammar.  Step n (1-based) reads the
    keys of script frame n, as the Oric build does after its n-th MARK.  Only the
@@ -14,6 +14,7 @@
 #include <string.h>
 #include "model.h"
 #include "trace.h"
+#include "scene.h"
 
 #define MAXLINES 4096
 static struct { long a, b; uint8_t bits; } ln[MAXLINES];
@@ -47,10 +48,13 @@ static void load(const char *fn)
 
 int main(int argc, char **argv)
 {
-    if (argc != 3) { fprintf(stderr, "usage: ref SCRIPT STEPS\n"); return 2; }
+    if (argc != 3 && !(argc == 4 && !strcmp(argv[3], "test"))) {
+        fprintf(stderr, "usage: ref SCRIPT STEPS [test]\n");
+        return 2;
+    }
     load(argv[1]);
     long steps = strtol(argv[2], 0, 10);
-    model_init();
+    model_init(argc == 4 ? &scene_test : &scene_rhr1, 1);
     for (long n = 1; n <= steps; n++) {
         uint8_t in = 0;
         for (int i = 0; i < nln; i++)

@@ -12,8 +12,8 @@ licence). Elsewhere put cc65 2.19 on `PATH` (macOS: `brew install cc65`). Everyt
 | --- | --- |
 | `make` | `build/stuntbob.tap`: the release build for real hardware, plus `.bin`, `.map`, `.lbl` and a size line |
 | `make ORICUTRON=1` | `build/oricutron/stuntbob.tap`: **the build for Bob to test in Oricutron** (every noise period doubled: DESIGN "Sound") |
-| `make test` | both builds, a billing-3 test build (`build/b3/`), emulator and native reference, then `tools/test_f0.py` |
-| `make ref` | `build/ref/ref`: the native model with its per-step trace |
+| `make test` | both builds, a billing-3 test build (`build/b3/`), the empty test track (`build/empty/`, `-DSCENE=scene_test`: physics, sound and rider checks without crashes), emulator and native reference, then `tools/test_f0.py` |
+| `make ref` | `build/ref/ref`: the native model with its per-step trace (`ref SCRIPT STEPS [test]`: `test` rides the empty test track) |
 | `make emu` | `build/emu/emu`: the headless emulator |
 
 ## Program layout
@@ -30,7 +30,7 @@ licence). Elsewhere put cc65 2.19 on `PATH` (macOS: `brew install cc65`). Everyt
 | `src/scene.c`, `src/scene.h` | scene layouts and film palettes (F1: Rush Hour Rumble scene 1) |
 | `src/draw.s` | rider move: prepare the box, then write it at the beam's pace (F1) |
 | `tools/mkart.py` | all pixel art as text → `build/gen/art.s`, `art.h`; `--png F` previews it |
-| `tools/scene_ref.py` | pixel reference of a scene and the rider, for `make test` |
+| `tools/scene_ref.py` | pixel reference of a scene, the rider and the moving hazards (police car, wrecking ball and rope), for `make test` |
 | `src/main.c` | the step loop: MARK, keys, model, trace, draw, sound, BUSY |
 | `tools/ref/ref.c` | native driver: key script in, trace out |
 

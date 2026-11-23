@@ -47,5 +47,6 @@ struct scene {
 };
 
 extern const struct scene scene_rhr1;
+extern const struct scene scene_test;     /* no hazards: harness only */
 
 #endif

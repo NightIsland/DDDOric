@@ -42,8 +42,8 @@ takes the next number.
 | M1 | Measure the BBC original: speeds, acceleration, jump arc and time, start speed, wrap, hanging-hazard period, sea and snow handling, fee on a retake | — | docs only | done, PR open (`docs/M1-MEASUREMENTS.md`) |
 | F0 | Skeleton and harness: cc65 2.19 built for the cloud shell, `none.lib`, own crt0 and ld65 config at $0500, ROM-free IRQ hook, autorun `.tap`, Makefile with size report and `ORICUTRON=1`; Chuckie Egg's emulator adapted, PNG output, key scripts, debug port at $BFE0; native C model with per-step trace | — | crt0 + cfg ≤ 256 B | merged (BUILD 1); BUILD 3 fixes Bob's fading and tearing rider |
 | F1 | Display: HIRES init, per-line paper/ink columns, a track screen drawn from scene data, status line in the text-row bitmap font, one-pass pre-shifted sprite draw | F0 | code ≤ 1.5 KB; sprite ≤ 1,400 cycles | BUILD 4 merged (PR #6); BUILD 5–6 fixes in a follow-up PR |
-| F2 | One track: rider physics (DESIGN "Physics"), keys (Space, either Shift, Return), 50 Hz step, engine sound | F0, F1 | logic ≤ 4,000 cycles a step | BUILD 8, PR open |
-| F3 | Whole scene: four tracks, wrapping, block, runner, dangler, gap and ceiling block, crashes, fees, the one stop | F2 | whole step ≤ 16,000 cycles | not started |
+| F2 | One track: rider physics (DESIGN "Physics"), keys (Space, either Shift, Return), 50 Hz step, engine sound | F0, F1 | logic ≤ 4,000 cycles a step | merged (BUILD 8, PR #8) |
+| F3 | Whole scene: four tracks, wrapping, block, runner, dangler, gap and ceiling block, crashes, fees, the one stop | F2 | whole step ≤ 16,000 cycles | BUILD 10, PR open; budget missed: average 16,100 riding flat out, worst 19,750 (see Results) |
 | F4 | Film frame: clapper card, takes, "Cut!", scene cleared, "You're fired", title screen, billing select, top five | F3 | | not started |
 | F5 | Film 1 (*Rush Hour Rumble*) complete at all six billings, tuned to M1's numbers; Bob judges the feel against the original | F4, M1 | | not started |
 | F6 | Films 2–6, jets and ramps, per-vehicle handling, music, key redefinition | F5 | memory ≤ 37 KB | not started |
@@ -118,6 +118,62 @@ Briefs written by the architect when the previous feature is merged, from DESIGN
   Oric** means the beam's position can't be read, so tearing can be made rare and small but not
   removed; locking the step to the video frame would make it permanent on one track instead.
   Worst step 16,708 cycles (the C preparation); F1's assembly sprite brings it down.
+
+### F3: Whole scene (BUILD 9, 23 Nov 2026)
+
+- **Hazards move** (`src/model.c`, from `src/scene.h`'s records, so the native model has them too):
+  the police car drives left at M1's 0.95 px a step (122/128) and wraps inside the play width; the
+  wrecking ball bobs one line every 3 steps between its top and 25 lines lower. All hazard slots are
+  flat byte tables set up once (kind, width, heights, speeds): cc65 spent ~2,800 cycles a step on
+  the struct version, now ~1,000. The rider's px comes from a 600-byte table filled at start-up
+  (no multiply each step).
+- **Collisions** (DESIGN rule 4): the rider's box shrunk 2 px a side against every hazard on his
+  track; blocks and the police car from the road up (landing on top crashes too); the ball at its
+  current drop; the low girder from its bottom edge up to the sky; a gap when the wheels' middle is
+  over it on the road (gaps only at the billings tagged for them).
+- **Crashes, takes, fees** (Bob's decisions): a crash stops the bike dead and loses a take; 1.5 s
+  (75 steps) with the crash picture and "CUT! RETAKE COMING" (or "YOU ARE FIRED"), then the retake
+  from track 1 standing. Each finished track pays 10 × the scene's number in the run, paid again on
+  a retake; a scene cleared on its first take pays a bonus of 5 × that (Bob liked it; the size is a
+  guess for F5); every third scene cleared gives a lost take back; after the last take the best fee
+  is kept and a new run starts (F4 shows the "fired" screen and title). Status line: take number,
+  takes left, fee, best.
+- **Drawing:** the police car and the ball are sprites moved like the rider (one pass, old ^ new,
+  written at the beam's pace). The car's 6-cell box can't be written at 67 cycles a line from a loop
+  (91: 1.5% torn frames), so `src/draw.s` writes its bytes into a 16-line block of
+  `lda #byte / sta line,y` code and runs that (67 cycles a line; addresses rewritten only when the
+  box's lines change, i.e. never for a car). `spr_move` is in assembly now (cc65's took ~2,000
+  cycles a call in stack handling). The ball's rope is single pixels, added below the ball after it
+  moves down and taken away before it moves up.
+- **The step budget:** a step has room for the rider and one or two hazards (~5,500 cycles each).
+  `step_left()` reads the VIA timer, and a hazard is drawn only if 34 × 256 cycles are left; one
+  that doesn't fit is drawn first next step (a step behind at most, measured; collisions always go
+  by the model). A far move (the car wrapping, a retake) is split: the new picture one step, the old
+  one taken off the next. The status line's long fields (fee, best, message) go one a step.
+- **Cost:** riding flat out through the scene, 16,100 cycles a step on average (66% of steps over
+  16,000), worst 19,750 of 20,000 over 8,430 scripted steps; no step overruns. **F3's 16,000 budget
+  is missed**: the 1,150-cycle trace output and the rider's 5,000–9,000 are the big items. Options
+  if F4–F6 need room: drop the trace from Bob's builds (trace equality then runs on a separate
+  test build), or move the model's crash test to assembly (~700 cycles).
+- **Tests** (`make test`, 65 checks, all pass): the empty test track build (`build/empty/`)
+  carries the physics, sound and rider checks; the scene build adds F3 rules over every trace
+  (crash, pause, retake, firing, fee per track, bonus, take back), `clear.keys` (scene 1 ridden
+  clean flat out with 3 jumps: $90 with the bonus), `takeback.keys` (a crash, three scenes cleared,
+  the take comes back, fees $490), screens equal to a pixel reference with the moving hazards where
+  the sprite table says, drawn hazards within a step of the model, torn frames under 1% with the
+  hazards, and the native model clean under AddressSanitizer + UBSan (it found a `h[0][i]` read past
+  a row that `-O2` turned into a crash). The rider's torn-frame rate is now counted over all
+  scripts together: a 67-cycle burst can be caught by a beam under 45 cycles above the box
+  (~0.2-0.4% of draws, in clusters as the step drifts 32 cycles a frame), and one 37-draw script
+  alone read 2.7%.
+- **Bugs found on the way:** cc65 reads a `uint8_t` returned from assembly as A with X, so X must be
+  0 (the budget check compared garbage); the rope routine shared zero page with the sprite mover and
+  shifted the ball one cell right (the pixel check caught it); `far` is a cc65 keyword.
+- Program ends at `$4497`; 20,841 bytes free below `$9800`.
+- **BUILD 10 (Bob: "the police car is driving the wrong way for the image; it shouldn't pass over
+  the truck"):** the car picture was mirrored; it now faces the way it drives. Scene 1's track 2 is
+  the police car's own lane, and its van moved to track 1 (drums at 120, van at 200).
+  `clear.keys` and `takeback.keys` re-timed for the new layout (searched on the native model).
 
 ### F2: One track (BUILD 7, 23 Nov 2026)
 

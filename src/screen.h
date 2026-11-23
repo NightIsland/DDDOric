@@ -22,6 +22,8 @@
 void screen_init(void);
 void scene_draw(const struct scene *s, uint8_t billing);
 void rider_draw(uint8_t track, uint8_t xpx, uint8_t height, uint8_t frame);
+void hazards_list(const struct scene *s);  /* after scene_draw */
+void hazards_draw(void);
 void status_update(void);
 
 #endif
