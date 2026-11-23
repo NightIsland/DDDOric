@@ -33,6 +33,7 @@ sw_vol:         .res 1          ; channel C sweep: volume (0 = silent)
 sw_lo:          .res 1          ;   period
 sw_hi:          .res 1
 sw_step:        .res 1          ;   period change a tick (signed)
+sw_new:         .res 1          ; sweep's starting volume (argument)
 
         .segment        "CODE"
 
@@ -141,25 +142,36 @@ _snd_burst:
         plp
         rts
 
-; sweep: start the channel C sweep: period A (low) X (high), step Y, volume 13.
-sweep:  php
+; sweep: start the channel C sweep: period A (low) X (high), step Y, volume
+; 13; sweep15: the same at volume 15, so it lasts 150 ms.
+sweep15:
+        pha
+        lda     #15
+        bne     sw_go
+sweep:  pha
+        lda     #13
+sw_go:  sta     sw_new
+        pla
+        php
         sei
         sta     sw_lo
         stx     sw_hi
         sty     sw_step
-        lda     #13
+        lda     sw_new
         sta     sw_vol
         plp
         rts
 
-; void snd_jump(void): take-off: a soft hiss and a rising whoosh.
+; The three effects must not sound alike (Bob, BUILD 7): take-off is a clean
+; rising tone with no noise; landing a low noise thump under a falling tone;
+; the stop a high squeal over a bright hiss.
+
+; void snd_jump(void): take-off: a rising whoosh, tone only, 150 ms.
 _snd_jump:
-        lda     #4
-        jsr     _snd_burst
-        lda     #<360
-        ldx     #>360
+        lda     #<420
+        ldx     #>420
         ldy     #<-24
-        jmp     sweep
+        jmp     sweep15
 
 ; void snd_land(void): landing: a low thump.
 _snd_land:
@@ -170,11 +182,11 @@ _snd_land:
         ldy     #60
         jmp     sweep
 
-; void snd_stop(void): the stop: brakes squeal.
+; void snd_stop(void): the stop: brakes squeal over a hiss.
 _snd_stop:
-        lda     #2
+        lda     #1
         jsr     _snd_burst
-        lda     #<70
-        ldx     #>70
-        ldy     #3
-        jmp     sweep
+        lda     #<42
+        ldx     #>42
+        ldy     #1
+        jmp     sweep15

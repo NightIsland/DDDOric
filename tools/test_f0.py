@@ -218,6 +218,28 @@ vols = {v for _, reg, v in r.ay[-40:] if reg == 8}
 check("engine: tone A period 1,250 - 4 x speed (50 Hz standing, 250 Hz flat out), buzzing volume",
       per.get(0, 0) | per.get(1, 0) << 8 == 250 and vols == {10, 7},
       f"period {per.get(0, 0) | per.get(1, 0) << 8}, volumes {sorted(vols)}")
+# Bob on BUILD 7: take-off, landing and the stop must sound different
+r = emu.run(TAP, frames=420, keys=os.path.join(KEYS, "airstop.keys"), out=os.path.join(OUT, "effects"))
+tr = {parse(l)["step"]: parse(l)["ev"] for l in r.trace.decode().splitlines()}
+
+
+def effect(ev):
+    """(noise period or None, tone C periods) in the 150 ms after the first step with event ev"""
+    st = next(k for k, v in sorted(tr.items()) if v & ev)
+    t0 = r.marks[st - 1]
+    w = [(reg, v) for c, reg, v in r.ay if t0 <= c < t0 + 150000]
+    noise = next((v for reg, v in w if reg == 6), None)
+    lo = [v for reg, v in w if reg == 4]
+    hi = [v for reg, v in w if reg == 5]
+    return noise, [a | b << 8 for a, b in zip(lo, hi)]
+
+
+fx = {n: effect(e) for n, e in (("jump", 0x01), ("stop", 0x04), ("land", 0x02))}
+j, st_, la = fx["jump"], fx["stop"], fx["land"]
+check("effects: take-off a rising tone with no noise; landing a low thump; stop a high squeal and hiss",
+      j[0] is None and j[1][-1] < j[1][0] and la[0] >= 10 and la[1][-1] > la[1][0]
+      and st_[0] is not None and st_[0] <= 2 and max(st_[1]) < 80,
+      "; ".join(f"{n}: noise {v[0]}, tone {v[1][0] if v[1] else '-'}->{v[1][-1] if v[1] else '-'}" for n, v in fx.items()))
 sc = [parse(l) for l in allr[3]]
 check("scene.keys: leaving track 4 finishes the scene", any(s["ev"] & 0x10 for s in sc))
 
@@ -228,7 +250,7 @@ ori = emu.run(OTAP, frames=400, keys=path, out=os.path.join(OUT, "ay-oricutron")
 r6r = [v for _, reg, v in rel.ay if reg == 6 and v]
 r6o = [v for _, reg, v in ori.ay if reg == 6 and v]
 check("ORICUTRON=1: every noise period doubled, all within 1-31",
-      len(r6r) >= 3 and r6o == [2 * v for v in r6r] and max(r6o) <= 31, f"release {r6r}, Oricutron {r6o}")
+      len(r6r) >= 2 and r6o == [2 * v for v in r6r] and max(r6o) <= 31, f"release {r6r}, Oricutron {r6o}")
 check("ORICUTRON=1: same game (traces equal)", rel.trace == ori.trace)
 
 # 9. determinism and size

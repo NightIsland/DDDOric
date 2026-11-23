@@ -42,7 +42,7 @@ takes the next number.
 | M1 | Measure the BBC original: speeds, acceleration, jump arc and time, start speed, wrap, hanging-hazard period, sea and snow handling, fee on a retake | — | docs only | done, PR open (`docs/M1-MEASUREMENTS.md`) |
 | F0 | Skeleton and harness: cc65 2.19 built for the cloud shell, `none.lib`, own crt0 and ld65 config at $0500, ROM-free IRQ hook, autorun `.tap`, Makefile with size report and `ORICUTRON=1`; Chuckie Egg's emulator adapted, PNG output, key scripts, debug port at $BFE0; native C model with per-step trace | — | crt0 + cfg ≤ 256 B | merged (BUILD 1); BUILD 3 fixes Bob's fading and tearing rider |
 | F1 | Display: HIRES init, per-line paper/ink columns, a track screen drawn from scene data, status line in the text-row bitmap font, one-pass pre-shifted sprite draw | F0 | code ≤ 1.5 KB; sprite ≤ 1,400 cycles | BUILD 4 merged (PR #6); BUILD 5–6 fixes in a follow-up PR |
-| F2 | One track: rider physics (DESIGN "Physics"), keys (Space, either Shift, Return), 50 Hz step, engine sound | F0, F1 | logic ≤ 4,000 cycles a step | BUILD 7, PR open |
+| F2 | One track: rider physics (DESIGN "Physics"), keys (Space, either Shift, Return), 50 Hz step, engine sound | F0, F1 | logic ≤ 4,000 cycles a step | BUILD 8, PR open |
 | F3 | Whole scene: four tracks, wrapping, block, runner, dangler, gap and ceiling block, crashes, fees, the one stop | F2 | whole step ≤ 16,000 cycles | not started |
 | F4 | Film frame: clapper card, takes, "Cut!", scene cleared, "You're fired", title screen, billing select, top five | F3 | | not started |
 | F5 | Film 1 (*Rush Hour Rumble*) complete at all six billings, tuned to M1's numbers; Bob judges the feel against the original | F4, M1 | | not started |
@@ -138,6 +138,10 @@ Briefs written by the architect when the previous feature is merged, from DESIGN
   flat out (period 1,250 − 4 × speed), its volume alternating 10/7 every 10 ms for a motorbike buzz;
   silent while paused. Tone C sweeps for effects: take-off a hiss and rising whoosh, landing a low
   thump, the stop a brake squeal. Noise still doubled in the Oricutron build (checked).
+- **BUILD 8 (Bob: "the take-off sounds the same as the landing and the brakes"):** all three had
+  a full-volume noise burst that drowned the tone sweep. Now take-off is a clean rising tone with no
+  noise (150 ms), landing keeps its low thump (noise 12 under a falling tone), and the stop is a high
+  squeal (tone ~1.5 kHz) over a bright hiss (noise 1). A check reads each effect from the AY log.
 - **Status:** speed now shows the original's 0–250.
 - Worst step 13,000 of 20,000 cycles.
 
