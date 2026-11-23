@@ -5,6 +5,9 @@
 #   make test         both builds, emulator, native reference; runs tools/test_f0.py
 #   make ref          build/ref/ref: native model with the per-step trace (tools/ref/ref.c)
 #   make emu          build/emu/emu: headless emulator (tools/emu/emu.c)
+#   make solve        build/solve/solve: searches winning runs (tools/solve/solve.c)
+#   make wins         re-searches tests/keys/win-b1..6.keys (each billing's proof),
+#                     takeback.keys and season.keys
 #   make clean
 # On Linux x86_64 the vendored cc65 2.19 is used (tools/vendor/cc65); elsewhere
 # cc65 must be on PATH (macOS: brew install cc65).
@@ -34,7 +37,7 @@ OBJS := $(B)/crt0.o $(B)/main.o $(B)/model.o $(B)/trace.o $(B)/screen.o \
         $(B)/scene.o $(B)/frame.o $(B)/text.o $(B)/system.o $(B)/keys.o $(B)/sound.o $(B)/draw.o $(B)/art.o
 HDRS := $(wildcard src/*.h) build/gen/art.h
 
-.PHONY: all test ref emu clean
+.PHONY: all test ref emu solve wins clean
 .SECONDARY:
 .SUFFIXES:
 
@@ -73,6 +76,17 @@ emu: build/emu/emu
 build/ref/ref: tools/ref/ref.c src/model.c src/trace.c src/scene.c $(HDRS)
 	@mkdir -p build/ref
 	$(HOSTCC) -O2 -Wall -Wextra -I src -I build/gen -o $@ tools/ref/ref.c src/model.c src/trace.c src/scene.c
+
+solve: build/solve/solve
+
+build/solve/solve: tools/solve/solve.c src/model.c src/scene.c $(HDRS)
+	@mkdir -p build/solve
+	$(HOSTCC) -O2 -Wall -I src -I build/gen -o $@ tools/solve/solve.c src/scene.c
+
+# every scene of film 1 proved beatable at every billing (DESIGN "Billings"),
+# each jump with a window of W steps to press it in (tools/solve/solve.c)
+wins: build/solve/solve
+	tools/solve/wins.sh
 
 build/emu/emu: tools/emu/emu.c
 	@mkdir -p build/emu

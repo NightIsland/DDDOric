@@ -22,12 +22,16 @@ FRAMES = [n for n, _ in mkart.RIDER_FRAMES]
 
 def load_scene(name="scene_rhr1"):
     src = open(os.path.join(ROOT, "src", "scene.c")).read()
-    pal = src[src.index("pal_city = {"):src.index("};", src.index("pal_city = {"))]
+    body = src[src.index(name + " = {"):]
+    body = body[:body.index("\n};")]
+    head = body.split("{", 2)[1]                # "film", number, vehicle, ground, &pal,
+    pname = re.search(r"&(pal_\w+)", head).group(1)
+    vehicle = 1 if "VH_JETSKI" in head else 0
+    ground = 1 if "GROUND_WATER" in head else 0
+    pal = src[src.index(pname + " = {"):src.index("};", src.index(pname + " = {"))]
     names = re.findall(r"\b(BLACK|RED|GREEN|YELLOW|BLUE|MAGENTA|CYAN|WHITE)\b", pal.split("{", 1)[1])
     cols = [COLOURS[n] for n in names]
     title_paper, title_ink, paper, ink = cols[0], cols[1], cols[2:50], cols[50:98]
-    body = src[src.index(name + " = {"):]
-    body = body[:body.index("\n};")]
     tracks = []
     for tb in re.findall(r"\{((?:\s*\{[^{}]*\},?)+)\s*\}", body)[:4]:
         recs = []
@@ -37,7 +41,13 @@ def load_scene(name="scene_rhr1"):
             recs.append(tuple(val(v) for v in f))
         tracks.append(recs)
     tracks += [[] for _ in range(4 - len(tracks))]
-    return dict(title_paper=title_paper, title_ink=title_ink, paper=paper, ink=ink, tracks=tracks)
+    return dict(title_paper=title_paper, title_ink=title_ink, paper=paper, ink=ink, tracks=tracks,
+                vehicle=["bike", "jetski"][vehicle], water=bool(ground))
+
+
+def scene_at(run_scene):
+    """src/scene.c scene_at: film 1's two scenes take turns (until F6)"""
+    return "scene_rhr1" if run_scene % 2 else "scene_rhr2"
 
 
 def scene_bytes(billing=1, name="scene_rhr1"):
@@ -69,6 +79,15 @@ def scene_bytes(billing=1, name="scene_rhr1"):
         y0 = TITLE + t * BAND
         for i in range(BAND):
             colours(y0 + i, sc["paper"][i], sc["ink"][i])
+            if sc["water"]:                 # waves: crests, troughs, ripples (DESIGN film 1 scene 2)
+                for c in range(2, 40):
+                    if i == ROAD:
+                        mem[(y0 + i) * 40 + c] = 0x4C
+                    elif i == ROAD + 1:
+                        mem[(y0 + i) * 40 + c] = 0x73
+                    elif i == ROAD + 3 and c % 2:
+                        mem[(y0 + i) * 40 + c] = 0x46
+                continue
             if i == ROAD:
                 for c in range(1, 40):
                     mem[(y0 + i) * 40 + c] = 0x7F
@@ -77,7 +96,7 @@ def scene_bytes(billing=1, name="scene_rhr1"):
                     if (c - 2) % 4 < 2:
                         mem[(y0 + i) * 40 + c] = 0x7F
         for kind, x, a, b in recs:
-            if kind == 1:
+            if kind in (1, 7):                  # blocks and slipways stand on the road
                 blit(a, x, y0 + ROAD - 1)
             elif kind == 3:
                 rows, w, h = mkart.scenery(mkart.SCENERY[a][0])
@@ -89,10 +108,10 @@ def scene_bytes(billing=1, name="scene_rhr1"):
                 for y in range(y0, y0 + b + 1):
                     setpx(x + 1, y)
                     setpx(x + w - 2, y)
-            elif kind == 4 and billing >= b:
+            elif kind == 4 and billing >= b:   # the road missing; on water, rocks
                 for y in range(y0 + ROAD, y0 + ROAD + 4):
                     for px in range(x, x + a):
-                        clrpx(px, y)
+                        (setpx if sc["water"] else clrpx)(px, y)
     return mem
 
 
@@ -150,9 +169,9 @@ def hazard_bytes(name="scene_rhr1", pos=None):
     return out
 
 
-def rider_bytes(track, x, h, frame):
+def rider_bytes(track, x, h, frame, vehicle="bike"):
     """{address: xor mask} of the rider (cells past 39 clipped)"""
-    img = mkart.rider(frame)[x % 6]
+    img = mkart.rider(frame, vehicle)[x % 6]
     top = TITLE + track * BAND + RIDER_TOP - h
     out = {}
     for col in range(3):

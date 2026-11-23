@@ -120,52 +120,89 @@ check("left edge: cell 0 black on every line, picture from pixel 6 (Bob, BUILD 4
       and all(r.pixel(6, y) == YEL for y in roads))
 check("title strip: red paper, yellow film name", r.pixel(6, 0) == RED and r.pixel(239, 7) == RED
       and any(r.pixel(x, y) == YEL for x in range(12, 90) for y in range(1, 8)))
+import mkart  # noqa: E402
+
+
+def run_scene(lines):
+    """(scene name, billing) of the scene being played at a trace's last line:
+    a run starts at scene (billing - 1) x 12 + 1, each clear moves it on one,
+    and film 1's two scenes take turns (src/scene.c scene_at)"""
+    start_b, cleared, s_ = 1, 0, None
+    for l in lines:
+        s_ = parse(l)
+        if s_["ev2"] & 0x20:                # a new run
+            start_b, cleared = s_["billing"], 0
+        if s_["ev"] & 0x10:
+            cleared += 1
+    return scene_ref.scene_at((start_b - 1) * 12 + 1 + cleared), (s_["billing"] if s_ else 1)
+
+
+def scene_of(r):
+    return run_scene(r.trace.decode().splitlines())
+
+
 def with_rider(want, r):
     """the reference scene plus the rider where the run's last trace line says"""
     s_ = parse(r.trace.decode().splitlines()[-1])
     x = scene_ref.px(s_["x"])
+    veh = scene_ref.load_scene(scene_of(r)[0])["vehicle"]
     for a_, v in scene_ref.rider_bytes(s_["track"], x, s_["h"],
-                                       scene_ref.frame_for(x, s_["jt"], s_["crash_t"])).items():
+                                       scene_ref.frame_for(x, s_["jt"], s_["crash_t"]), veh).items():
         want[a_ - 0xA000] ^= v
     return want
 
 
+def reference(r):
+    """the screen the run should end on: its scene at its billing, the rider and the moving hazards"""
+    name, bill = scene_of(r)
+    return with_hazards(with_rider(scene_ref.scene_bytes(bill, name), r), r)
+
+
+def moving(name="scene_rhr1"):
+    sc = scene_ref.load_scene(name)
+    return [(t, k, x, a) for t, recs in enumerate(sc["tracks"]) for k, x, a, b in recs if k in (2, 3)]
+
+
 SC = scene_ref.load_scene()
-MOVING = [(t, k, x, a) for t, recs in enumerate(SC["tracks"]) for k, x, a, b in recs if k in (2, 3)]
+MOVING = moving()
+NSLOT = 6                                   # src/scene.h SC_MAX
 
 
-def drawn_pos(r, tap=TAP):
+def drawn_pos(r, tap=TAP, name=None):
     """where the moving hazards are drawn (src/draw.s sprite table: sprite
     1 + i), as hazard_bytes positions: a runner's x px, a dangler's drop"""
     sy = emu.symbols(tap)
+    name = name or scene_of(r)[0]
     pos = []
-    for i, (t, k, x, a) in enumerate(MOVING):
+    for i, (t, k, x, a) in enumerate(moving(name)):
         n = 1 + i
         y, c = r.mem[sy["_sp_y"] + n], r.mem[sy["_sp_c"] + n]
         img = r.mem[sy["_sp_lo"] + n] | r.mem[sy["_sp_hi"] + n] << 8
         if k == 2:
-            pos.append((c - 2) * 6 + (img - sy["_spr_police"]) // (5 * 12))
+            base = sy["_spr_" + mkart.SCENERY[a][0]]
+            pos.append((c - 2) * 6 + (img - base) // (5 * 12))
         else:
             pos.append(y - (8 + 48 * t + scene_ref.DANGLE_TOP))
     return pos
 
 
-def lamp_lines():
-    """the police cars' top two lines: their ink flashes red and blue (Bob, BUILD 13)"""
-    return [(8 + 48 * t + 44 - 12, 8 + 48 * t + 45 - 12) for t, k, x, a in MOVING if k == 2]
+def lamp_lines(name="scene_rhr1"):
+    """the runners' top two lines: their ink flashes red and blue (Bob, BUILD 13)"""
+    return [(8 + 48 * t + 44 - 12, 8 + 48 * t + 45 - 12) for t, k, x, a in moving(name) if k == 2]
 
 
 def with_hazards(want, r, tap=TAP):
-    for a_, v in scene_ref.hazard_bytes(pos=drawn_pos(r, tap)).items():
+    name = scene_of(r)[0]
+    for a_, v in scene_ref.hazard_bytes(name, pos=drawn_pos(r, tap, name)).items():
         want[a_ - 0xA000] ^= v
-    for y0, y1 in lamp_lines():             # red and blue, either way round
+    for y0, y1 in lamp_lines(name):         # red and blue, either way round
         inks = (r.mem[0xA000 + y0 * 40], r.mem[0xA000 + y1 * 40])
         if inks in ((1, 4), (4, 1)):
             want[y0 * 40], want[y1 * 40] = inks
     return want
 
 
-want = with_hazards(with_rider(scene_ref.scene_bytes(1), r), r)
+want = reference(r)
 got = r.mem[0xA000:0xA000 + 8000]
 bad = [i for i in range(320, 8000) if want[i] != got[i]]
 check("scene drawn from its data: lines 8-199 = reference + rider + moving hazards (billing 1)", not bad,
@@ -181,7 +218,8 @@ want3 = with_hazards(with_rider(scene_ref.scene_bytes(3), r3), r3, B3)
 got3 = r3.mem[0xA000:0xA000 + 8000]
 bad3 = [i for i in range(320, 8000) if want3[i] != got3[i]]
 holes = sum(1 for y in roads for x in range(12, 240) if r3.pixel(x, y) != YEL)
-check("billing 3 shows the gaps tagged for it (scene = reference)", not bad3 and holes == 18 + 24,
+gw3 = sum(a for recs in SC["tracks"] for k, x, a, b in recs if k == 4 and b <= 3)
+check(f"billing 3 shows the gaps tagged for it (scene = reference; {gw3} px of kerb gone)", not bad3 and holes == gw3,
       f"{len(bad3)} wrong bytes, {holes} kerb pixels missing")
 row0 = r.mem[0xBF68:0xBF68 + 40]
 row2 = r.mem[0xBF68 + 80:0xBF68 + 120]
@@ -347,9 +385,11 @@ check("scene.keys: leaving track 4 finishes the scene", any(s["ev"] & 0x10 for s
 #     decisions: fee per track finished = 10 x the scene's number in the run,
 #     paid again on a retake; one-take bonus; a take back every third scene)
 def f3_rules(lines):
-    prev, errs, crash_at = None, [], None
+    prev, errs, crash_at, base = None, [], None, 0
     for l in lines:
         s = parse(l)
+        if s["ev2"] & RUNSTART:             # billing b starts at scene (b - 1) x 12 + 1
+            base = (s["billing"] - 1) * 12
         if prev:
             restart = s["ev"] & 0x10 or s["ev2"] & (0x04 | 0x08 | RUNSTART)
             if s["speed"] < prev["speed"] and not s["ev"] & (0x04 | 0x80) and not restart:
@@ -372,7 +412,7 @@ def f3_rules(lines):
                     if not ok or (s["x"], s["track"], s["speed"]) != (0, 0, 0):
                         errs.append(f"bad retake at {s['step']}")
             if s["ev2"] & 0x01:
-                sc_no = (prev["flags"] >> 4) + 1
+                sc_no = base + (prev["flags"] >> 4) + 1
                 want = prev["fee"] + 10 * sc_no + (50 * sc_no if s["ev2"] & 0x02 else 0)
                 if s["fee"] != want:
                     errs.append(f"fee {prev['fee']}->{s['fee']} at {s['step']}, want {want}")
@@ -389,6 +429,9 @@ def f3_rules(lines):
 rhr = {os.path.basename(p): ref_trace(p, n) for p, n in scripts}
 rhr["clear.keys"] = ref_trace(os.path.join(KEYS, "clear.keys"), 452)
 rhr["takeback.keys"] = ref_trace(os.path.join(KEYS, "takeback.keys"), 2000)
+WIN_W = [8, 8, 6, 6, 5, 4]                   # tools/solve/wins.sh
+for b in range(1, 7):
+    rhr[f"win-b{b}.keys"] = ref_trace(os.path.join(KEYS, f"win-b{b}.keys"), 1400)
 errs = sum((f3_rules(t) for t in rhr.values()), [])
 evs = [parse(l) for t in rhr.values() for l in t]
 check("F3 rules: crash = dead stop, a take lost, 1.5 s pause, then the clapper card for the retake from the "
@@ -408,50 +451,76 @@ def pixels(rows, x0, y0):
     return {(x0 + c, y0 + r) for r, row in enumerate(rows) for c, b in enumerate(row) if b}
 
 
+RUN_MUL = [4, 4, 5, 5, 6, 6, 7]             # runners' speed by billing, quarters (DESIGN "Billings")
+DANGLE_HALF = [6, 6, 5, 5, 4, 4, 3]         # danglers: half steps a line
+
+
 def touch_errors(lines):
-    errs, prev, st = [], None, None
+    """every riding step: a crash exactly when a rider pixel meets a hazard
+    pixel, or his wheels' middle is over a gap on the road; the hazards
+    replayed independently from DESIGN (runners 0.95 px a step at billing 1,
+    x 1.25, 1.5, 1.75 up the billings, wrapping in 0..228-w; danglers 1 line
+    every 3, 2.5, 2, 1.5 steps, 0..25 and back)"""
+    errs, prev, st, ctx = [], None, None, None
+    seen = []
 
     def start():
-        return {i: [x * 256, 0, 3] for i, (t, k, x, a) in enumerate(MOVING)}   # fx, drop, timer
+        name, bill = run_scene(seen)
+        sc = scene_ref.load_scene(name)
+        mv = moving(name)
+        sp = (122 * RUN_MUL[bill]) >> 2
+        return dict(sc=sc, mv=mv, bill=bill, sp=sp, r=DANGLE_HALF[bill],
+                    h={i: [x, 0, 0, DANGLE_HALF[bill], 0] for i, (t, k, x, a) in enumerate(mv)})  # px, frac, drop, count, rising
     for l in lines:
+        seen.append(l)
         s_ = parse(l)
         if st is None:
             st = start()
         moved = bool(prev) and prev["mode"] == PLAY and not prev["flags"] & 2 and not s_["ev"] & 0x60
         if moved:
-            for i, (t, k, x, a) in enumerate(MOVING):
-                h = st[i]
-                if k == 2:
-                    mx = (228 - mkart.scenery(mkart.SCENERY[a][0])[1]) * 256
-                    h[0] = (h[0] - 244) % mx
+            for i, (t, k, x, a) in enumerate(st["mv"]):
+                h = st["h"][i]
+                if k == 2:                  # leftwards: the fraction borrows a px
+                    mx = 228 - mkart.scenery(mkart.SCENERY[a][0])[1]
+                    f, n = h[1] - (st["sp"] & 0x7F), st["sp"] >> 7
+                    if f < 0:
+                        f, n = f + 128, n + 1
+                    h[1] = f
+                    h[0] = (h[0] - n) % mx
                 else:
-                    h[2] -= 1
-                    if h[2] == 0:
-                        h[2] = 3
-                        h[1] += 1 if h[1] < 25 and not (len(h) > 3 and h[3]) else -1
-                        if h[1] == 25:
-                            h.append(1)
-                        elif h[1] == 0 and len(h) > 3:
-                            del h[3:]
+                    if h[3] > 2:
+                        h[3] -= 2
+                    else:
+                        if h[4]:
+                            h[2] -= 1
+                            if h[2] == 0:
+                                h[4] = 0
+                        else:
+                            h[2] += 1
+                            if h[2] == 25:
+                                h[4] = 1
+                        h[3] = h[3] - 2 + st["r"]
         if s_["ev"] & 0x10 or s_["ev2"] & (0x04 | 0x08 | RUNSTART):
             st = start()
         elif moved:
             px_ = scene_ref.px(s_["x"])
             frame = "jump" if s_["jt"] else ("ride_b" if px_ & 4 else "ride_a")
-            bike = pixels(mkart.bits(dict(mkart.RIDER_FRAMES)[frame]), px_, 28 - s_["h"])
+            bike = pixels(mkart.bits(dict(dict(mkart.VEHICLES)[st["sc"]["vehicle"]])[frame]), px_, 28 - s_["h"])
             hit = False
-            for k, x, a, b in SC["tracks"][s_["track"]]:
+            for k, x, a, b in st["sc"]["tracks"][s_["track"]]:
                 if k in (1, 2, 3, 5):
                     rows, w, hh = mkart.scenery(mkart.SCENERY[a][0])
                     if k == 2:
-                        i = MOVING.index((s_["track"], k, x, a))
-                        x, y = st[i][0] >> 8, 44 - hh
+                        i = st["mv"].index((s_["track"], k, x, a))
+                        x, y = st["h"][i][0], 44 - hh
                     elif k == 3:
-                        i = MOVING.index((s_["track"], k, x, a))
-                        y = 6 + st[i][1]
+                        i = st["mv"].index((s_["track"], k, x, a))
+                        y = 6 + st["h"][i][2]
                     else:
                         y = 44 - hh if k == 1 else b + 1 - hh
                     hit |= bool(bike & pixels(rows, x, y))
+                elif k == 4 and st["bill"] >= b and not s_["jt"]:
+                    hit |= x <= px_ + 6 < x + a
             if hit != bool(s_["ev"] & 0x80):
                 errs.append(f"step {s_['step']}: touch {hit}, crash {bool(s_['ev'] & 0x80)}")
         prev = s_
@@ -459,7 +528,8 @@ def touch_errors(lines):
 
 
 errs = sum((touch_errors(t) for t in rhr.values()), [])
-check("crashes only on a real touch: a bike pixel on a hazard pixel, every step of every trace (Bob, BUILD 10)",
+check("crashes only on a real touch: a rider pixel on a hazard pixel or the wheels over a gap, every step of "
+      "every trace, both scenes, all billings (Bob, BUILD 10)",
       not errs, "; ".join(errs[:3]))
 cl = [parse(l) for l in rhr["clear.keys"]]
 end = next((s for s in cl if s["ev"] & 0x10), None)
@@ -471,6 +541,19 @@ gb = next((s for s in tb if s["ev2"] & 0x10), None)
 check("takeback.keys: a crash, then three scenes cleared: the lost take comes back; fees 40 + 220 + 270",
       gb is not None and gb["takes"] == 3 and gb["fee"] == 40 + 80 + 100 + 120 + 150,
       f"step {gb['step']}, takes {gb['takes']}, fee ${gb['fee']}" if gb else "no take given back")
+# F5: film 1 proved beatable at every billing (DESIGN "Billings"): each
+# win-bN.keys (searched by tools/solve, every jump with a window of WIN_W
+# steps to press it in) starts billing N from the title and clears both
+# scenes of Rush Hour Rumble on their first take; the Oric plays it the same
+wins = []
+for b in range(1, 7):
+    w = [parse(l) for l in rhr[f"win-b{b}.keys"]]
+    clears = [s for s in w if s["ev"] & 0x10]
+    ok = len(clears) >= 2 and all(s["ev2"] & 0x02 for s in clears[:2]) and w[-1]["billing"] == b \
+        and not any(s["ev"] & 0x80 for s in w if s["step"] <= clears[1]["step"])
+    wins.append(f"B{b}: {'cleared' if ok else 'FAILED'}" + (f" by step {clears[1]['step']}" if len(clears) > 1 else ""))
+    check(f"win-b{b}.keys: billing {b}, both scenes of film 1 cleared on the first take "
+          f"(every jump has {WIN_W[b - 1]} steps to press it in)", ok, wins[-1])
 # hazards in the game: the police car drives left 1 px a step (122/128) and
 # wraps; the ball bobs 1 line every 3 steps, 0..25 below its top
 syms = emu.symbols(TAP)
@@ -478,14 +561,14 @@ r = emu.run(TAP, frames=400, keys=os.path.join(KEYS, "clear.keys"), out=os.path.
 emu.write_png(os.path.join(OUT, "f3-screen.png"), r.rgb, 2)
 check("clear.keys on the Oric: same trace as the native model",
       r.trace.decode().splitlines() == rhr["clear.keys"][:399])
-pos, hz = drawn_pos(r), list(r.mem[syms["_hz_px"]:syms["_hz_px"] + 16])
-dr = list(r.mem[syms["_hz_drop"]:syms["_hz_drop"] + 16])
-model_pos = [hz[t * 4 + j] if k == 2 else dr[t * 4 + j] for t, k, x, a in MOVING
+pos, hz = drawn_pos(r), list(r.mem[syms["_hz_px"]:syms["_hz_px"] + 4 * NSLOT])
+dr = list(r.mem[syms["_hz_drop"]:syms["_hz_drop"] + 4 * NSLOT])
+model_pos = [hz[t * NSLOT + j] if k == 2 else dr[t * NSLOT + j] for t, k, x, a in MOVING
              for j in [next(j for j, rec in enumerate(SC["tracks"][t]) if rec[:2] == (k, x))]]
 check("moving hazards drawn where the game has them (a step behind at most)",
       all(abs(p - q) <= (2 if k == 2 else 1) for p, q, (t, k, x, a) in zip(pos, model_pos, MOVING)),
       f"drawn {pos}, game {model_pos}")
-want = with_hazards(with_rider(scene_ref.scene_bytes(1), r), r)
+want = reference(r)
 got = r.mem[0xA000:0xA000 + 8000]
 bad = [i for i in range(320, 8000) if want[i] != got[i]]
 check("clear.keys screen after 400 steps = scene + rider + police car + wrecking ball and rope", not bad,
@@ -493,7 +576,7 @@ check("clear.keys screen after 400 steps = scene + rider + police car + wrecking
 r = emu.run(TAP, frames=150, keys=os.path.join(KEYS, "takeback.keys"), out=os.path.join(OUT, "f3-crash"))
 emu.write_png(os.path.join(OUT, "f3-crash.png"), r.rgb, 2)
 row0 = r.mem[0xBF68:0xBF68 + 40]
-want = with_hazards(with_rider(scene_ref.scene_bytes(1), r), r)
+want = reference(r)
 got = r.mem[0xA000:0xA000 + 8000]
 bad = [i for i in range(320, 8000) if want[i] != got[i]]
 check("crash: the crash picture, \"CUT!\" on the status line, a take icon gone, screen = reference",
@@ -608,10 +691,10 @@ check("season.keys: twelve scenes cleared, \"THAT'S A WRAP!\", then the next bil
       f"wrap at step {wrap['step'] if wrap else None}, then billing {after[-1]['billing'] if after else None}, "
       f"track fee {fee13}")
 if wrap:
-    rw = emu.run(TAP, frames=wrap["step"] + 5, keys=sk, out=os.path.join(OUT, "f4-wrap"))
+    rw = emu.run(TAP, frames=wrap["step"] + 2, keys=sk, out=os.path.join(OUT, "f4-wrap"))   # (Space skips it next)
     emu.write_png(os.path.join(OUT, "f4-wrap.png"), rw.rgb, 2)
     check("season.keys on the Oric: same trace; the wrap card lists the six films",
-          rw.trace.decode().splitlines() == ref_trace(sk, wrap["step"] + 4)
+          rw.trace.decode().splitlines() == ref_trace(sk, wrap["step"] + 1)
           and text_at(rw, 2 + (38 - 16) // 2, 64, "RUSH HOUR RUMBLE") and text_at(rw, 2 + (38 - 10) // 2, 124, "COLD FRONT"))
 qk = os.path.join(KEYS, "quit.keys")
 qt = [parse(l) for l in ref_trace(qk, 200)]
@@ -622,7 +705,7 @@ check("quit.keys: L twice = billing 3 ($250 a track); Esc asks, N rides on, Esc 
 ra = emu.run(TAP, frames=105, keys=qk, out=os.path.join(OUT, "f4-ask"))
 emu.write_png(os.path.join(OUT, "f4-ask.png"), ra.rgb, 2)
 rn = emu.run(TAP, frames=114, keys=qk, out=os.path.join(OUT, "f4-ask-n"))
-want = with_hazards(with_rider(scene_ref.scene_bytes(3), rn), rn)
+want = reference(rn)
 got = rn.mem[0xA000:0xA000 + 8000]
 bad = [i for i in range(320, 8000) if want[i] != got[i]]
 check("quit.keys: \"QUIT?\" pops up over the scene; after N the scene is back as it was",
@@ -637,7 +720,7 @@ check("pause: \"PAUSED\" pops up (its screen comes back on resuming: the rider c
 junk_ok = []
 for seed in (1, 2, 3):
     rj = emu.run(TAP, frames=50, keys=START, junk=seed, out=os.path.join(OUT, f"junk{seed}"))
-    want = with_hazards(with_rider(scene_ref.scene_bytes(1), rj), rj)
+    want = reference(rj)
     junk_ok.append(rj.mem[0xA000 + 320:0xA000 + 8000] == want[320:8000])
 check("RAM full of junk at load (as on a booted Oric): the first scene and rider still = reference (Bob, BUILD 12)",
       all(junk_ok), str(junk_ok))
@@ -707,7 +790,13 @@ def tears(r, ok_steps):
 tj = os.path.join(KEYS, "topjumps.keys")
 blank = scene_ref.scene_bytes(1, "scene_test")
 all_torn = all_drawn = 0
-for path, n in [(tj, 1500)] + scripts[:5]:
+# (F5: with the win runs' first scenes too, ridden on the empty track: the
+# rate is a property of the drawing, and more riding steps measure it better)
+rider_runs = [(tj, 1500)] + scripts[:5]
+for b in range(1, 7):
+    cl = [parse(l)["step"] for l in rhr[f"win-b{b}.keys"] if int(l.split()[7], 16) & 0x10]
+    rider_runs.append((os.path.join(KEYS, f"win-b{b}.keys"), cl[0] - 30))
+for path, n in rider_runs:
     r = emu.run(ETAP, frames=n, keys=path, wlog=True, out=os.path.join(OUT, "rider-" + os.path.basename(path)))
     ok_steps = steady(r.trace.decode().splitlines())
     last, twice = {}, 0
@@ -743,19 +832,29 @@ check("rider: under 1% torn frames over all the scripts", all_torn * 100 < all_d
 # cards move the steps' phase against the video, and with it where the
 # clusters fall; BUILD 13: the three short scripts alone read 1.3%, so the
 # long season run is in the sample too)
+# F5: the win runs too, each stopped 30 steps before it clears the harbour
+# (the jet-ski, the patrol boat, the water and every gap of its billing)
 sc_torn = sc_draw = 0
-for path, n in ((os.path.join(KEYS, "clear.keys"), 430), (os.path.join(KEYS, "takeback.keys"), 1950), (rnd, RND_N),
-                (os.path.join(KEYS, "season.keys"), 7700)):
+runs = [(os.path.join(KEYS, "clear.keys"), 430), (os.path.join(KEYS, "takeback.keys"), 1950), (rnd, RND_N),
+        (os.path.join(KEYS, "season.keys"), 7700)]
+for b in range(1, 7):
+    cl = [parse(l)["step"] for l in rhr[f"win-b{b}.keys"] if int(l.split()[7], 16) & 0x10]
+    runs.append((os.path.join(KEYS, f"win-b{b}.keys"), cl[1] - 30))
+for path, n in runs:
     r = emu.run(TAP, frames=n, keys=path, wlog=True, out=os.path.join(OUT, "scene-" + os.path.basename(path)))
     torn, ndraw, pace = tears(r, steady(r.trace.decode().splitlines()))
     sc_torn, sc_draw = sc_torn + torn, sc_draw + ndraw
-    want = with_hazards(with_rider(scene_ref.scene_bytes(1), r), r)
+    if os.path.basename(path).startswith("win-"):
+        emu.write_png(os.path.join(OUT, "f5-" + os.path.basename(path)[:-5] + ".png"), r.rgb, 2)
+        check(f"{os.path.basename(path)} on the Oric: the same trace as the native model",
+              r.trace.decode().splitlines() == rhr[os.path.basename(path)][:n - 1])
+    want = reference(r)
     got = r.mem[0xA000:0xA000 + 8000]
     bad = [i for i in range(320, 8000) if want[i] != got[i]]
     check(f"scene {os.path.basename(path)}: one pass at the beam's pace; screen = reference",
           pace < 70 and not bad, f"{torn} torn of {ndraw} drawing steps, slowest burst "
           f"{pace:.0f} cycles a line, {len(bad)} wrong bytes")
-check("scene: rider and hazards under 1% torn frames over the four scripts", sc_torn * 100 < sc_draw,
+check(f"scene: rider and hazards under 1% torn frames over the {len(runs)} scripts", sc_torn * 100 < sc_draw,
       f"{sc_torn} torn of {sc_draw} drawing steps")
 
 print(f"\n{'ALL PASS' if not fails else f'{fails} FAILED'}")

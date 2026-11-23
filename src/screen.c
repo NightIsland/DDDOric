@@ -133,6 +133,8 @@ static void vline(uint8_t x, uint8_t y0, uint8_t y1)
         LINE(y0)[c] |= b;
 }
 
+static const uint8_t *vh_art = rider_art;   /* the scene's vehicle's frames */
+
 void scene_draw(const struct scene *s, uint8_t billing)
 {
     const struct palette *pal = s->pal;
@@ -141,6 +143,7 @@ void scene_draw(const struct scene *s, uint8_t billing)
     char num[2];
 
     memset(HIRES, 0x40, 200 * 40);          /* bit 6 set in every bitmap byte */
+    vh_art = rider_art + s->vehicle * RIDER_VEHICLE_BYTES;
     for (y = 0; y < TITLE_LINES; ++y)
         line_colours(y, pal->title_paper, pal->title_ink);
     title(2, s->film);
@@ -153,16 +156,26 @@ void scene_draw(const struct scene *s, uint8_t billing)
         y = TITLE_LINES + t * BAND_LINES;
         for (i = 0; i < BAND_LINES; ++i, ++y) {
             p = line_colours(y, pal->paper[i], pal->ink[i]);
-            if (i == ROAD_LINE)                         /* kerb, from cell 1 */
+            if (s->ground == GROUND_WATER) {            /* waves: crests, troughs, ripples */
+                if (i == ROAD_LINE)
+                    memset(p + 2, 0x4C, 38);
+                else if (i == ROAD_LINE + 1)
+                    memset(p + 2, 0x73, 38);
+                else if (i == ROAD_LINE + 3)
+                    for (j = 3; j < 40; j += 2)
+                        p[j] = 0x46;
+            } else if (i == ROAD_LINE) {                /* kerb, from cell 1 */
                 memset(p + 1, 0x7F, 39);                /* (road paper is black) */
-            else if (i == ROAD_LINE + 2)
+            } else if (i == ROAD_LINE + 2) {
                 for (j = 2; j < 40; j += 4)             /* lane marks */
                     p[j] = p[j + 1] = 0x7F;
+            }
         }
         y = TITLE_LINES + t * BAND_LINES;               /* band's line 0 */
         for (hz = s->h[t], j = 0; j < SC_MAX; ++j, ++hz) {
             switch (hz->kind) {
             case HZ_BLOCK:
+            case HZ_RAMP:
                 blit(hz->a, hz->x, y + ROAD_LINE - 1);
                 break;
             case HZ_DANGLER:                            /* the rope's top part; the */
@@ -174,12 +187,15 @@ void scene_draw(const struct scene *s, uint8_t billing)
                 vline(hz->x + 1, y, y + hz->b);
                 vline(hz->x + scenery_w[hz->a] - 2, y, y + hz->b);
                 break;
-            case HZ_GAP:
-                if (billing >= hz->b)
-                    for (i = 0; i < 4; ++i) {           /* clear the road there */
+            case HZ_GAP:                                /* the road cleared there; */
+                if (billing >= hz->b)                   /* on water, solid rocks   */
+                    for (i = 0; i < 4; ++i) {
                         p = LINE(y + ROAD_LINE + i);
                         for (mid = hz->x; mid != (uint8_t)(hz->x + hz->a); ++mid)
-                            p[xcell[mid]] &= ~(0x20 >> xshift[mid]);
+                            if (s->ground == GROUND_WATER)
+                                p[xcell[mid]] |= 0x20 >> xshift[mid];
+                            else
+                                p[xcell[mid]] &= ~(0x20 >> xshift[mid]);
                     }
                 break;
             }
@@ -242,10 +258,12 @@ static const uint8_t rider_top[4] = { RT(0), RT(1), RT(2), RT(3) };
 static const uint8_t shift_ofs[6] = { 0, 48, 96, 144, 192, 240 };
 #define PO (SPR_POLICE_COLS * SPR_POLICE_H)
 static const uint16_t police_ofs[6] = { 0, PO, 2 * PO, 3 * PO, 4 * PO, 5 * PO };
-static const uint8_t * const frame_art[4] = {
-    rider_art, rider_art + RIDER_FRAME_BYTES, rider_art + 2 * RIDER_FRAME_BYTES,
-    rider_art + 3 * RIDER_FRAME_BYTES
+static const uint16_t frame_ofs[4] = {
+    0, RIDER_FRAME_BYTES, 2 * RIDER_FRAME_BYTES, 3 * RIDER_FRAME_BYTES
 };
+#if SPR_BOAT_COLS != SPR_POLICE_COLS || SPR_BOAT_H != SPR_POLICE_H
+#error "runners share police_ofs: the boat must be the police car's size"
+#endif
 
 /* Bob's speed-up (BUILD 11): crashes come only on a real touch, so around the
    rider there is usually nothing but blank screen.  When the box that holds
@@ -263,7 +281,7 @@ void rider_draw(uint8_t track, uint8_t x, uint8_t height, uint8_t frame)
     sp_h[SPR_RIDER] = RIDER_H;
     n_y = rider_top[track] - height;
     n_c = xcell[x];
-    n_img = frame_art[frame] + shift_ofs[xshift[x]];
+    n_img = vh_art + frame_ofs[frame] + shift_ofs[xshift[x]];
     if (frame != FR_CRASH && last_frame != FR_CRASH && sp_on[SPR_RIDER]
         && (uint8_t)(n_y - sp_y[SPR_RIDER] + 15) < 31 && (uint8_t)(n_c - sp_c[SPR_RIDER] + 1) <= 2) {
         top = n_y;
@@ -359,9 +377,9 @@ void hazards_list(const struct scene *sc)
     for (i = 0; i < NHAZ && nmov < MAXMOV; ++i, ++h) {
         band = TITLE_LINES + (i / SC_MAX) * BAND_LINES;
         w = 0;
-        if (h->kind == HZ_BLOCK || h->kind == HZ_CEILING || h->kind == HZ_DANGLER)
+        if (h->kind == HZ_BLOCK || h->kind == HZ_CEILING || h->kind == HZ_DANGLER || h->kind == HZ_RAMP)
             w = scenery_w[h->a];
-        if (h->kind == HZ_BLOCK)
+        if (h->kind == HZ_BLOCK || h->kind == HZ_RAMP)
             rect_add(i / SC_MAX, h->x, h->x + w - 1, band + ROAD_LINE - scenery_h[h->a], band + ROAD_LINE);
         else if (h->kind == HZ_CEILING)
             rect_add(i / SC_MAX, h->x, h->x + w - 1, band, band + h->b + 1);
@@ -374,6 +392,9 @@ void hazards_list(const struct scene *sc)
         mv_kind[nmov] = h->kind;
         mv_band[nmov] = TITLE_LINES + (i / SC_MAX) * BAND_LINES;
         if (h->kind == HZ_RUNNER) {
+            mv_img[nmov] = spr_police;              /* the police car or the patrol boat */
+            if (h->a == ART_BOAT)
+                mv_img[nmov] = spr_boat;
             sp_w[SPR_MOV + nmov] = SPR_POLICE_COLS;
             sp_h[SPR_MOV + nmov] = SPR_POLICE_H;              /* runners: their top line */
             mv_band[nmov] += ROAD_LINE - SPR_POLICE_H;
@@ -449,7 +470,7 @@ void hazards_draw(void)
             jump2 = (uint8_t)(x - mv_x[i] + 8) >= 17;
             n_y = mv_band[i];
             n_c = xcell[x];
-            n_img = spr_police + police_ofs[xshift[x]];
+            n_img = mv_img[i] + police_ofs[xshift[x]];
             y = oy = 0;
         } else {
             top = mv_band[i] + DANGLE_TOP;

@@ -8,13 +8,20 @@ uint16_t best_fee[NBEST] = { 250, 200, 150, 100, 50 };     /* the film crew's */
 char best_name[NBEST][3] = { {'D','I','R'}, {'C','A','M'}, {'S','F','X'}, {'M','U','A'}, {'G','A','F'} };
 
 uint8_t hz_px[NHAZ], hz_drop[NHAZ];
-static const struct scene *sc;
 static const uint8_t art_w[] = { SCENERY_W_DATA }, art_h[] = { SCENERY_H_DATA };
 
 /* Runner speed: M1 measured 1 BBC byte per 3 steps = 0.95 px a step; a
-   record's b holds it in 1/128 px a step (bit 7: drives left), 0 = M1's. */
+   record's b holds it in 1/128 px a step (bit 7: drives left), 0 = M1's.
+   Danglers move a line every DANGLE_RATE steps (M1: 1 line a BBC step).
+   Both are M1's at billing 1 and speed up with the billing (DESIGN
+   "Billings": slow, normal, normal, fast, fast, fastest): runners x 1, 1.25,
+   1.5, 1.75 (quarters in run_mul); danglers a line every 3, 2.5, 2, 1.5
+   steps (half steps in dangle_half). */
 #define RUN_STD     122             /* 122 / 128 = 0.953 px a step */
-#define DANGLE_RATE 3               /* steps per line (M1: 1 line a BBC step) */
+#define DANGLE_RATE 3
+static const uint8_t run_mul[BILLINGS + 1] = { 4, 4, 5, 5, 6, 6, 7 };
+static const uint8_t dangle_half[BILLINGS + 1] = { 6, 6, 5, 5, 4, 4, 3 };
+static uint8_t dangle_reload;       /* this billing's dangle_half */
 #define RIDER_TOP_LINE 28           /* band line of the rider's top row on the road */
 #define ROAD_TOP_LINE  44           /* band line of the road: hazards stand on it */
 
@@ -27,11 +34,11 @@ static uint8_t hw[NHAZ];            /* width in px (a gap's width) */
 static uint8_t htop[NHAZ];          /* band line of its picture's top row */
 static uint8_t hh[NHAZ];            /* its picture's height */
 static const uint16_t *hcol[NHAZ];  /* its picture's column masks */
-static uint8_t hz_frac[NHAZ];       /* runners: x fraction, 1/256 px */
-static uint8_t hz_sp[NHAZ];         /*   speed, 1/256 px a step */
+static uint8_t hz_frac[NHAZ];       /* runners: x fraction, 1/128 px */
+static uint8_t hz_sp[NHAZ];         /*   speed, 1/128 px a step (this billing's) */
 static uint8_t hz_right[NHAZ];      /*   1: drives right */
 static uint8_t hz_max[NHAZ];        /*   wraps in 0 .. hz_max - 1 */
-static uint8_t hz_t[NHAZ];          /* danglers: steps to the next line; bit 7: rising */
+static uint8_t hz_t[NHAZ];          /* danglers: half steps to the next line; bit 7: rising */
 static uint8_t hz_x0[NHAZ];         /* x at the scene's start */
 
 /* the moving hazards, in slot order (DESIGN: at most 4 a scene) */
@@ -51,7 +58,7 @@ static void hazards_start(void)
         hz_px[i] = hz_x0[i];
         hz_frac[i] = 0;
         hz_drop[i] = 0;
-        hz_t[i] = DANGLE_RATE;
+        hz_t[i] = dangle_reload;
         if (hk[i] == HZ_DANGLER)
             htop[i] = DANGLE_TOP;
     }
@@ -59,29 +66,44 @@ static void hazards_start(void)
 
 static void hazards_step(void)
 {
-    uint8_t i, j, f, sum = 0;
+    uint8_t i, j, f, n, sum = 0;
     for (j = 0; j < nmov; ++j) {
         i = mov[j];
         if (hk[i] == HZ_RUNNER) {           /* drives on, and wraps at the edges */
-            f = hz_frac[i];
-            if (hz_right[i]) {
-                hz_frac[i] = f + hz_sp[i];
-                if (hz_frac[i] < f && ++hz_px[i] == hz_max[i])
-                    hz_px[i] = 0;
-            } else {
-                hz_frac[i] = f - hz_sp[i];
-                if (hz_frac[i] > f && hz_px[i]-- == 0)
+            /* the fraction counts up driving right and down driving left,
+               a px for each carry or borrow (as F3 had it in 1/256 px) */
+            f = hz_frac[i] - (hz_sp[i] & 0x7F);
+            if (hz_right[i])
+                f = hz_frac[i] + (hz_sp[i] & 0x7F);
+            n = hz_sp[i] >> 7;              /* whole px this step: 0 .. 2 */
+            if (f & 0x80) {
+                ++n;
+                f &= 0x7F;
+            }
+            hz_frac[i] = f;
+            for (; n; --n) {
+                if (hz_right[i]) {
+                    if (++hz_px[i] == hz_max[i])
+                        hz_px[i] = 0;
+                } else if (hz_px[i]-- == 0) {
                     hz_px[i] = hz_max[i] - 1;
+                }
             }
-        } else if (!(--hz_t[i] & 0x7F)) {   /* a dangler: 1 line every 3 steps */
-            if (hz_t[i] & 0x80) {
-                if (--hz_drop[i] == 0)
-                    hz_t[i] &= 0x7F;
-            } else if (++hz_drop[i] == DANGLE_MAX) {
-                hz_t[i] |= 0x80;
+        } else {                            /* a dangler: a line when its count runs out */
+            f = hz_t[i] & 0x7F;
+            if (f > 2) {
+                hz_t[i] -= 2;
+            } else {
+                n = hz_t[i] & 0x80;
+                if (n) {
+                    if (--hz_drop[i] == 0)
+                        n = 0;
+                } else if (++hz_drop[i] == DANGLE_MAX) {
+                    n = 0x80;
+                }
+                hz_t[i] = n | (uint8_t)(f - 2 + dangle_reload);
+                htop[i] = DANGLE_TOP + hz_drop[i];
             }
-            hz_t[i] = (hz_t[i] & 0x80) | DANGLE_RATE;
-            htop[i] = DANGLE_TOP + hz_drop[i];
         }
         sum = (uint8_t)((sum << 1 | sum >> 7) + hz_px[i] + hz_drop[i]);
     }
@@ -93,7 +115,8 @@ static void hazards_step(void)
    row r) are compared column by column, the hazard's shifted by the
    difference in their top rows.  The rider's picture is the one main.c
    shows.  A gap: the wheels' middle over it, on the road. */
-static const uint16_t hit_rider[3 * RIDER_W] = { HIT_RIDER_DATA };  /* ride_a, ride_b, jump */
+static const uint16_t hit_rider[2 * 3 * RIDER_W] = { HIT_RIDER_DATA };  /* per vehicle: ride_a, ride_b, jump */
+static const uint16_t *hit_vh;      /* this scene's vehicle's */
 static const uint16_t hit_scenery[] = { HIT_SCENERY_DATA };
 static const uint8_t hit_ofs[] = { HIT_SCENERY_OFS };
 
@@ -102,16 +125,16 @@ static uint8_t crashed(void)
     uint8_t slot, n, k, x0, c, c1, rt;
     int8_t dy;
     const uint16_t *rc, *hc;
-    rc = hit_rider + FR_JUMP * RIDER_W;     /* (not "?:": ORIC-LESSONS 5) */
+    rc = hit_vh + FR_JUMP * RIDER_W;        /* (not "?:": ORIC-LESSONS 5) */
     if (!m.jump_t) {
-        rc = hit_rider + FR_RIDE_A * RIDER_W;
+        rc = hit_vh + FR_RIDE_A * RIDER_W;
         if (m.px & 4)
-            rc = hit_rider + FR_RIDE_B * RIDER_W;
+            rc = hit_vh + FR_RIDE_B * RIDER_W;
     }
     rt = RIDER_TOP_LINE - m.height;
     for (slot = m.track * SC_MAX, n = SC_MAX; n; --n, ++slot) {
         k = hk[slot];
-        if (!k)
+        if (!k || k == HZ_RAMP)
             continue;
         x0 = hz_px[slot];
         if (k == HZ_GAP) {
@@ -146,6 +169,17 @@ static uint8_t crashed(void)
 }
 
 static const uint8_t jump_arc[JUMP_STEPS] = { JUMP_ARC_DATA };
+static const uint8_t jump_long[JUMP_LONG] = { JUMP_LONG_DATA };
+
+/* on the ground with the wheels' middle on a slipway: it fires a long jump */
+static uint8_t on_ramp(void)
+{
+    uint8_t slot, n;
+    for (slot = m.track * SC_MAX, n = SC_MAX; n; --n, ++slot)
+        if (hk[slot] == HZ_RAMP && (uint8_t)(m.px + 6 - hz_px[slot]) < hw[slot])
+            return 1;
+    return 0;
+}
 
 void model_scene_start(void)
 {
@@ -155,6 +189,7 @@ void model_scene_start(void)
     m.px = 0;
     m.speed = SPEED_START;
     m.jump_t = 0;
+    m.jump_long = 0;
     m.height = 0;
     m.road_t = 255;
     m.stop_left = 1;
@@ -178,21 +213,20 @@ static void run_start(void)
     m.takes = TAKES;
     m.take_no = 1;
     m.fee = 0;
+    model_billing(m.billing);           /* the run's first scene */
 }
 
-void model_init(const struct scene *s, uint8_t billing)
+/* The scene at m.run_scene, set up for m.billing: every hazard slot
+   (track * SC_MAX + i) as flat tables, gaps only where the billing shows
+   them, moving hazards at the billing's speed. */
+static void scene_load(void)
 {
     uint8_t i, sp;
-    uint16_t acc = 0;
-    const struct hazard *h = &s->h[0][0];  /* the bands' hazards, all in a row */
-    sc = s;
-    /* x * 228 / 80 / 256: (x / 32) * 91 / 256, 0.2% short of exact (the
-       rider ends at 213 px), by addition: no multiply each step */
-    for (sp = 0; sp < 3; ++sp)              /* PXT_N = 600: three runs of 200 */
-        for (i = 0; i < PXT_N / 3; ++i) {
-            pxt[sp * (PXT_N / 3) + i] = acc >> 8;
-            acc += 91;
-        }
+    const struct hazard *h;
+    m.scene = scene_at(m.run_scene);
+    h = &m.scene->h[0][0];                  /* the bands' hazards, all in a row */
+    hit_vh = hit_rider + m.scene->vehicle * (3 * RIDER_W);
+    dangle_reload = dangle_half[m.billing];
     nmov = 0;
     for (i = 0; i < NHAZ; ++i, ++h) {
         hk[i] = h->kind;
@@ -207,7 +241,9 @@ void model_init(const struct scene *s, uint8_t billing)
         switch (h->kind) {
         case HZ_RUNNER:
             sp = h->b & 0x7F;
-            hz_sp[i] = (sp ? sp : RUN_STD) * 2;
+            if (!sp)
+                sp = RUN_STD;
+            hz_sp[i] = (uint8_t)(((uint16_t)sp * run_mul[m.billing]) >> 2);
             hz_right[i] = h->b && !(h->b & 0x80);   /* 0: the default, leftwards */
             hz_max[i] = PLAY_W - hw[i];
             /* fall through */
@@ -215,18 +251,35 @@ void model_init(const struct scene *s, uint8_t billing)
             if (nmov < MAXMOV)
                 mov[nmov++] = i;
             break;
-        case HZ_GAP:
+        case HZ_GAP:                        /* gaps show from the billing in b */
             hw[i] = h->a;
+            if (m.billing < h->b)
+                hk[i] = HZ_NONE;
             break;
         case HZ_CEILING:
             htop[i] = h->b + 1 - hh[i];     /* b: its bottom row's band line */
             break;
         case HZ_BLOCK:
+        case HZ_RAMP:
             break;
-        default:                            /* jets and ramps: F6 */
+        default:                            /* jets: F6 */
             hk[i] = HZ_NONE;
         }
     }
+    hazards_start();
+}
+
+void model_init(uint8_t billing)
+{
+    uint8_t i, sp;
+    uint16_t acc = 0;
+    /* x * 228 / 80 / 256: (x / 32) * 91 / 256, 0.2% short of exact (the
+       rider ends at 213 px), by addition: no multiply each step */
+    for (sp = 0; sp < 3; ++sp)              /* PXT_N = 600: three runs of 200 */
+        for (i = 0; i < PXT_N / 3; ++i) {
+            pxt[sp * (PXT_N / 3) + i] = acc >> 8;
+            acc += 91;
+        }
     m.step = 0;
     m.best = 0;
     m.keys_prev = 0;
@@ -237,23 +290,16 @@ void model_init(const struct scene *s, uint8_t billing)
     m.sound = 1;
     m.mode = M_TITLE;
     m.t = 0;
-    model_billing(billing);
+    m.billing = billing;
     run_start();
     model_scene_start();
 }
 
-/* gaps show from the billing in their record's b (DESIGN "Billings") */
+/* the billing (title screen, a new season): reloads the scene for it */
 void model_billing(uint8_t billing)
 {
-    uint8_t i;
-    const struct hazard *h = &sc->h[0][0];
     m.billing = billing;
-    for (i = 0; i < NHAZ; ++i, ++h)
-        if (h->kind == HZ_GAP) {
-            hk[i] = HZ_NONE;
-            if (billing >= h->b)
-                hk[i] = HZ_GAP;
-        }
+    scene_load();
 }
 
 static void go(uint8_t mode)
@@ -432,12 +478,16 @@ void model_step(uint8_t in, uint8_t key)
         } else if (m.road_t != 255) {
             ++m.road_t;
         }
-    } else if (++m.jump_t >= JUMP_STEPS) {
+    } else if (++m.jump_t >= JUMP_STEPS && (!m.jump_long || m.jump_t >= JUMP_LONG)) {
         m.jump_t = 0;
+        m.jump_long = 0;
         m.road_t = 1;                       /* the landing step is on the road */
         m.events |= EV_LAND;
     }
-    m.height = jump_arc[m.jump_t];
+    if (m.jump_long)                        /* (not "?:": ORIC-LESSONS 5) */
+        m.height = jump_long[m.jump_t];
+    else
+        m.height = jump_arc[m.jump_t];
 
     hazards_step();
 
@@ -458,6 +508,7 @@ void model_step(uint8_t in, uint8_t key)
             }
             ++m.scenes;
             ++m.run_scene;
+            scene_load();                   /* the next scene's hazards */
             m.gave_take = 0;
             if (m.scenes % 3 == 0 && m.takes < TAKES) {
                 ++m.takes;
@@ -472,6 +523,11 @@ void model_step(uint8_t in, uint8_t key)
         }
     }
     m.px = pxt[m.x >> 5];
+    if (!m.jump_t && on_ramp()) {           /* a slipway launches a long jump */
+        m.jump_t = 1;
+        m.jump_long = 1;
+        m.events |= EV_JUMP;
+    }
     if (crashed()) {                        /* rule 4 */
         m.speed = 0;
         --m.takes;

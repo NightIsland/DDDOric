@@ -1,0 +1,30 @@
+# solve 5 2: billing 5 from the title, 2 scene(s), each on its first take
+1 L
+3 L
+5 L
+7 L
+9 1
+26-40 accel
+46-355 accel
+361-375 accel
+386-405 accel
+431-435 accel
+441-460 accel
+546-662 accel
+667-1066 accel
+10 jump
+57 jump
+142 jump
+227 jump
+461 jump
+546 jump
+631 jump
+664 jump
+666 jump
+753 jump
+860 jump
+949 jump
+1078 jump
+298 stop
+813 stop
+# 1202 steps

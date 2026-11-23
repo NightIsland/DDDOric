@@ -13,9 +13,7 @@
 #include "system.h"
 #include "trace.h"
 
-#ifndef SCENE
-#define SCENE scene_rhr1        /* test builds: make CDEFS=-DSCENE=scene_test */
-#endif
+/* test builds: make CDEFS=-DSCENE=scene_test rides that scene everywhere */
 #ifndef BILLING_START
 #define BILLING_START 1         /* test builds: make CDEFS=-DBILLING_START=3 */
 #endif
@@ -24,9 +22,9 @@
 static void scene_show(void)
 {
     play_reset();
-    scene_draw(&SCENE, m.billing);
+    scene_draw(m.scene, m.billing);
     rider_draw(m.track, 0, 0, FR_RIDE_A);
-    hazards_list(&SCENE);
+    hazards_list(m.scene);
     hazards_draw();
 }
 
@@ -34,7 +32,7 @@ static void mode_show(uint8_t was)
 {
     switch (m.mode) {
     case M_TITLE: frame_title(); break;
-    case M_CARD:  frame_card(&SCENE); break;
+    case M_CARD:  frame_card(m.scene); break;
     case M_PLAY:  if (was == M_CARD) scene_show(); break;
     case M_PRINT: frame_print(); break;
     case M_FIRED: frame_fired(); break;
@@ -53,7 +51,10 @@ void main(void)
 
     screen_init();
     frame_init();
-    model_init(&SCENE, BILLING_START);
+#ifdef SCENE
+    scene_only = &SCENE;
+#endif
+    model_init(BILLING_START);
     frame_title();
     status_update();
     sys_init();

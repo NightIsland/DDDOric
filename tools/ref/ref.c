@@ -100,7 +100,9 @@ int main(int argc, char **argv)
     }
     load(argv[1]);
     long steps = strtol(argv[2], 0, 10);
-    model_init(argc == 4 ? &scene_test : &scene_rhr1, 1);
+    if (argc == 4)
+        scene_only = &scene_test;
+    model_init(1);
     for (long n = 1; n <= steps; n++) {
         uint64_t held = 0;
         uint8_t in = 0, key = 0;

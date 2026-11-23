@@ -30,4 +30,14 @@
     A3(19), A3(20), A3(20), A3(20), A3(20), A3(20), A3(20), A3(19), A3(19), A3(18), \
     A3(17), A3(16), A3(14), A3(13), A3(11), A3(8), A3(6), A3(3)
 
+/* The slipway (F5, DESIGN "Ramp"): a jump 1.5 times as long, same height:
+   the same arc with its entries held 4 and 5 steps in turn (126 in the air). */
+#define JUMP_LONG    127u
+#define A4(v) v, v, v, v
+#define A5(v) v, v, v, v, v
+#define JUMP_LONG_DATA 0, \
+    A4(3), A5(6), A4(8), A5(11), A4(13), A5(14), A4(16), A5(17), A4(18), A5(19), \
+    A4(19), A5(20), A4(20), A5(20), A4(20), A5(20), A4(20), A5(19), A4(19), A5(18), \
+    A4(17), A5(16), A4(14), A5(13), A4(11), A5(8), A4(6), A5(3)
+
 #endif

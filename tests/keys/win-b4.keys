@@ -1,0 +1,26 @@
+# solve 4 2: billing 4 from the title, 2 scene(s), each on its first take
+1 L
+3 L
+5 L
+7 1
+9-203 accel
+209-393 accel
+409-418 accel
+504-620 accel
+625-779 accel
+865-959 accel
+8 jump
+34 jump
+119 jump
+211 jump
+296 jump
+419 jump
+504 jump
+622 jump
+624 jump
+691 jump
+780 jump
+867 jump
+971 jump
+285 stop
+# 1088 steps

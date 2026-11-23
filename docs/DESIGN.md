@@ -145,7 +145,7 @@ the original's kinds, the last two are new.
 | Gap | A missing piece of road, 12–48 px wide | Jump it | Original kind, harder billings |
 | Ceiling block | Fixed to the top of the band. A low one must be passed on the ground; a high one only cuts off the top of a jump arc | Stay on the ground, or time the jump so the arc passes beside it | Original kind (Bob) |
 | Jet | Flame or steam bursts up from the road on a timer | Pass while it is off, or jump while it is on | New |
-| Ramp | A fixed launch ramp | Riding over it fires a jump 1.5× longer than normal (guess) | New, helpful |
+| Ramp | A fixed launch ramp | Riding onto it fires a jump 1.5× longer than normal, same height (F5: 126 steps) | New, helpful |
 
 The interesting scenes come from pairs. A low ceiling block just before a block forces you to land in
 the gap between them; a dangler after a gap means you must land, slow down, and time your arrival,
@@ -199,6 +199,12 @@ first screen must be passed on the ground.
 In the original (M1) runners and danglers move at the same speed per step on every level (runner
 0.95 px per step, dangler 1 px per 3 steps in our units); only the layouts get harder, and gaps start
 on its fifth screen. "Slow" above can be read as the original's speed, with faster ones our own.
+
+As built in F5: billing 1 runs the original's speeds, then runners go 1.25, 1.25, 1.5, 1.5 and 1.75
+times faster and danglers move a line every 2.5, 2.5, 2, 2 and 1.5 steps. On water a gap shows as
+rocks breaking the surface. The harness proves each scene at each billing with a searched run in
+which every jump can be pressed anywhere in a window of 8 steps (160 ms) at billings 1-2, 6 at 3-4,
+5 at 5 and 4 (80 ms) at 6.
 
 Each scene is stored once with every gap it can have; each gap is tagged with the lowest billing that
 shows it, so one layout serves all six billings. Every scene must be proved beatable at every billing
