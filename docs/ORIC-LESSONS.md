@@ -127,6 +127,9 @@ with 96 redefinable characters.
 - Pass arguments to hot assembly routines in zero page rather than the C stack: 105 cycles a call here.
 - cc65 code is roughly 3× larger than hand-written 6502 for the same logic (A1: 357 B vs 120 B for
   one function; the whole logic 1.8× the original's assembly).
+- **cc65 2.19 optimiser bug** (Stunt Man Bob, BUILD 4): after `if (a != b) { b = a; x = a ? 1 : 2; }`
+  it tested the flags left by the `cmp` instead of reloading `a`, so `x` was always 1. Use a table
+  (`x = tbl[b]`) or an explicit `if`, and check status displays in the harness.
 - Watch sign: `move_y <<= 1` on a negative number is undefined in C; write `* 2`.
 
 ## 6. The verification method (worth reusing)

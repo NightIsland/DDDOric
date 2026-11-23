@@ -1,0 +1,4 @@
+# Bob's BUILD 5 report: holding Space jumps again as soon as the bike lands
+# (M1: after one BBC step, 3 of ours, on the road)
+1-40 accel
+50-250 jump

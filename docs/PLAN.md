@@ -41,7 +41,7 @@ takes the next number.
 | --- | --- | --- | --- | --- |
 | M1 | Measure the BBC original: speeds, acceleration, jump arc and time, start speed, wrap, hanging-hazard period, sea and snow handling, fee on a retake | — | docs only | done, PR open (`docs/M1-MEASUREMENTS.md`) |
 | F0 | Skeleton and harness: cc65 2.19 built for the cloud shell, `none.lib`, own crt0 and ld65 config at $0500, ROM-free IRQ hook, autorun `.tap`, Makefile with size report and `ORICUTRON=1`; Chuckie Egg's emulator adapted, PNG output, key scripts, debug port at $BFE0; native C model with per-step trace | — | crt0 + cfg ≤ 256 B | merged (BUILD 1); BUILD 3 fixes Bob's fading and tearing rider |
-| F1 | Display: HIRES init, per-line paper/ink columns, a track screen drawn from scene data, status line in the text-row bitmap font, one-pass pre-shifted sprite draw | F0 | code ≤ 1.5 KB; sprite ≤ 1,400 cycles | BUILD 4, PR open (over both budgets, see Results) |
+| F1 | Display: HIRES init, per-line paper/ink columns, a track screen drawn from scene data, status line in the text-row bitmap font, one-pass pre-shifted sprite draw | F0 | code ≤ 1.5 KB; sprite ≤ 1,400 cycles | BUILD 4 merged (PR #6); BUILD 5–6 fixes in a follow-up PR |
 | F2 | One track: rider physics (DESIGN "Physics"), keys (Space, either Shift, Return), 50 Hz step, engine sound | F0, F1 | logic ≤ 4,000 cycles a step | not started |
 | F3 | Whole scene: four tracks, wrapping, block, runner, dangler, gap and ceiling block, crashes, fees, the one stop | F2 | whole step ≤ 16,000 cycles | not started |
 | F4 | Film frame: clapper card, takes, "Cut!", scene cleared, "You're fired", title screen, billing select, top five | F3 | | not started |
@@ -162,6 +162,26 @@ No architect brief had been written; this follows the PLAN row and DESIGN "Scree
   in a test build (`make B=build/b3 CDEFS=-DBILLING_START=3`), at billing 3 with its gaps; the screen
   after every key script = that scene + the rider where the trace says, with the right frame; one
   write per byte per step; under 1% torn frames.
+- **BUILD 5 (Bob's report on BUILD 4):**
+  - *Stop lamp never went out:* cc65 2.19 compiled `t = m.stop_left ? '*' : '+'` after
+    `shown = m.stop_left` to test the flags of an earlier `cmp`, so it always chose `'*'`. Now a
+    table lookup; a check reads the lamp before and after the stop.
+  - *Stop didn't work in mid-air:* the F0 model only allowed it on the ground. Now it works anywhere,
+    once per take, and in the air the bike drops straight down through the rest of the arc (M1,
+    DESIGN rule 2). New script `tests/keys/airstop.keys` and a rule check;
+    `wrapjump.keys` no longer presses Return in the air.
+  - *Left edge looked like a gap in the track:* attribute cells show as paper in the colour they
+    set, so the blue sky started at pixel 0 and the roads at 12. Now cell 0 sets the ink (black)
+    and cell 1 the paper only where it isn't black; on black-paper lines cell 1 is picture, so the
+    kerbs start at pixel 6 too. Everything starts at pixel 6; play still starts at cell 2.
+  - *Art:* the van, drums and police car are redrawn as solid shapes with windows and wheels cut
+    out; the van faces right (parked, the way Bob rides), the police car faces left (oncoming),
+    and the drums are two ribbed barrels.
+- **BUILD 6 (Bob on BUILD 5):** holding Space now jumps again as the bike lands, as in the
+  original (M1: the landing step and two more on the road, then the next jump; DESIGN "Controls").
+  Model: `road_t` counts road steps since a landing, `JUMP_REPEAT` = 3 in `src/physics.h`. Script
+  `tests/keys/heldjump.keys` and a check. (PR #6 was merged with BUILD 4, so BUILD 5's fixes come
+  in this pull request too.)
 - **Not in F1:** physics stay F0's placeholders (start speed 0.5 px a step, jump apex 24 px), so the
   rider still moves off by himself and jumps 4 px higher than he will: F2 brings M1's values.
   Hazards are scenery: nothing moves or collides until F3.

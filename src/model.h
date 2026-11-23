@@ -40,6 +40,7 @@ struct model {
     uint8_t  track;         /* 0-3, top to bottom */
     uint8_t  jump_t;        /* 0 on the ground, else step of the jump 1 .. JUMP_STEPS-1 */
     uint8_t  height;        /* px above the road */
+    uint8_t  road_t;        /* steps on the road since the last landing, incl. it (stops at 255) */
     uint8_t  stop_left;     /* 1 while the scene's one stop is unused */
     uint8_t  paused;
     uint8_t  scenes;        /* scenes finished */
