@@ -150,9 +150,18 @@ def drawn_pos(r, tap=TAP):
     return pos
 
 
+def lamp_lines():
+    """the police cars' top two lines: their ink flashes red and blue (Bob, BUILD 13)"""
+    return [(8 + 48 * t + 44 - 12, 8 + 48 * t + 45 - 12) for t, k, x, a in MOVING if k == 2]
+
+
 def with_hazards(want, r, tap=TAP):
     for a_, v in scene_ref.hazard_bytes(pos=drawn_pos(r, tap)).items():
         want[a_ - 0xA000] ^= v
+    for y0, y1 in lamp_lines():             # red and blue, either way round
+        inks = (r.mem[0xA000 + y0 * 40], r.mem[0xA000 + y1 * 40])
+        if inks in ((1, 4), (4, 1)):
+            want[y0 * 40], want[y1 * 40] = inks
     return want
 
 
@@ -491,6 +500,28 @@ check("crash: the crash picture, \"CUT!\" on the status line, a take icon gone, 
       b"CUT!" in r.mem[0xBF68 + 80:0xBF68 + 120] + row0 and b"@@ " in row0 and not bad,
       f"{row0.decode(errors='replace')!r}, {len(bad)} wrong bytes")
 
+# Bob, BUILD 13: the police lamps flash red and blue, swapping every 8 steps
+lk = [emu.run(TAP, frames=n, keys=START, out=os.path.join(OUT, f"lamps{n}")) for n in (60, 68)]
+li = [[r_.mem[0xA000 + y * 40] for y in lamp_lines()[0]] for r_ in lk]
+emu.write_png(os.path.join(OUT, "f4-lamps.png"), lk[0].rgb, 2)
+check("police lamps: the lamp line and the bar in red and blue, swapped 8 steps later",
+      sorted(li[0]) == [1, 4] and li[1] == li[0][::-1], str(li))
+
+# Bob, BUILD 15: an ink cell colours its whole line, so the lamps take the
+# band's ink while the rider (neck and shoulders) is level with them
+CARS = [t for t, k, x, a in MOVING if k == 2]
+rl = emu.run(TAP, frames=1200, keys=os.path.join(KEYS, "season.keys"), out=os.path.join(OUT, "lampsr"))
+lv = [s_ for s_ in map(parse, rl.trace.decode().splitlines())
+      if s_["mode"] == PLAY and s_["track"] == CARS[0] and s_["h"] <= 11 and s_["step"] > 10]
+rl = emu.run(TAP, frames=lv[5]["step"], keys=os.path.join(KEYS, "season.keys"), out=os.path.join(OUT, "lampsr"))
+s_ = parse(rl.trace.decode().splitlines()[-1])
+y0, y1 = lamp_lines()[0]
+li = [rl.mem[0xA000 + y * 40] for y in (y0, y1, y1 + 1)]
+emu.write_png(os.path.join(OUT, "f4-lamps-level.png"), rl.rgb, 2)
+check("police lamps: the band's ink while the rider is level with them (Bob, BUILD 15)",
+      s_["track"] == CARS[0] and s_["h"] <= 11 and li[0] == li[1] == li[2] not in (1, 4),
+      f"track {s_['track']} height {s_['h']} inks {li}")
+
 # F4: the film frame (DESIGN "Presentation")
 r = emu.run(TAP, frames=30, out=os.path.join(OUT, "f4-title"))
 emu.write_png(os.path.join(OUT, "f4-title.png"), r.rgb, 2)
@@ -646,10 +677,11 @@ def tears(r, ok_steps):
     steps, slowest burst in cycles a line).  Each step's writes are split into
     bursts (gaps > 300 cycles: the two halves of a wrap); a frame f scans line y,
     cell c at f * VF + y * 64 + c (the emulator's video timing).  A frame is torn
-    when it scans some of a burst's bytes before their write and some after."""
+    when it scans some of a burst's bytes before their write and some after.
+    Colour cells (0-1: the police lamps' ink) are not pictures: left out."""
     steps = {}
     for a, v, c in r.wlog:
-        if c >= r.marks[0] and bisect.bisect_right(r.marks, c) in ok_steps:
+        if c >= r.marks[0] and bisect.bisect_right(r.marks, c) in ok_steps and (a - 0xA000) % 40 >= 2:
             steps.setdefault(bisect.bisect_right(r.marks, c), []).append((a - 0xA000, c))
     bad, pace = 0, 0
     for ws in steps.values():

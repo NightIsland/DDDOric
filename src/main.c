@@ -105,6 +105,7 @@ void main(void)
                 frame = FR_RIDE_B;
             rider_draw(m.track, x, m.height, frame);
             hazards_draw();
+            lamps((m.step >> 3) & 1);       /* the police lamps flash (Bob, BUILD 13) */
             break;
         case M_TITLE:
             frame_title_step();
