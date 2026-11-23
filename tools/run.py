@@ -81,6 +81,8 @@ class Result:
         self.irq = [tuple(map(int, l.split())) for l in open(irqf)] if os.path.exists(irqf) else []
         tf = os.path.join(out, "tcycles.txt")    # F4a: --tcycles
         self.tcycles = [tuple(map(int, l.split())) for l in open(tf)] if os.path.exists(tf) else []
+        wf = os.path.join(out, "wlog.txt")      # --wlog
+        self.wlog = [tuple(map(int, l.split())) for l in open(wf)] if os.path.exists(wf) else []
         self.marks, self.busy = [], []
         for l in open(os.path.join(out, "marks.txt")):
             k, c = l.split()
@@ -102,7 +104,7 @@ class Result:
 
 
 def run(prog, frames=100, clock="mark", keys=None, keymap=None, out=None, max_cycles=None, start=None,
-        rom="atmos", stop_trace=None, tcycles=False):
+        rom="atmos", stop_trace=None, tcycles=False, wlog=False):
     if not os.path.exists(EMU) or os.path.getmtime(EMU) < os.path.getmtime(os.path.join(ROOT, "tools/emu/emu.c")):
         build_emu()
     out = out or tempfile.mkdtemp(prefix="emu-")
@@ -119,6 +121,8 @@ def run(prog, frames=100, clock="mark", keys=None, keymap=None, out=None, max_cy
         cmd += ["--stop-trace", f"{stop_trace[0]}:{stop_trace[1]}"]
     if tcycles:                     # F4a: Result.tcycles = [(byte, cycle)] of $BFE0 writes
         cmd += ["--tcycles"]
+    if wlog:                        # BUILD 2: Result.wlog = [(addr, value, cycle)] of HIRES writes
+        cmd += ["--wlog"]
     if keys:
         kf = os.path.join(out, "keys.txt")
         with open(kf, "w") as f:

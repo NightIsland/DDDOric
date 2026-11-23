@@ -170,5 +170,55 @@ seg = mp.split("Segment list:")[1]
 st = int(seg.split("STARTUP")[1].split()[2], 16)
 check("crt0 + cfg within 256 B", st <= 256, f"STARTUP {st} B")
 
+# 10. the rider (BUILD 2, Bob's fading bug): moved in one pass, so no screen byte is
+#     written twice in a step and the video never scans an erased rider; and the
+#     screen after every script = the empty scene + the rider where the trace says
+import bisect
+VF = 19968                                   # Oric video frame: 312 lines x 64 cycles
+
+
+def rider_bytes(track, xpx, h):
+    """{address: xor mask} of the placeholder rider block (src/screen.c)."""
+    c, sh = 2 + xpx // 6, xpx % 6
+    lm, rm = 0x3F >> sh, (0x3F << (6 - sh)) & 0x3F
+    if c == 39:
+        rm = 0
+    y0 = 8 + track * 48 + 43 - h
+    out = {}
+    for n in range(12):
+        a = 0xA000 + (y0 - n) * 40 + c
+        out[a] = lm
+        if rm:
+            out[a + 1] = rm
+    return out
+
+
+blank = bytearray(emu.run(TAP, frames=1, out=os.path.join(OUT, "blank")).mem[0xA000:0xBF40])
+for a, v in rider_bytes(0, 0, 0).items():
+    blank[a - 0xA000] ^= v
+tj = os.path.join(KEYS, "topjumps.keys")
+for path, n in [(tj, 1500)] + scripts[:4]:
+    r = emu.run(TAP, frames=n, keys=path, wlog=True, out=os.path.join(OUT, "rider-" + os.path.basename(path)))
+    last, twice, seen = {}, 0, 0
+    for a, v, c in r.wlog:
+        if c < r.marks[0]:
+            continue
+        st = bisect.bisect_right(r.marks, c)
+        if a in last and last[a][0] == st:
+            twice += 1
+            line = (a - 0xA000) // 40
+            k = (last[a][1] - line * 64 + VF - 1) // VF
+            seen += k * VF + line * 64 < c
+        last[a] = (st, c)
+    s_ = parse(r.trace.decode().splitlines()[-1])
+    want = bytearray(blank)
+    for a, v in rider_bytes(s_["track"], s_["x"] >> 8, s_["h"]).items():
+        want[a - 0xA000] ^= v
+    got = r.mem[0xA000:0xBF40]
+    bad = [i for i in range(len(want)) if want[i] != got[i]]
+    check(f"rider {os.path.basename(path)}: one write per byte per step, never scanned erased; "
+          "screen = scene + rider", twice == 0 and seen == 0 and not bad,
+          f"{twice} double writes, {seen} seen erased, {len(bad)} wrong bytes")
+
 print(f"\n{'ALL PASS' if not fails else f'{fails} FAILED'}")
 sys.exit(1 if fails else 0)

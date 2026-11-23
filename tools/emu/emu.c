@@ -23,10 +23,12 @@
 
    Usage: emu (--tap F | --bin F@ADDR) [--start ADDR] [--clock mark|video]
               [--frames N] [--keys F] [--max-cycles N] [--irqvec ADDR]
-              [--stop-trace V[:N]] [--tcycles] --out DIR
+              [--stop-trace V[:N]] [--tcycles] [--wlog] --out DIR
    F4a: --stop-trace V:N stops (cleanly) at the N-th write of byte V to $BFE0
    (default N = 1); --tcycles also logs every $BFE0 write as "value cycle" in
    tcycles.txt (the front end's phase markers).
+   Stunt Man Bob: --wlog logs every write to HIRES ($A000-$BF3F) as
+   "address value cycle" in wlog.txt (flicker checks).
    Outputs in DIR: screen.rgb (240x224 RGB), mem.bin (64K), trace.txt,
    ay.txt ("cycle reg value"), marks.txt ("M cycle" / "B cycle"), irq.txt
    ("cycle cost" per IRQ taken, from the IRQ to the end of its RTI), and one
@@ -47,6 +49,7 @@ static int flat;                 /* --flat: plain 64K RAM, real BRK (CPU self-te
 
 static FILE *f_trace, *f_ay, *f_marks;
 static FILE *f_tcyc;             /* F4a: --tcycles */
+static FILE *f_wlog;             /* Stunt Man Bob BUILD 2: --wlog, HIRES writes */
 static int stop_tval = -1;       /* F4a: --stop-trace value, count */
 static long stop_tcount = 1;
 static unsigned long nirq;       /* IRQs taken */
@@ -226,6 +229,8 @@ static void wr(uint16_t ad, uint8_t v)
     if ((ad & 0xFF00) == 0x0300) { via_write(ad & 15, v); return; }
     if (ad >= 0xC000) return;                         /* ROM: writes go nowhere */
     mem[ad] = v;
+    if (f_wlog && ad >= 0xA000 && ad < 0xBF40)
+        fprintf(f_wlog, "%u %u %llu\n", ad, v, (unsigned long long)cycles);
     if (ad >= 0xBFE0 && ad <= 0xBFE3) {
         switch (ad) {
         case 0xBFE0: fputc(v, f_trace);
@@ -591,7 +596,7 @@ int main(int argc, char **argv)
     const char *tap = 0, *bin = 0, *keys = 0, *out = 0;
     long irqvec = 0;
     long start = -1, binaddr = 0;
-    int tcyc = 0;
+    int tcyc = 0, wlog = 0;
     int autorun = 0;
     for (int i = 1; i < argc; i++) {
         const char *o = argv[i], *v = i + 1 < argc ? argv[i + 1] : "";
@@ -612,6 +617,7 @@ int main(int argc, char **argv)
             i++;
         }
         else if (!strcmp(o, "--tcycles")) tcyc = 1;
+        else if (!strcmp(o, "--wlog")) wlog = 1;
         else { fprintf(stderr, "emu: unknown option %s\n", o); return 2; }
     }
     if ((!tap && !bin) || !out) { fprintf(stderr, "usage: see emu.c header\n"); return 2; }
@@ -637,6 +643,7 @@ int main(int argc, char **argv)
     f_marks = outf(out, "marks.txt", "w");
     f_irq = outf(out, "irq.txt", "w");
     if (tcyc) f_tcyc = outf(out, "tcycles.txt", "w");
+    if (wlog) f_wlog = outf(out, "wlog.txt", "w");
 
     pc = (uint16_t)start;
     via_ddrb = 0xF7; via_pcr = 0xDD;      /* roughly where the ROM leaves them */
@@ -697,6 +704,7 @@ int main(int argc, char **argv)
     fclose(f);
     fclose(f_trace); fclose(f_ay); fclose(f_marks); fclose(f_irq);
     if (f_tcyc) fclose(f_tcyc);
+    if (f_wlog) fclose(f_wlog);
     printf("stop=%s cycles=%llu frames=%ld marks=%ld pc=$%04X autorun=$%02X hires=%d irqs=%lu\n",
            stop == 2 ? "ERROR" : "ok", (unsigned long long)cycles, frame, nmarks, pc, autorun, ula_hires, nirq);
     if (stop == 2) fprintf(stderr, "emu: %s\n", stop_msg);

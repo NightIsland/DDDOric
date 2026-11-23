@@ -40,7 +40,7 @@ takes the next number.
 | ID | Feature | Depends on | Budget | State |
 | --- | --- | --- | --- | --- |
 | M1 | Measure the BBC original: speeds, acceleration, jump arc and time, start speed, wrap, hanging-hazard period, sea and snow handling, fee on a retake | — | docs only | done, PR open (`docs/M1-MEASUREMENTS.md`) |
-| F0 | Skeleton and harness: cc65 2.19 built for the cloud shell, `none.lib`, own crt0 and ld65 config at $0500, ROM-free IRQ hook, autorun `.tap`, Makefile with size report and `ORICUTRON=1`; Chuckie Egg's emulator adapted, PNG output, key scripts, debug port at $BFE0; native C model with per-step trace | — | crt0 + cfg ≤ 256 B | built (BUILD 1), waiting for Bob's Oricutron check |
+| F0 | Skeleton and harness: cc65 2.19 built for the cloud shell, `none.lib`, own crt0 and ld65 config at $0500, ROM-free IRQ hook, autorun `.tap`, Makefile with size report and `ORICUTRON=1`; Chuckie Egg's emulator adapted, PNG output, key scripts, debug port at $BFE0; native C model with per-step trace | — | crt0 + cfg ≤ 256 B | merged (BUILD 1); BUILD 3 fixes Bob's fading and tearing rider |
 | F1 | Display: HIRES init, per-line paper/ink columns, a track screen drawn from scene data, status line in the text-row bitmap font, one-pass pre-shifted sprite draw | F0 | code ≤ 1.5 KB; sprite ≤ 1,400 cycles | not started |
 | F2 | One track: rider physics (DESIGN "Physics"), keys (Space, either Shift, Return), 50 Hz step, engine sound | F0, F1 | logic ≤ 4,000 cycles a step | not started |
 | F3 | Whole scene: four tracks, wrapping, block, runner, dangler, gap and ceiling block, crashes, fees, the one stop | F2 | whole step ≤ 16,000 cycles | not started |
@@ -103,6 +103,21 @@ Briefs written by the architect when the previous feature is merged, from DESIGN
   output (about 1,500 cycles; it can move to a trace-only build if F3 needs the room). Program ends
   at `$190A`; 31,990 bytes free below `$9800`.
 - `make test`: 34 checks, all pass.
+- **BUILD 2 (Bob's report, 23 Nov):** at full speed, after about two screens the rider faded
+  from view. Cause: the rider was erased and then redrawn, and the 20,000-cycle step drifts
+  against the Oric's 19,968-cycle video frame, so for about 2 s in every 12.5 s the beam scanned
+  the rider between the two writes. Measured in the harness (new `emu --wlog`, HIRES writes with
+  cycles): 2,622 rider bytes scanned while erased over 1,500 steps of `tests/keys/topjumps.keys`;
+  after the fix, 0. The rider now moves in one pass (old ^ new per byte, ORIC-LESSONS §7), and a
+  new check per script proves one write per byte per step and the screen = scene + rider. The
+  C version costs more (worst step 15,532 cycles); F1's assembly sprite replaces it. 38 checks.
+- **BUILD 3 (Bob: "now the rider tears"):** BUILD 2's C writes were spread over ~7,000 cycles, so
+  the beam crossed a half-moved rider in 272 of 1,086 drawing steps. Now C prepares every byte's
+  mask first and an assembly loop (`src/draw.s`, ~70 cycles a line) writes them in one burst of
+  ~850 cycles: 73 of 1,086 steps, and then only a one-line shear. **No vertical sync on a stock
+  Oric** means the beam's position can't be read, so tearing can be made rare and small but not
+  removed; locking the step to the video frame would make it permanent on one track instead.
+  Worst step 16,708 cycles (the C preparation); F1's assembly sprite brings it down.
 
 ### M1 (23 Nov 2026)
 

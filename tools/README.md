@@ -67,6 +67,9 @@ both the emulator and the native reference; upper-case tokens are Oric keys for 
 - Exits 2 if the program runs code in `$C000–$FFFF`, hits BRK or an illegal opcode, or takes an
   IRQ with no RAM vector.
 
+- `run.run(..., wlog=True)` (emu `--wlog`) logs every HIRES write as (address, value, cycle) in
+  `Result.wlog`: the flicker check in `make test` uses it with the 19,968-cycle video frame.
+
 `import run` gives `run.run(prog, frames, keys=..., rom=...)` → a `Result` with `.mem`, `.rgb`,
 `.pixel(x, y)`, `.ay`, `.marks`, `.frame_stats()`, `.trace`, `.irq`.
 
@@ -83,6 +86,6 @@ RAM after the last text row, never displayed; plain RAM on real hardware.
 
 ## Emulator (tools/emu/emu.c)
 
-From Chuckie Egg, unchanged apart from its header. A 6502 (documented opcodes, cycle-exact,
+From Chuckie Egg, unchanged apart from its header and `--wlog`. A 6502 (documented opcodes, cycle-exact,
 passes Klaus Dormann's functional test, `tools/emu/test/`, GPLv3), VIA, AY registers, keyboard
 matrix and ULA renderer following Oricutron's source. Details are in the file's header.
