@@ -43,8 +43,8 @@ takes the next number.
 | F0 | Skeleton and harness: cc65 2.19 built for the cloud shell, `none.lib`, own crt0 and ld65 config at $0500, ROM-free IRQ hook, autorun `.tap`, Makefile with size report and `ORICUTRON=1`; Chuckie Egg's emulator adapted, PNG output, key scripts, debug port at $BFE0; native C model with per-step trace | — | crt0 + cfg ≤ 256 B | merged (BUILD 1); BUILD 3 fixes Bob's fading and tearing rider |
 | F1 | Display: HIRES init, per-line paper/ink columns, a track screen drawn from scene data, status line in the text-row bitmap font, one-pass pre-shifted sprite draw | F0 | code ≤ 1.5 KB; sprite ≤ 1,400 cycles | BUILD 4 merged (PR #6); BUILD 5–6 fixes in a follow-up PR |
 | F2 | One track: rider physics (DESIGN "Physics"), keys (Space, either Shift, Return), 50 Hz step, engine sound | F0, F1 | logic ≤ 4,000 cycles a step | merged (BUILD 8, PR #8) |
-| F3 | Whole scene: four tracks, wrapping, block, runner, dangler, gap and ceiling block, crashes, fees, the one stop | F2 | whole step ≤ 16,000 cycles | BUILD 11, PR open; budget missed: average 16,100 riding flat out, worst 19,750 (see Results) |
-| F4 | Film frame: clapper card, takes, "Cut!", scene cleared, "You're fired", title screen, billing select, top five | F3 | | not started |
+| F3 | Whole scene: four tracks, wrapping, block, runner, dangler, gap and ceiling block, crashes, fees, the one stop | F2 | whole step ≤ 16,000 cycles | merged (BUILD 11, PR #10); budget missed: average 16,100 riding flat out, worst 19,750 (see Results) |
+| F4 | Film frame: clapper card, takes, "Cut!", scene cleared, "You're fired", title screen, billing select, top five | F3 | riding steps stay under 20,000 cycles | BUILD 12, PR open |
 | F5 | Film 1 (*Rush Hour Rumble*) complete at all six billings, tuned to M1's numbers; Bob judges the feel against the original | F4, M1 | | not started |
 | F6 | Films 2–6, jets and ramps, per-vehicle handling, music, key redefinition | F5 | memory ≤ 37 KB | not started |
 | X1 | Optional: level codes from a seed, with a solver run over thousands of seeds in the harness | F5 | ≤ 2 KB | not started |
@@ -92,7 +92,8 @@ Briefs written by the architect when the previous feature is merged, from DESIGN
   left to F2.
 - **Model:** `src/model.c`, portable C, one rider on four tracks with DESIGN's speed, one-stop,
   jump-from-the-ground, mid-air accelerate, wrap and pause/quit rules, on **placeholder constants**
-  in `src/physics.h` (DESIGN's guesses) until M1. Quit restarts the scene until F4 has a title.
+  in `src/physics.h` (DESIGN's guesses) until M1. Quit restarts the scene until F4 has a title
+  (F4: Esc asks Y/N and goes back to the title).
 - **Trace:** native and Oric traces identical over 7,750 scripted steps (5 scripts incl. 6,000
   random steps); a planted Oric-only bug fails the check.
 - **Screen:** placeholder (F1 replaces it): title strip, four bands with road lines, attribute
@@ -118,6 +119,56 @@ Briefs written by the architect when the previous feature is merged, from DESIGN
   Oric** means the beam's position can't be read, so tearing can be made rare and small but not
   removed; locking the step to the video frame would make it permanent on one track instead.
   Worst step 16,708 cycles (the C preparation); F1's assembly sprite brings it down.
+
+### F4: Film frame (BUILD 12, 23 Nov 2026)
+
+- **The model runs the whole game** (`src/model.c`, so the native reference traces the menus
+  and cards too): a mode (`M_TITLE`, `M_CARD`, `M_PLAY`, `M_CUT`, `M_PRINT`, `M_FIRED`, `M_NAME`,
+  `M_WRAP`, `M_ASK`) and a step count in it. `model_step(in, key)` takes the key code of a key
+  held besides the game inputs; `src/main.c` reads it with a full keyboard scan
+  (`keys_ascii`, `src/keys.s`, ~1,000 cycles) only off play, and `tools/ref/ref.c` does the same
+  from the script's keys (game tokens press their default keys; upper-case tokens are Oric keys
+  for both now). The trace line gains mode and billing, steps in the mode, and the key code.
+- **The flow** (DESIGN "Presentation"): the title screen (1 Start, L billing 1-6, S sound) ->
+  the clapper card (film, scene, take, billing, fees; the arm snaps shut with a clack at 1.1 s,
+  then "ACTION!" flashes; play at 1.8 s, or at once on any game key) -> riding. A crash: the
+  crash picture, and 0.4 s later the director's megaphone and "CUT!" in the title strip with a
+  two-note squawk; at 1.5 s the card with the next take. A cleared scene: "THAT'S A PRINT!" with
+  the scene's track fees, the one-take bonus, a lost take coming back, and the run's fee (2 s or a
+  game key), then the next card. Twelve scenes: "THAT'S A WRAP!" with the six films and the next
+  billing (the next season is billed one up: gaps follow it). The last take lost: "YOU'RE
+  FIRED!" over the fee and the day's best (2 s or a key), then, for a top-five fee, the initials
+  (letters, Del, Return; three letters end it) and the title. Esc in play asks "QUIT TO THE
+  TITLE? Y/N" on the status line (N or Esc rides on; Y ends the run, keeping the best fee but not
+  entering the top five).
+- **Billings:** billing b starts the run at scene (b - 1) x 12 + 1, so its fees start at
+  10 x that (DESIGN "Billings"); `model_billing` sets which gaps show.
+- **Top five** (`best_fee`, `best_name`): five film-crew entries to beat ($250 down to $50),
+  kept until switch-off.
+- **Drawing** (`src/frame.c`, `src/text.s`): each card is drawn whole when its mode starts;
+  text comes from the status font in the character set, a letter a cell or doubled to two cells
+  and 14 lines; Bob and his bike on the title are mkart pictures at double size. The marquee's 48
+  bulbs chase in assembly (cc65's loop took 15,800 cycles a step, now ~1,700). Drawing a card
+  takes ~300,000 cycles (15 steps: the screen fills in 0.3 s) and the scene for play the same;
+  nothing moves meanwhile, and the model's steps simply wait. The clapper arm moves in 2 steps.
+- **Sound:** a short noise clack (`snd_clack`), the squawk (`snd_squawk`, two falling notes on
+  channel C), and S on the title silences everything (engine off, no effects). No jingles yet
+  (F6, with the music).
+- **Tests** (`make test`, 82 checks, all pass): every play script now starts from the title (1,
+  then a tap on Space skips the card: riding starts at step 3, `tests/keys/start.keys`); the
+  F3 checks follow the cards (a retake goes through the card; firing goes to "YOU'RE FIRED!").
+  New: `flow.keys` (clear, print, three crashes, fired, initials BOB, the title's table),
+  `quit.keys` (billing 3, sound off and on, Esc/N/Esc/Y), `season.keys` (twelve scenes, the
+  wrap card, billing 2 at $130 a track); the title's chasing lights, the card's timing and clack,
+  the squawk, the cards' text, and Oric == native on all of them. The step-work and torn-frame
+  checks count riding steps only, from the fourth step of a new screen (the step that draws a
+  card overruns, so the next ones start late in their 20 ms). Torn frames are counted over the
+  three scene scripts together, as for the rider alone: the cards move the steps' phase against
+  the video, and with it where the clusters fall (23 of 3,335 drawing steps).
+- **Size:** program ends at `$6A9F`, 11,105 bytes free below `$9800` (F3: 20,800). The film
+  frame is ~5 KB of cc65 code (`src/frame.c` 4.5 KB); F6's films and music may need it smaller.
+- **Not yet:** K (redefine keys) is F6 with the rest of the key work; the top five is shown
+  whole rather than scrolling; jingles are F6.
 
 ### F3: Whole scene (BUILD 9, 23 Nov 2026)
 

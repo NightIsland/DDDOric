@@ -1,4 +1,8 @@
 # Bob's BUILD 5 report: holding Space jumps again as soon as the bike lands
 # (M1: after one BBC step, 3 of ours, on the road)
-1-40 accel
-50-250 jump
+# F4: from the title screen: 1 starts, a tap on Space skips the clapper card,
+# so play starts at step 3 (the rest is shifted 2 steps from F3)
+1 1
+2 jump
+3-42 accel
+52-252 jump

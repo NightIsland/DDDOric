@@ -1,0 +1,44 @@
+# F4: a whole season, clear.keys' route on every scene (each take's first
+# riding step + 119, 211, 310), Shift held so every card runs its full time:
+# after the 12th scene "THAT'S A WRAP!", then billing 2 (Stand-in) from scene
+# 13 at $130 a track (its first jump: the last line).
+1 1
+2 jump
+3-7800 accel
+122 jump
+214 jump
+313 jump
+744 jump
+836 jump
+935 jump
+1366 jump
+1458 jump
+1557 jump
+1988 jump
+2080 jump
+2179 jump
+2610 jump
+2702 jump
+2801 jump
+3232 jump
+3324 jump
+3423 jump
+3854 jump
+3946 jump
+4045 jump
+4476 jump
+4568 jump
+4667 jump
+5098 jump
+5190 jump
+5289 jump
+5720 jump
+5812 jump
+5911 jump
+6342 jump
+6434 jump
+6533 jump
+6964 jump
+7056 jump
+7155 jump
+7686 jump

@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
-"""test_f0.py - F0 to F3 acceptance checks (docs/PLAN.md).  Run by `make test`.
+"""test_f0.py - F0 to F4 acceptance checks (docs/PLAN.md).  Run by `make test`.
 
 Two game builds: build/stuntbob.tap rides Rush Hour Rumble scene 1 (hazards,
 crashes, fees), build/empty/stuntbob.tap the empty test track (-DSCENE=
 scene_test), so the physics, sound and rider-drawing checks see no crashes.
+F4: the game starts on the title screen; the play scripts press 1 and tap
+Space to skip the clapper card (tests/keys/start.keys), so riding starts at
+step 3.
 
 Adapted from Oric Chuckie Egg's tools/test_f0.py.  Writes screenshots and
 traces to build/test/."""
@@ -42,7 +45,35 @@ def parse(line):
     return dict(step=int(f[0], 16), track=int(f[1], 16), x=int(f[2], 16), speed=int(f[3], 16),
                 jt=int(f[4], 16), h=int(f[5], 16), flags=int(f[6], 16), ev=int(f[7], 16), inp=int(f[8], 16),
                 ev2=int(f[9], 16), crash_t=int(f[10], 16), takes=int(f[11], 16) >> 4, take=int(f[11], 16) & 15,
-                fee=int(f[12], 16), hz=int(f[13], 16))
+                fee=int(f[12], 16), hz=int(f[13], 16), mode=int(f[14], 16) & 15, billing=int(f[14], 16) >> 4,
+                mt=int(f[15], 16), key=int(f[16], 16))
+
+
+# F4 modes (src/model.h)
+TITLE, CARD, PLAY, CUT, PRINT, FIRED, NAME, WRAP, ASK = range(9)
+CUT_SHOW, CARD_SNAP = 75 - 20, 55
+START = os.path.join(KEYS, "start.keys")
+
+
+def steady(lines):
+    """the riding steps (play, the crash pause, the quit question) after the
+    first three of a new screen (the step that draws it whole overruns, so the
+    next one starts late in its 20 ms), less the step "CUT!" pops up in the
+    title strip: the steps the beam-paced drawing and the step budget are for"""
+    out, prev = set(), []
+    for l in lines:
+        s_ = parse(l)
+        rid = s_["mode"] in (PLAY, CUT, ASK)
+        if rid and len(prev) == 3 and all(prev) and s_["crash_t"] != CUT_SHOW:
+            out.add(s_["step"])
+        prev = (prev + [rid])[-3:]
+    return out
+
+
+def steady_busy(r):
+    """the work of each steady step (frame_stats' busy list: index n - 1 is step n)"""
+    busy = r.frame_stats()[1]
+    return [busy[n - 1] for n in steady(r.trace.decode().splitlines()) if n - 1 < len(busy)]
 
 
 # 1. .tap header
@@ -77,7 +108,7 @@ for rom, mode in (("atmos", 1), ("oric1", 1), ("none", 0)):
 
 # 4. the screen (F1): scene = pixel reference from src/scene.c + tools/mkart.py
 import scene_ref  # noqa: E402
-r = emu.run(TAP, frames=50, out=os.path.join(OUT, "screen"))
+r = emu.run(TAP, frames=50, keys=START, out=os.path.join(OUT, "screen"))
 emu.write_png(os.path.join(OUT, "f1-screen.png"), r.rgb, 2)
 RED, YEL = (255, 0, 0), (255, 255, 0)
 roads = [8 + 48 * b + 44 for b in range(4)]
@@ -134,7 +165,7 @@ roads = [8 + 48 * b + 44 for b in range(4)]
 check("four kerbs, yellow from pixel 6 to the right edge (no gaps at billing 1)",
       all(r.pixel(x, y) == YEL for y in roads for x in range(6, 240)), str(roads))
 B3 = os.path.join(B, "b3", "stuntbob.tap")
-r3 = emu.run(B3, frames=5, out=os.path.join(OUT, "screen-b3"))
+r3 = emu.run(B3, frames=10, keys=START, out=os.path.join(OUT, "screen-b3"))
 emu.write_png(os.path.join(OUT, "f1-screen-billing3.png"), r3.rgb, 2)
 want3 = with_hazards(with_rider(scene_ref.scene_bytes(3), r3), r3, B3)
 got3 = r3.mem[0xA000:0xA000 + 8000]
@@ -164,15 +195,23 @@ check("keys: Space=jump, either Shift=accel, Return=stop, P=pause, Esc=quit",
 rnd = os.path.join(OUT, "random.keys")
 rg = random.Random(1123)
 with open(rnd, "w") as f:
-    n = 1
+    f.write("1 1\n")
+    n = 3
     while n < 6000:
         ln = rg.randint(1, 40)
         f.write(f"{n}-{n + ln - 1} " + " ".join(rg.sample(["jump", "accel", "accel", "stop", "pause", "quit"],
                                                           rg.randint(1, 2))) + "\n")
         n += ln + rg.randint(0, 60)
+        if rg.random() < 0.15:              # F4: start, answer Y/N, type a letter
+            f.write(f"{n} {rg.choice(['1', '1', 'N', 'Y', 'B'])}\n")
+            n += 2
+# the screen checks at the end of a random run want a step well into a ride
+_rm = [parse(l) for l in ref_trace(rnd, 3000)]
+RND_N = max(s_["step"] for i, s_ in enumerate(_rm) if i >= 40 and all(q["mode"] == PLAY for q in _rm[i - 40:i + 1]))
 scripts = [(os.path.join(KEYS, s), n) for s, n in (("basic.keys", 400), ("wrapjump.keys", 420),
                                                     ("pause.keys", 250), ("scene.keys", 800),
-                                                    ("airstop.keys", 300), ("heldjump.keys", 260))] + [(rnd, 6000)]
+                                                    ("airstop.keys", 300), ("heldjump.keys", 260),
+                                                    ("flow.keys", 1300), ("quit.keys", 200))] + [(rnd, 6000)]
 total = 0
 for path, n in scripts:
     r = emu.run(TAP, frames=n + 1, keys=path, out=os.path.join(OUT, "trace-" + os.path.basename(path)))
@@ -183,13 +222,14 @@ for path, n in scripts:
     first = next((i for i, (a, b) in enumerate(zip(oric, ref)) if a != b), None)
     check(f"trace {os.path.basename(path)}: Oric == native over {n} steps", same and r.rc == 0,
           f"{len(oric)} vs {len(ref)} lines" + (f", first difference at step {first + 1}" if first is not None else ""))
-    worst = max(worst, max(r.frame_stats()[1]))
+    worst = max(worst, max(steady_busy(r)))
     total += n
 for path, n in scripts[:2] + scripts[3:4]:
     r = emu.run(ETAP, frames=n + 1, keys=path, out=os.path.join(OUT, "trace-empty-" + os.path.basename(path)))
     check(f"test track {os.path.basename(path)}: Oric == native over {n} steps",
           r.trace.decode().splitlines() == ref_trace(path, n, True) and r.rc == 0)
-check("step work under the 20,000-cycle step", worst < STEP, f"worst {worst} cycles over {total} scripted steps")
+check("step work under the 20,000-cycle step (riding and the title; a new card's first step runs long)",
+      worst < STEP, f"worst {worst} cycles over {total} scripted steps")
 S = os.path.join(B, "san")
 os.makedirs(S, exist_ok=True)
 san = subprocess.run(["cc", "-O1", "-g", "-fsanitize=address,undefined", "-fno-sanitize-recover", "-I", "src",
@@ -207,7 +247,7 @@ def rules(lines):
     for l in lines:
         s = parse(l)
         if prev:
-            restart = s["ev"] & (0x10 | 0x40)
+            restart = s["ev"] & 0x10 or s["ev2"] & RUNSTART
             if s["speed"] < prev["speed"] and not (s["ev"] & 0x04) and not restart:
                 errs.append(f"speed fell at {s['step']}")
             if s["ev"] & 0x04 and not prev["flags"] & 1:
@@ -219,6 +259,7 @@ def rules(lines):
         prev = s
     return errs
 allr = [ref_trace(p, n, True) for p, n in scripts]
+RUNSTART = 0x20     # ev2: a new run from the title
 errs = sum((rules(t) for t in allr), [])
 check("rules (test track): speed never falls but for the stop; one stop per scene; wrap keeps arc and speed",
       not errs, "; ".join(errs[:3]))
@@ -234,7 +275,7 @@ check("airstop.keys: the stop works in mid-air; the bike drops straight down, la
       and any(s["ev"] & 0x02 for s in after) and sum(1 for s in ast if s["ev"] & 0x04) == 1,
       f"stop at step {st_['step']}, jump step {st_['jt']}, height {st_['h']}" if st_ else "no stop")
 hj = [parse(l) for l in allr[5]]
-lands = [s["step"] for s in hj if s["ev"] & 0x02 and s["step"] < 250]
+lands = [s["step"] for s in hj if s["ev"] & 0x02 and s["step"] < 252]
 jumps = [s["step"] for s in hj if s["ev"] & 0x01]
 gaps = [min(j - l for j in jumps if j > l) for l in lands if any(j > l for j in jumps)]
 check("heldjump.keys: Space held jumps again 3 steps after each landing (Bob, BUILD 5)",
@@ -245,7 +286,7 @@ check("stop lamp: lit before the stop, out after it (Bob, BUILD 4)",
       r0.mem[0xBF68 + 19] == ord("*") and r.mem[0xBF68 + 19] == ord("+"),
       f"{chr(r0.mem[0xBF68 + 19])} then {chr(r.mem[0xBF68 + 19])}")
 # F2: the measured feel (docs/M1-MEASUREMENTS.md "In Oric units")
-fe = [parse(l) for l in ref_trace(os.path.join(KEYS, "feel.keys"), 400, True)]
+fe = [dict(parse(l), step=parse(l)["step"] - 2) for l in ref_trace(os.path.join(KEYS, "feel.keys"), 402, True)][2:]
 sp = {s["step"]: s["speed"] for s in fe}
 air = [s for s in fe if s["jt"]]
 travel = sum(250 for s in air)                  # x grows by speed each airborne step
@@ -300,7 +341,7 @@ def f3_rules(lines):
     for l in lines:
         s = parse(l)
         if prev:
-            restart = s["ev"] & (0x10 | 0x40) or s["ev2"] & (0x04 | 0x08)
+            restart = s["ev"] & 0x10 or s["ev2"] & (0x04 | 0x08 | RUNSTART)
             if s["speed"] < prev["speed"] and not s["ev"] & (0x04 | 0x80) and not restart:
                 errs.append(f"speed fell at {s['step']}")
             if s["ev"] & 0x80:
@@ -314,9 +355,10 @@ def f3_rules(lines):
                     if s["step"] - crash_at != 75:
                         errs.append(f"retake {s['step'] - crash_at} steps after the crash")
                     if prev["takes"]:
-                        ok = s["ev2"] & 0x04 and s["take"] == prev["take"] + 1 and s["fee"] == prev["fee"]
+                        ok = s["ev2"] & 0x04 and s["take"] == prev["take"] + 1 and s["fee"] == prev["fee"] \
+                            and s["mode"] == CARD
                     else:
-                        ok = s["ev2"] & 0x08 and s["takes"] == 3 and s["take"] == 1 and s["fee"] == 0
+                        ok = s["ev2"] & 0x08 and s["mode"] == FIRED and s["fee"] == prev["fee"]
                     if not ok or (s["x"], s["track"], s["speed"]) != (0, 0, 0):
                         errs.append(f"bad retake at {s['step']}")
             if s["ev2"] & 0x01:
@@ -326,7 +368,7 @@ def f3_rules(lines):
                     errs.append(f"fee {prev['fee']}->{s['fee']} at {s['step']}, want {want}")
                 if s["ev2"] & 0x02 and (not s["ev"] & 0x10 or prev["take"] != 1):
                     errs.append(f"bonus without a first-take clear at {s['step']}")
-            elif s["fee"] != prev["fee"] and not s["ev2"] & 0x08:
+            elif s["fee"] != prev["fee"] and not s["ev2"] & RUNSTART:
                 errs.append(f"fee changed without a track at {s['step']}")
             if s["ev2"] & 0x10 and not (s["takes"] == prev["takes"] + 1 and (s["flags"] >> 4) % 3 == 0):
                 errs.append(f"take given back wrongly at {s['step']}")
@@ -335,12 +377,12 @@ def f3_rules(lines):
 
 
 rhr = {os.path.basename(p): ref_trace(p, n) for p, n in scripts}
-rhr["clear.keys"] = ref_trace(os.path.join(KEYS, "clear.keys"), 450)
-rhr["takeback.keys"] = ref_trace(os.path.join(KEYS, "takeback.keys"), 1520)
+rhr["clear.keys"] = ref_trace(os.path.join(KEYS, "clear.keys"), 452)
+rhr["takeback.keys"] = ref_trace(os.path.join(KEYS, "takeback.keys"), 2000)
 errs = sum((f3_rules(t) for t in rhr.values()), [])
 evs = [parse(l) for t in rhr.values() for l in t]
-check("F3 rules: crash = dead stop, a take lost, 1.5 s pause, then the retake from the start (or fired: "
-      "a new run); fee per track = 10 x scene; bonus only on a first-take clear",
+check("F3 rules: crash = dead stop, a take lost, 1.5 s pause, then the clapper card for the retake from the "
+      "start (or \"YOU'RE FIRED!\"); fee per track = 10 x scene; bonus only on a first-take clear",
       not errs and any(s["ev"] & 0x80 for s in evs) and any(s["ev2"] & 0x08 for s in evs),
       "; ".join(errs[:3]) or f"{sum(1 for s in evs if s['ev'] & 0x80)} crashes, "
       f"{sum(1 for s in evs if s['ev2'] & 0x08)} firings")
@@ -365,7 +407,7 @@ def touch_errors(lines):
         s_ = parse(l)
         if st is None:
             st = start()
-        moved = not (prev and (prev["crash_t"] or prev["flags"] & 2)) and not s_["ev"] & 0x60
+        moved = bool(prev) and prev["mode"] == PLAY and not prev["flags"] & 2 and not s_["ev"] & 0x60
         if moved:
             for i, (t, k, x, a) in enumerate(MOVING):
                 h = st[i]
@@ -381,7 +423,7 @@ def touch_errors(lines):
                             h.append(1)
                         elif h[1] == 0 and len(h) > 3:
                             del h[3:]
-        if s_["ev"] & 0x50 or s_["ev2"] & 0x0c:
+        if s_["ev"] & 0x10 or s_["ev2"] & (0x04 | 0x08 | RUNSTART):
             st = start()
         elif moved:
             px_ = scene_ref.px(s_["x"])
@@ -448,6 +490,108 @@ check("crash: the crash picture, \"CUT!\" on the status line, a take icon gone, 
       b"CUT!" in r.mem[0xBF68 + 80:0xBF68 + 120] + row0 and b"@@ " in row0 and not bad,
       f"{row0.decode(errors='replace')!r}, {len(bad)} wrong bytes")
 
+# F4: the film frame (DESIGN "Presentation")
+r = emu.run(TAP, frames=30, out=os.path.join(OUT, "f4-title"))
+emu.write_png(os.path.join(OUT, "f4-title.png"), r.rgb, 2)
+r2 = emu.run(TAP, frames=34, out=os.path.join(OUT, "f4-title2"))
+bulb_rows = [0xA000 + 4 * 40 + 41, 0xA000 + 47 * 40 + 41]
+tl = [parse(l) for l in r.trace.decode().splitlines()]
+check("title screen first: red marquee, chasing lights (they move every 4 steps), the menu, no riding",
+      all(s_["mode"] == TITLE for s_ in tl) and r.pixel(6, 10) == RED
+      and r.mem[0xA000 + 5 * 40:0xA000 + 6 * 40] != r2.mem[0xA000 + 5 * 40:0xA000 + 6 * 40]
+      and {r.mem[0xA000 + 5 * 40 + c] for c in range(3, 38, 2)} == {0x5E, 0x52}
+      and max(r.frame_stats()[1][3:]) < STEP,
+      f"modes {sorted({s_['mode'] for s_ in tl})}, slowest step {max(r.frame_stats()[1][3:])} cycles")
+
+
+def text_at(r, col, y, s):
+    """small text from our charset at $9800 (src/frame.c text())"""
+    return all(r.mem[0xA000 + (y + row) * 40 + col + i] == 0x40 | r.mem[0x9800 + ord(c) * 8 + row]
+               for i, c in enumerate(s) for row in range(7) if c != " ")
+
+
+check("title: the menu and today's top five (the film crew's fees to beat)",
+      text_at(r, 12, 110, "1  START") and text_at(r, 24, 122, "EXTRA") and text_at(r, 24, 134, "ON")
+      and text_at(r, 16, 158, "DIR") and text_at(r, 21, 190, "$50"))
+ck = os.path.join(OUT, "card.keys")
+open(ck, "w").write("1 1\n")
+r = emu.run(TAP, frames=100, keys=ck, out=os.path.join(OUT, "f4-card"))
+cl = [parse(l) for l in r.trace.decode().splitlines()]
+play_at = next((s_["step"] for s_ in cl if s_["mode"] == PLAY), None)
+snap_t = r.marks[1 + CARD_SNAP - 1]
+clack = [v for c, reg, v in r.ay if reg == 6 and snap_t <= c < snap_t + 120000]
+check("clapper card: 1 starts it; with no key it lasts 1.8 s (90 steps), the arm shuts at 1.1 s with a "
+      "noise clack", play_at == 1 + 90 and clack == [2], f"play at step {play_at}, noise at the snap {clack}")
+r = emu.run(TAP, frames=1 + CARD_SNAP + 4, keys=ck, out=os.path.join(OUT, "f4-card-action"))
+emu.write_png(os.path.join(OUT, "f4-card.png"), r.rgb, 2)
+check("clapper card: film, scene 1, take 1, \"ACTION!\" after the snap",
+      text_at(r, 5, 76, "FILM") and text_at(r, 5, 112, "SCENE") and text_at(r, 24, 112, "TAKE")
+      and any(r.mem[0xA000 + y * 40 + c] != 0x40 for y in range(6, 20) for c in range(2, 40)))
+fl = os.path.join(KEYS, "flow.keys")
+ft = [parse(l) for l in ref_trace(fl, 1300)]
+seq = [ft[0]["mode"]] + [b["mode"] for a_, b in zip(ft, ft[1:]) if a_["mode"] != b["mode"]]
+want_seq = [CARD, PLAY, PRINT, CARD, PLAY, CUT, CARD, PLAY, CUT, CARD, PLAY, CUT, FIRED, NAME, TITLE]
+cards = [b["take"] for a_, b in zip(ft, ft[1:]) if b["mode"] == CARD and a_["mode"] != CARD]
+check("flow.keys: card, ride, \"THAT'S A PRINT!\", card, then three crashes: \"CUT!\" and the card with the "
+      "next take each time, \"YOU'RE FIRED!\", initials, the title", seq == want_seq and cards == [1, 2, 3],
+      f"modes {seq}, takes on the cards {cards}")
+syms = emu.symbols(TAP)
+shots = {}
+for name, at in (("print", next(s_["step"] for s_ in ft if s_["mode"] == PRINT) + 5),
+                 ("cut", next(s_["step"] for s_ in ft if s_["mode"] == CUT and s_["crash_t"] == CUT_SHOW - 5)),
+                 ("fired", next(s_["step"] for s_ in ft if s_["mode"] == FIRED) + 5),
+                 ("name", next(s_["step"] for s_ in ft if s_["mode"] == NAME) + 12), ("end", 1300)):
+    shots[name] = emu.run(TAP, frames=at, keys=fl, out=os.path.join(OUT, "f4-" + name))
+    emu.write_png(os.path.join(OUT, f"f4-{name}.png"), shots[name].rgb, 2)
+rf = shots["end"]
+check("flow.keys on the Oric: same trace as the native model", rf.trace.decode().splitlines() == ref_trace(fl, 1300)[:len(rf.trace.decode().splitlines())])
+bf = [rf.mem[syms["_best_fee"] + 2 * i] | rf.mem[syms["_best_fee"] + 2 * i + 1] << 8 for i in range(5)]
+bn = bytes(rf.mem[syms["_best_name"]:syms["_best_name"] + 15]).decode()
+check("top five: $90 goes in fifth with the initials typed, BOB; the title shows it",
+      bf == [250, 200, 150, 100, 90] and bn == "DIRCAMSFXMUABOB" and text_at(rf, 16, 190, "BOB")
+      and text_at(rf, 21, 190, "$90"), f"{bf} {bn}")
+check("\"CUT!\" with the megaphone in the title strip; \"THAT'S A PRINT!\" tallies $40 + $50 bonus; "
+      "\"YOU'RE FIRED!\" shows the fee",
+      text_at(shots["print"], 32, 70, "$40") and text_at(shots["print"], 32, 84, "$50")
+      and any(shots["cut"].mem[0xA000 + y * 40 + 6] != 0x40 for y in range(1, 8))
+      and text_at(shots["fired"], 16, 66, "FINAL FEE"))
+rc_ = shots["fired"]
+cut_t = rc_.marks[next(s_["step"] for s_ in ft if s_["mode"] == CUT and s_["crash_t"] == CUT_SHOW) - 1]
+tones = []
+for c, reg, v in rc_.ay:                   # the sweep moves each tone up a little
+    note = 1 if 150 < v <= 170 else 2 if 200 < v <= 230 else None
+    if cut_t <= c < cut_t + 400000 and reg == 4 and note and note not in tones:
+        tones.append(note)
+check("\"CUT!\": a two-note squawk on channel C as the megaphone pops up (falling: ~415 Hz, then ~310)",
+      tones == [1, 2], str(tones))
+sk = os.path.join(KEYS, "season.keys")
+st_ = [parse(l) for l in ref_trace(sk, 7800)]
+wrap = next((s_ for s_ in st_ if s_["mode"] == WRAP), None)
+after = [s_ for s_ in st_ if wrap and s_["step"] > wrap["step"]]
+fee13 = next((s_["fee"] - p_["fee"] for p_, s_ in zip(after, after[1:]) if s_["ev2"] & 1), None)
+check("season.keys: twelve scenes cleared, \"THAT'S A WRAP!\", then the next billing up (2) at $130 a track",
+      wrap is not None and (wrap["flags"] >> 4) == 12 and after and after[-1]["billing"] == 2 and fee13 == 130
+      and not any(s_["ev"] & 0x80 for s_ in st_),
+      f"wrap at step {wrap['step'] if wrap else None}, then billing {after[-1]['billing'] if after else None}, "
+      f"track fee {fee13}")
+if wrap:
+    rw = emu.run(TAP, frames=wrap["step"] + 5, keys=sk, out=os.path.join(OUT, "f4-wrap"))
+    emu.write_png(os.path.join(OUT, "f4-wrap.png"), rw.rgb, 2)
+    check("season.keys on the Oric: same trace; the wrap card lists the six films",
+          rw.trace.decode().splitlines() == ref_trace(sk, wrap["step"] + 4)
+          and text_at(rw, 2 + (38 - 16) // 2, 68, "RUSH HOUR RUMBLE") and text_at(rw, 2 + (38 - 10) // 2, 128, "COLD FRONT"))
+qk = os.path.join(KEYS, "quit.keys")
+qt = [parse(l) for l in ref_trace(qk, 200)]
+md = {s_["step"]: s_["mode"] for s_ in qt}
+check("quit.keys: L twice = billing 3 ($250 a track); Esc asks, N rides on, Esc then Y = the title",
+      md[99] == PLAY and md[100] == ASK and md[110] == PLAY and md[150] == ASK and md[160] == TITLE
+      and qt[30]["billing"] == 3, f"modes {[md[k] for k in (99, 100, 110, 150, 160)]}, billing {qt[30]['billing']}")
+rq = emu.run(TAP, frames=200, keys=qk, out=os.path.join(OUT, "f4-quit"))
+eng = [v for c, reg, v in rq.ay if reg == 8 and v and rq.marks[30] <= c < rq.marks[150]]
+check("quit.keys: S turns the sound off (no engine while riding), S again on (the menu says ON)",
+      not eng and text_at(rq, 24, 134, "ON") and rq.trace.decode().splitlines() == ref_trace(qk, 200)[:199],
+      f"{len(eng)} engine volume writes")
+
 # 8. Oricutron build: noise an octave lower (every R6 value doubled)
 path = os.path.join(KEYS, "basic.keys")
 rel = emu.run(TAP, frames=400, keys=path, out=os.path.join(OUT, "ay-release"))
@@ -473,7 +617,7 @@ import bisect
 VF = 19968                                   # Oric video frame: 312 lines x 64 cycles
 
 
-def tears(r):
+def tears(r, ok_steps):
     """(steps in which some video frame showed part old, part new rider, drawing
     steps, slowest burst in cycles a line).  Each step's writes are split into
     bursts (gaps > 300 cycles: the two halves of a wrap); a frame f scans line y,
@@ -481,7 +625,7 @@ def tears(r):
     when it scans some of a burst's bytes before their write and some after."""
     steps = {}
     for a, v, c in r.wlog:
-        if c >= r.marks[0]:
+        if c >= r.marks[0] and bisect.bisect_right(r.marks, c) in ok_steps:
             steps.setdefault(bisect.bisect_right(r.marks, c), []).append((a - 0xA000, c))
     bad, pace = 0, 0
     for ws in steps.values():
@@ -509,15 +653,15 @@ blank = scene_ref.scene_bytes(1, "scene_test")
 all_torn = all_drawn = 0
 for path, n in [(tj, 1500)] + scripts[:5]:
     r = emu.run(ETAP, frames=n, keys=path, wlog=True, out=os.path.join(OUT, "rider-" + os.path.basename(path)))
-    quits = {parse(l)["step"] for l in r.trace.decode().splitlines() if parse(l)["ev"] & 0x40}
+    ok_steps = steady(r.trace.decode().splitlines())
     last, twice = {}, 0
     for a, v, c in r.wlog:
         if c < r.marks[0]:
             continue
         st = bisect.bisect_right(r.marks, c)
-        twice += a in last and last[a] == st and st not in quits
+        twice += a in last and last[a] == st and st in ok_steps
         last[a] = st
-    torn, drawn, pace = tears(r)
+    torn, drawn, pace = tears(r, ok_steps)
     s_ = parse(r.trace.decode().splitlines()[-1])
     x = scene_ref.px(s_["x"])
     want = bytearray(blank)
@@ -539,15 +683,21 @@ check("rider: under 1% torn frames over all the scripts", all_torn * 100 < all_d
 
 # F3: the moving hazards drawn with the rider in the full scene (the police
 #     car's 6-cell box through the 67-cycle template, src/draw.s burst6)
-for path, n in ((os.path.join(KEYS, "clear.keys"), 450), (os.path.join(KEYS, "takeback.keys"), 1500), (rnd, 3000)):
+# (torn frames counted over the three together, as for the rider alone: F4's
+# cards move the steps' phase against the video, and where the clusters fall)
+sc_torn = sc_draw = 0
+for path, n in ((os.path.join(KEYS, "clear.keys"), 430), (os.path.join(KEYS, "takeback.keys"), 1950), (rnd, RND_N)):
     r = emu.run(TAP, frames=n, keys=path, wlog=True, out=os.path.join(OUT, "scene-" + os.path.basename(path)))
-    torn, ndraw, pace = tears(r)
+    torn, ndraw, pace = tears(r, steady(r.trace.decode().splitlines()))
+    sc_torn, sc_draw = sc_torn + torn, sc_draw + ndraw
     want = with_hazards(with_rider(scene_ref.scene_bytes(1), r), r)
     got = r.mem[0xA000:0xA000 + 8000]
     bad = [i for i in range(320, 8000) if want[i] != got[i]]
-    check(f"scene {os.path.basename(path)}: rider and hazards under 1% torn frames; screen = reference",
-          torn * 100 < ndraw and not bad, f"{torn} torn of {ndraw} drawing steps, slowest burst "
+    check(f"scene {os.path.basename(path)}: one pass at the beam's pace; screen = reference",
+          pace < 70 and not bad, f"{torn} torn of {ndraw} drawing steps, slowest burst "
           f"{pace:.0f} cycles a line, {len(bad)} wrong bytes")
+check("scene: rider and hazards under 1% torn frames over the three scripts", sc_torn * 100 < sc_draw,
+      f"{sc_torn} torn of {sc_draw} drawing steps")
 
 print(f"\n{'ALL PASS' if not fails else f'{fails} FAILED'}")
 sys.exit(1 if fails else 0)

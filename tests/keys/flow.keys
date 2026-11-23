@@ -1,0 +1,19 @@
+# F4: the film frame from start to finish.  1 starts; a tap on Space skips
+# each card.  Scene 1 cleared on take 1 (clear.keys: $90 with the bonus),
+# "THAT'S A PRINT!", the next card; then three crashes into the drums (no
+# jumps): "CUT!", the card with the next take, and after the third "YOU'RE
+# FIRED!"; $90 makes the top five, so the initials B, O, B; back to the title.
+1 1
+2 jump
+3-1200 accel
+122 jump
+214 jump
+313 jump
+439 jump
+444 jump
+658 jump
+872 jump
+1086 jump
+1091 B
+1096 O
+1101 B

@@ -1,7 +1,11 @@
 # accelerate, jump, use the stop, move off again, try a second stop
-10-150 accel
-40 jump
-200 stop
-230-260 accel
-300 stop
-320 jump
+# F4: from the title screen: 1 starts, a tap on Space skips the clapper card,
+# so play starts at step 3 (the rest is shifted 2 steps from F3)
+1 1
+2 jump
+12-152 accel
+42 jump
+202 stop
+232-262 accel
+302 stop
+322 jump

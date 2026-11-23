@@ -226,6 +226,12 @@ retakes stay quick. Any game key skips a card.
 7. **Season finished.** "THAT'S A WRAP!" over a premiere poster with all six titles, then the next
    season at the next billing up.
 
+As built in F4 (BUILD 12): the card also shows the billing, the fee so far and the scene's fee a
+track; "CUT!" pops up 0.4 s after the crash (the crash picture shows first); "THAT'S A PRINT!" lists
+the scene's track fees (all its takes), the bonus, a lost take coming back and the run's fee; Esc's
+question is on the status line, and Y ends the run without a top-five entry. The top five is shown
+whole, not scrolling, and starts with five film-crew fees to beat. K (keys) comes with F6.
+
 Art rules: everything is drawn fresh at Oric resolution in the film's banded palette. The rider is
 about 12 × 16 pixels with two riding frames, a jump frame and a crash frame per vehicle.
 

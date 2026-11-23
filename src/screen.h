@@ -25,5 +25,10 @@ void rider_draw(uint8_t track, uint8_t xpx, uint8_t height, uint8_t frame);
 void hazards_list(const struct scene *s);  /* after scene_draw */
 void hazards_draw(void);
 void status_update(void);
+void play_reset(void);                     /* before a scene is drawn again */
+const uint8_t *glyph(char c);              /* 5 x 7, bits 4-0; 0 = blank */
+uint8_t *line_colours(uint8_t y, uint8_t paper, uint8_t ink);
+uint8_t * __fastcall__ line_addr(uint8_t y);
+#define PAPER(c) (16 + (c))
 
 #endif

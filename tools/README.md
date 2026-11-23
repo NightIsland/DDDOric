@@ -38,12 +38,17 @@ licence). Elsewhere put cc65 2.19 on `PATH` (macOS: `brew install cc65`). Everyt
 
 One line per game step, in hex (`src/trace.h`):
 
-    SSSS T XXXX VVVV JJ HH FF EE II
+    SSSS T XXXX VVVV JJ HH FF EE II E2 CC TN FFFF HZ MB TT KK
     step track x(1/256 px) speed(1/256 px/step) jump-step height flags events input
+    ev2 crash-pause takes|take fee hazards mode|billing steps-in-mode key-code
 
 flags: bit 0 stop unused, bit 1 paused, bits 4–7 scenes finished. events: 01 took off, 02
 landed, 04 stop used, 08 wrapped, 10 scene finished, 20 pause/resume, 40 quit. input: 01 jump,
-02 accelerate, 04 stop, 08 pause, 10 quit.
+02 accelerate, 04 stop, 08 pause, 10 quit. ev2 (F3, F4): 01 fee paid, 02 one-take bonus, 04
+retake, 08 fired, 10 a take given back, 20 a new run, 40 the card is over. mode (F4, low nibble):
+0 title, 1 clapper card, 2 riding, 3 "CUT!", 4 "THAT'S A PRINT!", 5 "YOU'RE FIRED!", 6 initials,
+7 "THAT'S A WRAP!", 8 quit Y/N; billing in the high nibble. key code: the key held, read off
+riding only (`keys_ascii`: letters, digits, 13 Return, 27 Esc, 127 Del).
 
 **Rule:** the native reference and the Oric build print identical traces for the same key
 script. `make test` checks it on every script in `tests/keys/` and 6,000 random steps. A bug
@@ -54,9 +59,11 @@ planted in the Oric build only (one speed unit at step 100) made three checks fa
     # comment
     <from>[-<to>] token token ...
 
-Frame n is game step n. Lower-case tokens are game inputs (`jump accel stop pause quit`), used by
-both the emulator and the native reference; upper-case tokens are Oric keys for the emulator only
-(`SPACE LSHIFT RSHIFT RETURN P ESC`, full matrix in `tools/keyscript.py`).
+Frame n is game step n. Lower-case tokens are game inputs (`jump accel stop pause quit`), which
+press their default keys; upper-case tokens are Oric keys (`SPACE LSHIFT RSHIFT RETURN P ESC`,
+`1`, `L`, `Y`...; full matrix in `tools/keyscript.py`). Both the emulator and the native
+reference (F4) read both kinds. The game starts on the title screen: a play script begins
+`1 1` (start) and `2 jump` (skip the clapper card), so riding starts at step 3.
 
 ## tools/run.py
 

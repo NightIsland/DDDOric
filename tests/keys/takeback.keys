@@ -1,13 +1,19 @@
 # F3: crash into the drums on take 1 (no jump), then clear scenes 1, 2 and 3
-# with clear.keys' timings from each scene's start (the retake at step 209,
-# then every 432 steps): the third scene cleared gives the lost take back
-1-1600 accel
-329 jump
+# with clear.keys' timings from each take's first riding step: the third
+# scene cleared gives the lost take back.
+# F4: from the title (1, then a tap on Space skips the first clapper card);
+# Shift is held throughout, so every later card runs its full time: "CUT!"
+# 1.5 s, the card 1.8 s, "THAT'S A PRINT!" 2 s.  Riding starts at steps 3,
+# 302, 924 and 1546.
+1 1
+2 jump
+3-2000 accel
 421 jump
-520 jump
-761 jump
-853 jump
-952 jump
-1193 jump
-1285 jump
-1384 jump
+513 jump
+612 jump
+1043 jump
+1135 jump
+1234 jump
+1665 jump
+1757 jump
+1856 jump

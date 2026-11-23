@@ -21,6 +21,9 @@ void snd_land(void);                             /* landing thump */
 void snd_stop(void);                             /* brakes */
 void snd_crash(void);                            /* crash */
 void snd_fee(void);                              /* fee paid */
+void snd_clack(void);                            /* the clapper arm shuts */
+void __fastcall__ snd_squawk(uint8_t note);      /* "CUT!": note 0, then 1 */
+uint8_t keys_ascii(void);       /* F4: the code of a key held (src/model.h K_*), 0 = none */
 
 /* harness debug port (docs/ORIC-LESSONS.md section 6): RAM never displayed */
 #define DBG_TRACE (*(volatile uint8_t *)0xBFE0)

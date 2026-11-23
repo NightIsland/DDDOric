@@ -40,8 +40,35 @@
 #define EV2_FEE    0x01     /* a track finished: its fee paid */
 #define EV2_BONUS  0x02     /* scene cleared on its first take: one-take bonus */
 #define EV2_RETAKE 0x04     /* the crash pause is over: same scene, next take */
-#define EV2_FIRED  0x08     /* the last take was lost: the run starts again (F4: title) */
+#define EV2_FIRED  0x08     /* the last take was lost: "You're fired!" */
 #define EV2_TAKE   0x10     /* a lost take given back (every third scene cleared) */
+#define EV2_RUN    0x20     /* a new run started from the title screen */
+#define EV2_ACTION 0x40     /* the clapper card is over: play starts */
+
+/* F4: the film frame (DESIGN "Presentation").  The model runs the whole game,
+   menus and cards too, so the native reference traces them like play. */
+#define M_TITLE 0           /* title screen: 1 start, L billing, S sound */
+#define M_CARD  1           /* clapper card before each take */
+#define M_PLAY  2           /* riding (and paused) */
+#define M_CUT   3           /* the crash pause: "CUT!" */
+#define M_PRINT 4           /* scene cleared: "THAT'S A PRINT!" and the fee tally */
+#define M_FIRED 5           /* the last take lost: "YOU'RE FIRED!" */
+#define M_NAME  6           /* initials for the top five */
+#define M_WRAP  7           /* a season (12 scenes) finished: "THAT'S A WRAP!" */
+#define M_ASK   8           /* Esc in play: "QUIT? Y/N" */
+
+#define CARD_STEPS 90       /* the clapper card: 1.8 s, then play */
+#define CARD_SNAP  55       /* the step of the card when the arm snaps shut */
+#define SHOW_STEPS 100      /* print, fired and wrap cards: 2 s */
+#define CUT_SHOW   (CRASH_STEPS - 20)   /* crash_t when the megaphone pops up */
+#define SEASON     12       /* scenes in a season (6 films x 2) */
+#define BILLINGS   6
+#define NBEST      5        /* the top five fees */
+
+/* key codes from the full keyboard scan (keys_ascii), besides letters and digits */
+#define K_RETURN 13
+#define K_ESC    27
+#define K_DEL    127
 
 #define NHAZ       (4 * SC_MAX)
 #define CRASH_STEPS 75      /* 1.5 s from the crash to the retake (DESIGN "Presentation") */
@@ -70,6 +97,16 @@ struct model {
     uint16_t fee;           /* pounds earned this run */
     uint16_t best;          /* best fee this session */
     uint8_t  hz_sum;        /* the moving hazards' positions folded into a byte (trace) */
+    uint8_t  mode;          /* M_*: F4 */
+    uint8_t  t;             /* steps in this mode (wraps) */
+    uint8_t  billing;       /* 1-6: the starting billing (title) and the current one */
+    uint8_t  sound;         /* 1: sound on (S on the title screen) */
+    uint8_t  key_prev;      /* last step's key code, for key-down edges */
+    uint16_t scene_fee;     /* earned in this scene over all its takes, bonus included */
+    uint16_t bonus;         /* the one-take bonus just paid, 0 = none */
+    uint8_t  gave_take;     /* 1: the scene just cleared gave a take back */
+    uint8_t  name_slot;     /* M_NAME: the top-five line being named */
+    uint8_t  name_len;      /*   initials typed */
 };
 
 extern struct model m;
@@ -80,9 +117,15 @@ extern uint8_t hz_drop[NHAZ];   /* danglers: lines below the top position, 0 .. 
 #define DANGLE_MAX 25           /* M1: the line runs 1 .. 26 lines */
 #define DANGLE_TOP 6            /* band line of a dangler's top when up */
 
+/* the top five fees of the session and their initials (DESIGN "Best fees") */
+extern uint16_t best_fee[NBEST];
+extern char best_name[NBEST][3];
+
 void model_init(const struct scene *s, uint8_t billing);
 void model_scene_start(void);
-void __fastcall__ model_step(uint8_t in);
+void model_billing(uint8_t billing);   /* which gaps show */
+/* in: IN_* bits; key: the key code held (keys_ascii), read only off M_PLAY */
+void model_step(uint8_t in, uint8_t key);
 uint8_t model_px(void);     /* the rider's left edge in pixels, 0 .. 213 */
 
 #endif
