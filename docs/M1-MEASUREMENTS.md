@@ -132,7 +132,7 @@ there for Bob.
 2. **Sea and snow.** The original handles exactly like land. DESIGN gave the jet-ski looser and the
    skis a drag. Bob: follow the original.
 3. **Wages.** The original pays per track completed (10 × screen number) and pays again on a retake.
-   DESIGN pays per hazard, once per scene. Still open with Bob.
+   DESIGN paid per hazard, once per scene. Bob: follow the original.
 4. **Held jump.** The original repeats the jump while Space is held. DESIGN did not repeat. Bob:
    follow the original.
 5. **Takes.** The original gives a lost take back after every land, sea, snow round. DESIGN said no

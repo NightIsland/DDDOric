@@ -43,7 +43,7 @@ frame by frame (JSBeeb, see PLAN M1) and the measured value written here.
 | Ceiling | Some fixed obstacles hang from the top of the track and catch a jump | Same: ceiling blocks |
 | Handling | Identical on land, sea and snow; only the pictures change (M1) | Same: one standard handling for every vehicle except the sci-fi hover bike, see Vehicles |
 | Lives | 3 takes, then back to the menu; one lost take is given back after each land, sea, snow round (M1) | 3 takes per run; one lost take back after every third scene cleared |
-| Score | Wages per track completed, 10 × the screen number, paid again on a retake (M1) | £10 per hazard, more on harder billings |
+| Score | Wages per track completed, 10 × the screen number, paid again on a retake (M1) | Same: £10 × the scene's number in the run per track, paid again on a retake (Bob's decision) |
 | Crash | Burst, rider flung away, pause, same screen restarts | Same, with "Cut!" and the clapper |
 | Difficulty | 36 screens in a fixed order cycling land, sea, snow; the skill level picks the starting screen (1, 7, 13, 19, 25, 31), so a level is 6 screens; gaps from screen 5, flying hazards from screen 4 (M1) | 6 billings; each is one season of 6 films, then the next billing starts by itself; gaps from billing 3 (guess) |
 
@@ -128,8 +128,8 @@ when.
 4. **Crashing.** Bob crashes if his box (shrunk by 2 px on each side, for fairness) touches a hazard,
    if he lands on top of an obstacle, if his wheels are over a gap when he is on the ground, or if his
    jump hits a ceiling block or anything else that must be passed on the ground.
-5. **Clearing.** A hazard is cleared, and pays its fee, once Bob's back wheel passes its far edge
-   without a crash.
+5. **Paying.** Finishing a track (wrapping to the next one, or leaving track 4) pays the scene's
+   track fee, as in the original. Hazards themselves pay nothing; they only stand in the way.
 
 ## Obstacles and vehicles
 
@@ -186,14 +186,14 @@ first screen must be passed on the ground.
 
 **Billings** are the difficulty levels, the starting one picked on the title screen.
 
-| Billing | Gaps | Runner and dangler speed | Fee per hazard |
+| Billing | Gaps | Runner and dangler speed | Fee per track |
 | --- | --- | --- | --- |
-| 1 Extra | None | Slow | £10 |
-| 2 Stand-in | None | Normal | £20 |
-| 3 Double | Small gaps added | Normal | £30 |
-| 4 Stunt Man | More gaps | Fast | £40 |
-| 5 Stunt Coordinator | Gaps in front of most hazards | Fast | £50 |
-| 6 Legend | Most track broken | Fastest | £60 |
+| 1 Extra | None | Slow | £10 to £120 |
+| 2 Stand-in | None | Normal | £130 to £240 |
+| 3 Double | Small gaps added | Normal | £250 to £360 |
+| 4 Stunt Man | More gaps | Fast | £370 to £480 |
+| 5 Stunt Coordinator | Gaps in front of most hazards | Fast | £490 to £600 |
+| 6 Legend | Most track broken | Fastest | £610 to £720 |
 
 In the original (M1) runners and danglers move at the same speed per step on every level (runner
 0.95 px per step, dangler 1 px per 3 steps in our units); only the layouts get harder, and gaps start
@@ -219,7 +219,7 @@ retakes stay quick. Any game key skips a card.
    the title strip with a big "CUT!" and a squawk. After about 1.5 s the clapper card returns with the
    take number one higher, and the scene restarts from track 1.
 5. **Scene cleared.** "THAT'S A PRINT!" with a fee tally for the scene, then the next scene's card.
-   Clearing a scene on its first take pays a one-take bonus of five times the hazard fee (guess).
+   Clearing a scene on its first take pays a one-take bonus of five times its track fee (guess).
 6. **Third crash.** "YOU'RE FIRED!" over the final fee, then initials for the top five if the fee
    qualifies, then the title screen.
 7. **Season finished.** "THAT'S A WRAP!" over a premiere poster with all six titles, then the next
@@ -230,14 +230,15 @@ about 12 × 16 pixels with two riding frames, a jump frame and a crash frame per
 
 ## Scoring, takes and fees
 
-- **Fee.** Each hazard cleared pays the billing's fee (£10 to £60). A scene cleared on its first take
-  adds the one-take bonus. Gaps count as hazards.
+- **Fee.** As in the original (M1, Bob's decision), each finished track pays the scene's track fee:
+  £10 × the scene's number in the run, counting on through the billings (billing 1 is scenes 1 to
+  12, £10 to £120 a track; billing 2 starts at scene 13, £130; and so on). The original paid 10 × its
+  screen number. A scene cleared on its first take adds the one-take bonus (our addition).
 - **Takes.** Three per run. A crash uses one and restarts the scene from track 1 with its stop
-  restored. Fees already earned are kept, but each hazard pays only once per scene, so a retake earns
-  only for hazards beyond the point where you fell. Example at Extra: take 1 clears 5 hazards (£50)
-  and crashes on the 6th; take 2 pays nothing for the first 5, then £10 for each new one. A crash
-  costs a take and the one-take bonus, never money already earned. The original instead pays per
-  track and pays again on a retake (M1); for Bob to confirm which we keep.
+  restored. Fees already earned are kept, and a retake pays again for every track it finishes, as in
+  the original. Example on scene 1: take 1 finishes two tracks (£20) and crashes on the third; take 2
+  finishes all four (£40 more, £60 in all). A crash costs a take and the one-take bonus, never money
+  already earned.
 - **Take back.** As in the original (M1), a lost take is given back after every third scene cleared
   (the original did it after each land, sea, snow round of three screens). Never more than three.
 - **Best fees.** A top-five table with three initials, kept until the machine is switched off.
@@ -251,7 +252,7 @@ about 12 × 16 pixels with two riding frames, a jump frame and a crash frame per
 | Crash | B + noise | Noise burst with a falling tone |
 | "Cut!" | B | Two-note megaphone squawk (no speech: the word is shown) |
 | Clapper | Noise | A sharp clack |
-| Fee paid | C | A short blip each time a hazard is cleared |
+| Fee paid | C | A short blip each time a track is finished |
 | Jingles | A–C | Title theme (about 20 s, loops), a 2–3 s sting per genre on the clapper card, "That's a print", "You're fired", "That's a wrap" fanfare |
 
 All tunes are composed for this game. Envelopes step from the 10 ms timer, as in Chuckie Egg. Noise
@@ -324,8 +325,8 @@ The build order is in `docs/PLAN.md`.
 | Handling | Standard for every vehicle, as in the original; only the hover bike floats |
 | Hazards | Ceiling blocks are an original kind; jets and ramps are new, in scene 2 |
 | Keys | Space jump, either Shift accelerate, Return stop; redefinable; no joystick |
-| Takes and fees | 3 takes, one lost take back after every third scene cleared (as the original); fees in pounds, rule still open (see Scoring) |
+| Takes and fees | 3 takes, one lost take back after every third scene cleared (as the original); fees in pounds, paid per track finished and again on a retake (as the original) |
 | Oricutron builds | Noise played an octave lower to match real hardware |
 | Level codes | Optional extra after film 1 |
 | Measuring | Time the BBC original frame by frame to set speeds, arc and handling |
-| After M1 | Bob agreed to follow the original on the stop, sea and snow handling, the held jump and the take refund. Levels: our billings already work like its skill levels (a start point in one continuous run); a billing stays one 12-scene season. Still open: how fees are paid (see Scoring) |
+| After M1 | Bob agreed to follow the original on the stop, sea and snow handling, the held jump and the take refund. Levels: our billings already work like its skill levels (a start point in one continuous run); a billing stays one 12-scene season. Fees: per track, as in the original (Bob's decision). |

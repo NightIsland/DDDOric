@@ -133,5 +133,5 @@ Measured in headless JSBeeb, frame by frame, with RAM traces (`tools/m1/`). Full
 - Sea and snow handle exactly like land.
 - The original gives one stop per take (also in mid-air), pays wages per track completed
   (10 × screen number) and again on a retake, gives a take back after each land, sea, snow round, and
-  its skill levels are start points in one 36-screen run of 6 screens a level. Bob agreed to follow it
-  on all of these except wages, which are still open (follow-up PR updated DESIGN).
+  its skill levels are start points in one 36-screen run of 6 screens a level. Bob chose to follow it on
+  all of these (follow-up PR updated DESIGN).
