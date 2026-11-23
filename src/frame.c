@@ -327,8 +327,8 @@ void frame_card(const struct scene *s)
     arm(24, 24);
     shown_arm = 24;
     shown_action = 0;
-    for (y = BOARD_Y; y < BOARD_Y + 8; ++y)     /* the board's striped top */
-        stripes(LINE(y), (y + 6) % 12, 2, 40);
+    for (y = BOARD_Y; y < BOARD_Y + 8; ++y)     /* the board's striped top, slanting */
+        stripes(LINE(y), (120 - y) % 12, 2, 40); /* against the arm (Bob, BUILD 12) */
     memset(LINE(67) + 2, 0x7F, 38);         /* the slate's frame */
     memset(LINE(68) + 2, 0x7F, 38);
     memset(LINE(196) + 2, 0x7F, 38);
@@ -376,70 +376,126 @@ void frame_card_step(void)
     }
 }
 
-/* ------------------------------------------------------------- "CUT!" */
+/* ------------------------------------------------------------ popups */
 
-/* the director's megaphone and "CUT!" in double-width letters, over the
-   film's name in the title strip (its colours stay) */
-void frame_cut(void)
+/* Bob, BUILD 12: the messages pop up over the scene, which stays behind
+   them.  A popup fills cells 2-39 of lines y0 .. y1: cell 2 sets its ink
+   (showing the line's own paper), cell 3 its paper, cells 4-37 hold the
+   text, and cells 38-39 put the line's own paper and ink back.  A popup
+   that goes away again (pause, the quit question) saves what it covers. */
+#define POP_SAVE 36                     /* lines a popup can save */
+static uint8_t pop_buf[POP_SAVE * 38], pop_y0, pop_n;
+
+static void popup(uint8_t y0, uint8_t y1, uint8_t paper, uint8_t c, uint8_t save)
 {
-    static const char cut[] = "CUT!";
-    uint8_t r, i, g, *p;
-    const uint8_t *src = pic_art[PIC_MEGAPHONE];
-    for (r = 0; r < 8; ++r)
-        memset(LINE(r) + 2, 0x40, 38);
-    for (r = 1; r < 8; ++r, src += 2) {
-        p = LINE(r);
-        p[3] = 0x40 | src[0];
-        p[4] = 0x40 | src[1];
-        for (i = 0; i < 4; ++i) {
-            g = glyph(cut[i])[r - 1];
-            p[6 + 2 * i] = dbl_a[g];
-            p[7 + 2 * i] = dbl_b[g];
-        }
+    register uint8_t *p = LINE(y0);
+    uint8_t *b = pop_buf;
+    pop_n = 0;
+    if (save) {
+        pop_y0 = y0;
+        pop_n = y1 - y0 + 1;
     }
+    for (;; p += 40) {
+        if (save) {
+            memcpy(b, p + 2, 38);
+            b += 38;
+        }
+        p[38] = p[1];                       /* (not "?:": ORIC-LESSONS 5) */
+        if (p[1] == 0x40)
+            p[38] = PAPER(BLACK);
+        p[39] = p[0];
+        p[2] = c;
+        p[3] = PAPER(paper);
+        memset(p + 4, 0x40, 34);
+        if (y0++ == y1)
+            break;
+    }
+}
+
+/* the ink of lines y0 .. y1 inside the popup */
+static void pop_ink(uint8_t y0, uint8_t y1, uint8_t c)
+{
+    for (; y0 <= y1; ++y0)
+        LINE(y0)[2] = c;
+}
+
+void popup_restore(void)
+{
+    register uint8_t *p;
+    uint8_t *b = pop_buf, n = pop_n;
+    for (p = LINE(pop_y0); n; --n, p += 40, b += 38)
+        memcpy(p + 2, b, 38);
+    pop_n = 0;
+}
+
+/* "CUT!": the director's megaphone and the word, large */
+void popup_cut(void)
+{
+    popup(68, 123, RED, YELLOW, 0);
+    pic2(PIC_MEGAPHONE, 11, 74);
+    big(21, 79, "CUT!");
+    if (m.takes)
+        ctext(110, "RETAKE COMING UP");
+    else
+        ctext(110, "THAT WAS THE LAST TAKE");
+}
+
+void popup_pause(void)
+{
+    popup(86, 115, BLUE, WHITE, 1);
+    cbig(91, "PAUSED");
+    ctext(107, "ANY KEY GOES ON");
+}
+
+void popup_ask(void)
+{
+    popup(84, 119, RED, WHITE, 1);
+    pop_ink(89, 102, YELLOW);
+    cbig(89, "QUIT?");
+    ctext(109, "Y: THE TITLE   N: RIDE ON");
 }
 
 /* ------------------------------------------------- "THAT'S A PRINT!" */
 
 void frame_print(void)
 {
-    band(0, 199, BLACK, WHITE);
-    ink(20, 37, BLACK, YELLOW);
-    cbig(22, "THAT'S A PRINT!");
-    text(17, 50, "SCENE");
-    text(23, 50, num(m.run_scene - 1, 0));
-    row(70, "TRACK FEES", num(m.scene_fee - m.bonus, 1));
+    popup(40, 151, BLUE, WHITE, 0);
+    pop_ink(48, 61, YELLOW);
+    cbig(48, "THAT'S A PRINT!");
+    text(17, 72, "SCENE");
+    text(23, 72, num(m.run_scene - 1, 0));
+    row(90, "TRACK FEES", num(m.scene_fee - m.bonus, 1));
     if (m.bonus)
-        row(84, "ONE-TAKE BONUS", num(m.bonus, 1));
+        row(102, "ONE-TAKE BONUS", num(m.bonus, 1));
     if (m.gave_take) {
-        ink(98, 105, BLACK, GREEN);
-        ctext(98, "A LOST TAKE COMES BACK");
+        pop_ink(116, 122, GREEN);
+        ctext(116, "A LOST TAKE COMES BACK");
     }
-    ctext(124, "RUN FEE");
-    ink(136, 149, BLACK, CYAN);
-    cbig(136, num(m.fee, 1));
+    pop_ink(134, 140, CYAN);
+    row(134, "RUN FEE", num(m.fee, 1));
 }
 
 /* --------------------------------------------------- "YOU'RE FIRED!" */
 
 void frame_fired(void)
 {
-    band(0, 199, BLACK, WHITE);
-    ink(26, 43, BLACK, RED);
-    cbig(28, "YOU'RE FIRED!");
-    ctext(66, "FINAL FEE");
-    ink(78, 91, BLACK, YELLOW);
-    cbig(78, num(m.fee, 1));
-    text(12, 108, "BEST TODAY");
-    text(23, 108, num(m.best, 1));
+    popup(52, 151, RED, WHITE, 0);
+    pop_ink(60, 73, YELLOW);
+    cbig(60, "YOU'RE FIRED!");
+    ctext(84, "FINAL FEE");
+    pop_ink(96, 109, YELLOW);
+    cbig(96, num(m.fee, 1));
+    text(12, 120, "BEST TODAY");
+    text(23, 120, num(m.best, 1));
     if (m.fee > best_fee[NBEST - 1]) {
-        ink(130, 137, BLACK, GREEN);
-        ctext(130, "A TOP FIVE FEE!");
+        pop_ink(136, 142, GREEN);
+        ctext(136, "A TOP FIVE FEE!");
     }
 }
 
 /* ---------------------------------------------------- the initials */
 
+#define NAME_TABLE 96                   /* first line of the table */
 static uint8_t shown_len;
 
 static void name_letters(void)
@@ -452,23 +508,23 @@ static void name_letters(void)
     s[3] = ' ';
     s[4] = nm[2];
     s[5] = 0;
-    big(15, 64, s);
-    best_line(m.name_slot, 104 + 10 * m.name_slot);
+    big(15, 60, s);
+    best_line(m.name_slot, NAME_TABLE + 10 * m.name_slot);
     shown_len = m.name_len;
 }
 
 void frame_name(void)
 {
     uint8_t i;
-    band(0, 199, BLACK, WHITE);
-    ink(18, 35, BLACK, YELLOW);
-    cbig(20, "TOP FIVE!");
+    popup(16, 187, BLUE, WHITE, 0);
+    pop_ink(24, 37, YELLOW);
+    cbig(24, "TOP FIVE!");
     ctext(46, "TYPE YOUR INITIALS");
-    ink(64, 77, BLACK, CYAN);
+    pop_ink(60, 73, CYAN);
     for (i = 0; i < NBEST; ++i)
-        best_line(i, 104 + 10 * i);
-    ctext(164, "DEL GOES BACK");
-    ctext(176, "RETURN WHEN DONE");
+        best_line(i, NAME_TABLE + 10 * i);
+    ctext(160, "DEL GOES BACK");
+    ctext(172, "RETURN WHEN DONE");
     name_letters();
 }
 
@@ -483,17 +539,17 @@ void frame_name_step(void)
 void frame_wrap(void)
 {
     uint8_t i;
-    band(0, 199, BLACK, WHITE);
-    ink(18, 35, BLACK, YELLOW);
-    cbig(20, "THAT'S A WRAP!");
-    ink(50, 57, BLACK, MAGENTA);
-    ctext(50, "THE PREMIERE");
+    popup(16, 187, BLUE, WHITE, 0);
+    pop_ink(24, 37, YELLOW);
+    cbig(24, "THAT'S A WRAP!");
+    pop_ink(48, 54, MAGENTA);
+    ctext(48, "THE PREMIERE");
     for (i = 0; i < 6; ++i)
-        ctext(68 + 12 * i, films[i]);
-    ctext(150, "NEXT SEASON YOU ARE BILLED AS");
-    ink(164, 177, BLACK, CYAN);
+        ctext(64 + 12 * i, films[i]);
+    ctext(144, "NEXT SEASON YOU ARE BILLED AS");
+    pop_ink(160, 173, CYAN);
     i = m.billing;
     if (i < BILLINGS)
         ++i;
-    cbig(164, billing_name[i]);
+    cbig(160, billing_name[i]);
 }

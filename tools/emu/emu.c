@@ -618,6 +618,11 @@ int main(int argc, char **argv)
         }
         else if (!strcmp(o, "--tcycles")) tcyc = 1;
         else if (!strcmp(o, "--wlog")) wlog = 1;
+        else if (!strcmp(o, "--junk")) {    /* RAM as a booted machine leaves it: not zero */
+            unsigned x = (unsigned)strtoul(v, 0, 0) | 1;
+            for (long a = 0; a < 0xC000; a++) { x ^= x << 13; x ^= x >> 17; x ^= x << 5; mem[a] = (uint8_t)x; }
+            i++;
+        }
         else { fprintf(stderr, "emu: unknown option %s\n", o); return 2; }
     }
     if ((!tap && !bin) || !out) { fprintf(stderr, "usage: see emu.c header\n"); return 2; }
