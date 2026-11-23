@@ -13,7 +13,8 @@ static const uint8_t art_w[] = { SCENERY_W_DATA }, art_h[] = { SCENERY_H_DATA };
    record's b holds it in 1/128 px a step (bit 7: drives left), 0 = M1's. */
 #define RUN_STD     122             /* 122 / 128 = 0.953 px a step */
 #define DANGLE_RATE 3               /* steps per line (M1: 1 line a BBC step) */
-#define BAND_BASE   43              /* band line of the rider's lowest row */
+#define RIDER_TOP_LINE 28           /* band line of the rider's top row on the road */
+#define ROAD_TOP_LINE  44           /* band line of the road: hazards stand on it */
 
 /* Every hazard slot (track * SC_MAX + i) as flat tables, set up by
    model_init, so the per-step code is plain byte arithmetic: cc65 spent
@@ -21,7 +22,9 @@ static const uint8_t art_w[] = { SCENERY_W_DATA }, art_h[] = { SCENERY_H_DATA };
 static uint8_t hk[NHAZ];            /* kind for collisions (HZ_NONE: none, or a gap
                                        this billing doesn't show) */
 static uint8_t hw[NHAZ];            /* width in px (a gap's width) */
-static uint8_t hy0[NHAZ], hy1[NHAZ];/* px above the road: bottom, top (exclusive) */
+static uint8_t htop[NHAZ];          /* band line of its picture's top row */
+static uint8_t hh[NHAZ];            /* its picture's height */
+static const uint16_t *hcol[NHAZ];  /* its picture's column masks */
 static uint8_t hz_frac[NHAZ];       /* runners: x fraction, 1/256 px */
 static uint8_t hz_sp[NHAZ];         /*   speed, 1/256 px a step */
 static uint8_t hz_right[NHAZ];      /*   1: drives right */
@@ -47,10 +50,8 @@ static void hazards_start(void)
         hz_frac[i] = 0;
         hz_drop[i] = 0;
         hz_t[i] = DANGLE_RATE;
-        if (hk[i] == HZ_DANGLER) {
-            hy0[i] -= hy1[i] - (BAND_BASE + 1 - DANGLE_TOP);
-            hy1[i] = BAND_BASE + 1 - DANGLE_TOP;
-        }
+        if (hk[i] == HZ_DANGLER)
+            htop[i] = DANGLE_TOP;
     }
 }
 
@@ -78,22 +79,34 @@ static void hazards_step(void)
                 hz_t[i] |= 0x80;
             }
             hz_t[i] = (hz_t[i] & 0x80) | DANGLE_RATE;
-            f = hy1[i] - hy0[i];            /* its height */
-            hy1[i] = BAND_BASE + 1 - DANGLE_TOP - hz_drop[i];
-            hy0[i] = hy1[i] - f;
+            htop[i] = DANGLE_TOP + hz_drop[i];
         }
         sum = (uint8_t)((sum << 1 | sum >> 7) + hz_px[i] + hz_drop[i]);
     }
     m.hz_sum = sum;
 }
 
-/* DESIGN rule 4: the rider's box, shrunk by 2 px a side, against each hazard
-   on his track; heights are px above the road.  A gap: the wheels' middle
-   over it, on the road. */
+/* Crashing (Bob, BUILD 10: only on a real touch): where the rider's box
+   meets a hazard's, their pictures' column masks (tools/mkart.py, bit r =
+   row r) are compared column by column, the hazard's shifted by the
+   difference in their top rows.  The rider's picture is the one main.c
+   shows.  A gap: the wheels' middle over it, on the road. */
+static const uint16_t hit_rider[3 * RIDER_W] = { HIT_RIDER_DATA };  /* ride_a, ride_b, jump */
+static const uint16_t hit_scenery[] = { HIT_SCENERY_DATA };
+static const uint8_t hit_ofs[] = { HIT_SCENERY_OFS };
+
 static uint8_t crashed(void)
 {
-    uint8_t slot, n, k, x0;
-    uint8_t rx0 = m.px + 2, rx1 = m.px + RIDER_W - 2, ry0 = m.height + 2, ry1 = m.height + RIDER_H - 2;
+    uint8_t slot, n, k, x0, c, c1, rt;
+    int8_t dy;
+    const uint16_t *rc, *hc;
+    rc = hit_rider + FR_JUMP * RIDER_W;     /* (not "?:": ORIC-LESSONS 5) */
+    if (!m.jump_t) {
+        rc = hit_rider + FR_RIDE_A * RIDER_W;
+        if (m.px & 4)
+            rc = hit_rider + FR_RIDE_B * RIDER_W;
+    }
+    rt = RIDER_TOP_LINE - m.height;
     for (slot = m.track * SC_MAX, n = SC_MAX; n; --n, ++slot) {
         k = hk[slot];
         if (!k)
@@ -102,9 +115,30 @@ static uint8_t crashed(void)
         if (k == HZ_GAP) {
             if (!m.jump_t && (uint8_t)(m.px + 6 - x0) < hw[slot])
                 return 1;
-        } else if (rx0 < (uint8_t)(x0 + hw[slot]) && x0 < rx1 && ry0 < hy1[slot] && hy0[slot] < ry1) {
-            return 1;
+            continue;
         }
+        if (x0 >= (uint8_t)(m.px + RIDER_W) || (uint8_t)(x0 + hw[slot]) <= m.px)
+            continue;                       /* apart across */
+        dy = (int8_t)(htop[slot] - rt);
+        if (dy >= RIDER_H || dy <= -(int8_t)hh[slot])
+            continue;                       /* apart up and down */
+        c = m.px;                           /* the shared columns c .. c1 - 1 */
+        if (x0 > c)
+            c = x0;
+        c1 = (uint8_t)(x0 + hw[slot]);
+        if (c1 > (uint8_t)(m.px + RIDER_W))
+            c1 = m.px + RIDER_W;
+        rc += c - m.px;
+        hc = hcol[slot] + (c - x0);
+        for (; c < c1; ++c, ++rc, ++hc) {
+            if (dy >= 0) {
+                if ((uint16_t)(*hc << dy) & *rc)
+                    return 1;
+            } else if ((uint16_t)(*rc << -dy) & *hc) {
+                return 1;
+            }
+        }
+        rc -= c1 - m.px;                    /* back to column 0 */
     }
     return 0;
 }
@@ -157,10 +191,11 @@ void model_init(const struct scene *s, uint8_t billing)
         hk[i] = h->kind;
         hz_px[i] = hz_x0[i] = h->x;
         hz_drop[i] = 0;
-        hy0[i] = 0;
         if (h->kind != HZ_GAP && h->kind != HZ_NONE) {
             hw[i] = art_w[h->a];
-            hy1[i] = art_h[h->a];
+            hh[i] = art_h[h->a];
+            hcol[i] = hit_scenery + hit_ofs[h->a];
+            htop[i] = ROAD_TOP_LINE - hh[i];   /* blocks and runners stand on the road */
         }
         switch (h->kind) {
         case HZ_RUNNER:
@@ -179,8 +214,7 @@ void model_init(const struct scene *s, uint8_t billing)
                 hk[i] = HZ_NONE;
             break;
         case HZ_CEILING:
-            hy0[i] = BAND_BASE - h->b;
-            hy1[i] = BAND_BASE + 1;
+            htop[i] = h->b + 1 - hh[i];     /* b: its bottom row's band line */
             break;
         case HZ_BLOCK:
             break;

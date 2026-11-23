@@ -125,7 +125,8 @@ when.
 3. **Wrapping.** Passing the right edge puts Bob at the left of the next track down at the same
    speed. He keeps his height above the road and his point in the jump arc, so a jump that crosses
    the edge carries on over the next track. Leaving track 4 ends the scene.
-4. **Crashing.** Bob crashes if his box (shrunk by 2 px on each side, for fairness) touches a hazard,
+4. **Crashing.** Bob crashes only when a pixel of his picture touches a pixel of a hazard's (Bob,
+   BUILD 10; it replaced a box shrunk by 2 px a side), which includes
    if he lands on top of an obstacle, if his wheels are over a gap when he is on the ground, or if his
    jump hits a ceiling block or anything else that must be passed on the ground.
 5. **Paying.** Finishing a track (wrapping to the next one, or leaving track 4) pays the scene's
@@ -293,8 +294,9 @@ cycles. Scenes are limited to four moving hazards. If a scene ever overruns, the
 step, as Chuckie Egg used, with speeds scaled to match.
 
 **Data.** A scene is four track records: up to four hazards each (behaviour, x, speed or period,
-phase) and a 38-bit gap mask with a minimum billing per gap. Collisions use boxes in the logic, never
-screen pixels, so the C model and the Oric build give identical traces.
+phase) and a 38-bit gap mask with a minimum billing per gap. Collisions compare the pictures' column
+masks from the art data in the logic, never screen pixels, so the C model and the Oric build give
+identical traces.
 
 **Testing.** The Chuckie Egg harness (a small emulator after Oricutron's source, with PNG output, key
 scripts and a debug port at $BFE0) runs every build. Each scene gets a scripted winning run per

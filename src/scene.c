@@ -38,15 +38,14 @@ static const struct palette pal_city = {
 const struct scene scene_rhr1 = {
     "RUSH HOUR RUMBLE", 1, &pal_city,
     {
-        {   { HZ_BLOCK, 120, ART_DRUMS, 0 },
-            { HZ_BLOCK, 200, ART_VAN, 0 } },
+        {   { HZ_BLOCK, 110, ART_DRUMS, 0 } },
         {   { HZ_RUNNER, 170, ART_POLICE, 0 } },      /* a lane of its own (Bob) */
         {   { HZ_CEILING, 50, ART_GIRDER, 22 },
             { HZ_BLOCK, 140, ART_DRUMS, 0 },
             { HZ_GAP, 186, 18, 3 } },
-        {   { HZ_BLOCK, 40, ART_VAN, 0 },
+        {   { HZ_BLOCK, 20, ART_VAN, 0 },
             { HZ_GAP, 100, 24, 3 },
-            { HZ_DANGLER, 176, ART_BALL, 0 } },
+            { HZ_DANGLER, 200, ART_BALL, 0 } },
     },
 };
 

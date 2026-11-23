@@ -43,7 +43,7 @@ takes the next number.
 | F0 | Skeleton and harness: cc65 2.19 built for the cloud shell, `none.lib`, own crt0 and ld65 config at $0500, ROM-free IRQ hook, autorun `.tap`, Makefile with size report and `ORICUTRON=1`; Chuckie Egg's emulator adapted, PNG output, key scripts, debug port at $BFE0; native C model with per-step trace | — | crt0 + cfg ≤ 256 B | merged (BUILD 1); BUILD 3 fixes Bob's fading and tearing rider |
 | F1 | Display: HIRES init, per-line paper/ink columns, a track screen drawn from scene data, status line in the text-row bitmap font, one-pass pre-shifted sprite draw | F0 | code ≤ 1.5 KB; sprite ≤ 1,400 cycles | BUILD 4 merged (PR #6); BUILD 5–6 fixes in a follow-up PR |
 | F2 | One track: rider physics (DESIGN "Physics"), keys (Space, either Shift, Return), 50 Hz step, engine sound | F0, F1 | logic ≤ 4,000 cycles a step | merged (BUILD 8, PR #8) |
-| F3 | Whole scene: four tracks, wrapping, block, runner, dangler, gap and ceiling block, crashes, fees, the one stop | F2 | whole step ≤ 16,000 cycles | BUILD 10, PR open; budget missed: average 16,100 riding flat out, worst 19,750 (see Results) |
+| F3 | Whole scene: four tracks, wrapping, block, runner, dangler, gap and ceiling block, crashes, fees, the one stop | F2 | whole step ≤ 16,000 cycles | BUILD 11, PR open; budget missed: average 16,100 riding flat out, worst 19,750 (see Results) |
 | F4 | Film frame: clapper card, takes, "Cut!", scene cleared, "You're fired", title screen, billing select, top five | F3 | | not started |
 | F5 | Film 1 (*Rush Hour Rumble*) complete at all six billings, tuned to M1's numbers; Bob judges the feel against the original | F4, M1 | | not started |
 | F6 | Films 2–6, jets and ramps, per-vehicle handling, music, key redefinition | F5 | memory ≤ 37 KB | not started |
@@ -174,6 +174,21 @@ Briefs written by the architect when the previous feature is merged, from DESIGN
   the truck"):** the car picture was mirrored; it now faces the way it drives. Scene 1's track 2 is
   the police car's own lane, and its van moved to track 1 (drums at 120, van at 200).
   `clear.keys` and `takeback.keys` re-timed for the new layout (searched on the native model).
+- **BUILD 11 (Bob: crash only on a real touch; draw the rider without XOR on a blank background):**
+  - The crash test compares the bike's picture with each hazard's, column by column, from
+    column masks that `tools/mkart.py` makes from the same art (DESIGN rule 4 updated). A new check
+    replays the hazards independently in Python and confirms, for every step of every trace, that
+    a crash happens exactly when a bike pixel meets a hazard pixel.
+  - The wheels now count, so the old route hit the drums. Scene 1 re-laid so it can still be
+    cleared flat out (F5 tunes it properly): track 1 drums only, track 4's van at the start
+    (cleared by the long jump from track 3's drums) and the ball at 200. Routes re-searched.
+  - Fast rider draw: when the box holding the old and new pictures has no block, girder, ball
+    (its whole reach, with the rope) or police car in it, `src/draw.s` fills it with blank bytes
+    and puts the new picture in, skipping the screen read and the old picture's XOR: a moving
+    rider costs ~1,700-4,000 cycles instead of 5,000-9,000. Near a hazard, and for the crash
+    picture, it uses the old ^ new draw (cells are 6 px wide, so a hazard a few pixels away can
+    share the box without touching). Steps over 16,000 cycles riding scene 1 flat out: 66% to
+    32%; the worst step (a jump beside a hazard) is unchanged at ~19,700.
 
 ### F2: One track (BUILD 7, 23 Nov 2026)
 

@@ -1,8 +1,8 @@
 # F3: ride scene 1 of Rush Hour Rumble clean on the first take, flat out,
-# jumping the drums and the van on track 1, the police car on track 2 and
-# the van under the wrecking ball on track 4 (timings found by searching the
-# native model): the one-take bonus
+# jumping the drums on track 1, the police car on track 2, and the drums on
+# track 3 in a long jump that carries over the van at the start of track 4
+# (timings found by searching the native model): the one-take bonus
 1-600 accel
-129 jump
-215 jump
-314 jump
+120 jump
+212 jump
+311 jump

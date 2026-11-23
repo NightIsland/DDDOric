@@ -223,6 +223,7 @@ void screen_init(void)
    src/draw.s in one pass at the beam's pace.  Their state lives in draw.s. */
 #define SPR_RIDER 0
 #define SPR_MOV   1
+#define NSPR      16            /* src/draw.s */
 extern uint8_t sp_on[], sp_y[], sp_c[], sp_w[], sp_h[], sp_lo[], sp_hi[];
 extern uint8_t n_y, n_c;
 extern const uint8_t *n_img;
@@ -232,6 +233,8 @@ extern const uint8_t *n_img;
 void __fastcall__ spr_move(uint8_t n);
 void __fastcall__ spr_erase(uint8_t n);
 #define GHOST 8                 /* sprite n + GHOST: n's old picture, still to take off */
+extern uint8_t r_fast;
+#pragma zpsym ("r_fast")
 
 #define RT(t) (TITLE_LINES + (t) * BAND_LINES + RIDER_TOP)
 static const uint8_t rider_top[4] = { RT(0), RT(1), RT(2), RT(3) };
@@ -243,14 +246,41 @@ static const uint8_t * const frame_art[4] = {
     rider_art + 3 * RIDER_FRAME_BYTES
 };
 
+/* Bob's speed-up (BUILD 11): crashes come only on a real touch, so around the
+   rider there is usually nothing but blank screen.  When the box that holds
+   the old and new pictures has no hazard, rope or girder in it (box_blank),
+   draw.s skips reading the screen and taking the old picture out: it writes
+   blank bytes with the new picture in them.  Otherwise (and for the crash
+   picture, which lies on what was hit) the usual old ^ new. */
+static uint8_t box_blank(uint8_t t, uint8_t top, uint8_t bot, uint8_t c0);
+static uint8_t last_frame = FR_CRASH;
+
 void rider_draw(uint8_t track, uint8_t x, uint8_t height, uint8_t frame)
 {
+    uint8_t top, bot, c0;
     sp_w[SPR_RIDER] = 3;
     sp_h[SPR_RIDER] = RIDER_H;
     n_y = rider_top[track] - height;
     n_c = xcell[x];
     n_img = frame_art[frame] + shift_ofs[xshift[x]];
+    if (frame != FR_CRASH && last_frame != FR_CRASH && sp_on[SPR_RIDER]
+        && (uint8_t)(n_y - sp_y[SPR_RIDER] + 15) < 31 && (uint8_t)(n_c - sp_c[SPR_RIDER] + 1) <= 2) {
+        top = n_y;
+        bot = sp_y[SPR_RIDER];
+        if (bot < top) {
+            top = bot;
+            bot = n_y;
+        }
+        bot += RIDER_H;
+        c0 = n_c;
+        if (sp_c[SPR_RIDER] < c0)
+            c0 = sp_c[SPR_RIDER];
+        if (c0 <= 36 && box_blank(track, top, bot, c0))
+            r_fast = 1;
+    }
+    last_frame = frame;
     spr_move(SPR_RIDER);
+    r_fast = 0;
 }
 
 /* A dangler's rope runs from its band's top line to just above the weight.
@@ -284,15 +314,61 @@ static uint8_t nmov, mv_slot[MAXMOV], mv_kind[MAXMOV], mv_band[MAXMOV], mv_rope[
 static uint8_t mv_c[MAXMOV];
 static const uint8_t *mv_img[MAXMOV];
 static uint8_t rr, mv_x[MAXMOV];       /* hazards_draw: first in line; drawn x */
+static uint8_t mv_t[MAXMOV];            /* track */
+
+/* What the rider's fast draw must keep clear of: blocks, girders and their
+   posts, and each wrecking ball's whole reach with its rope (screen lines
+   y0 .. y1 - 1, cells c0 .. c1); police cars by where they are drawn. */
+#define MAXRECT (4 * SC_MAX)
+static uint8_t nrect, rc_t[MAXRECT], rc_c0[MAXRECT], rc_c1[MAXRECT], rc_y0[MAXRECT], rc_y1[MAXRECT];
+
+static void rect_add(uint8_t t, uint8_t x0, uint8_t x1, uint8_t y0, uint8_t y1)
+{
+    rc_t[nrect] = t;
+    rc_c0[nrect] = xcell[x0];
+    rc_c1[nrect] = xcell[x1];
+    rc_y0[nrect] = y0;
+    rc_y1[nrect] = y1;
+    ++nrect;
+}
+
+static uint8_t box_blank(uint8_t t, uint8_t top, uint8_t bot, uint8_t c0)
+{
+    uint8_t i, sn, c1 = c0 + 3;
+    for (i = 0; i < nrect; ++i)
+        if (rc_t[i] == t && c0 <= rc_c1[i] && rc_c0[i] <= c1 && top < rc_y1[i] && rc_y0[i] < bot)
+            return 0;
+    for (i = 0; i < nmov; ++i) {
+        if (mv_t[i] != t || mv_kind[i] != HZ_RUNNER)
+            continue;
+        for (sn = SPR_MOV + i; sn < NSPR; sn += GHOST)
+            if (sp_on[sn] && c0 < (uint8_t)(sp_c[sn] + sp_w[sn]) && sp_c[sn] <= c1
+                && top < (uint8_t)(sp_y[sn] + sp_h[sn]) && sp_y[sn] < bot)
+                return 0;
+    }
+    return 1;
+}
 
 void hazards_list(const struct scene *sc)
 {
     const struct hazard *h = &sc->h[0][0];
     uint8_t i;
-    nmov = rr = 0;
+    uint8_t band, w;
+    nmov = rr = nrect = 0;
     for (i = 0; i < NHAZ && nmov < MAXMOV; ++i, ++h) {
+        band = TITLE_LINES + (i / SC_MAX) * BAND_LINES;
+        w = 0;
+        if (h->kind == HZ_BLOCK || h->kind == HZ_CEILING || h->kind == HZ_DANGLER)
+            w = scenery_w[h->a];
+        if (h->kind == HZ_BLOCK)
+            rect_add(i / SC_MAX, h->x, h->x + w - 1, band + ROAD_LINE - scenery_h[h->a], band + ROAD_LINE);
+        else if (h->kind == HZ_CEILING)
+            rect_add(i / SC_MAX, h->x, h->x + w - 1, band, band + h->b + 1);
+        else if (h->kind == HZ_DANGLER)
+            rect_add(i / SC_MAX, h->x, h->x + w - 1, band, band + DANGLE_TOP + DANGLE_MAX + 16);
         if (h->kind != HZ_RUNNER && h->kind != HZ_DANGLER)
             continue;
+        mv_t[nmov] = i / SC_MAX;
         mv_slot[nmov] = i;
         mv_kind[nmov] = h->kind;
         mv_band[nmov] = TITLE_LINES + (i / SC_MAX) * BAND_LINES;
