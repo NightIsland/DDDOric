@@ -134,13 +134,15 @@ when.
 
 ## Obstacles and vehicles
 
-Every hazard is one of seven behaviours; each film dresses them in its own art. The first five are
-the original's kinds, the last two are new.
+Every hazard is one of eight behaviours; each film dresses them in its own art. Block, runner,
+dangler, gap, ceiling block and flyer are the original's kinds; jet and ramp are new. (The flyer is
+proposed for films 2–6, see "Films 2 to 6" and open question 3.)
 
 | Behaviour | How it acts | How to pass it | New? |
 | --- | --- | --- | --- |
 | Block | Stands still on the track | Jump it | Original kind |
 | Runner | Drives along the track at a set speed, either way, and wraps at the edges | Arrive when it is elsewhere, or jump it | Original kind |
+| Flyer | A runner at head height: crosses the track in the air, its underside just above the rider's head | Stay on the ground while it passes over; any jump under it hits it | Original kind (M1: flying hazards from screen 4) |
 | Dangler | Hangs on a line from the band above and bobs up and down on a set period | Pass under it on the ground while it is up; jumping hits it | Original kind |
 | Gap | A missing piece of road, 12–48 px wide | Jump it | Original kind, harder billings |
 | Ceiling block | Fixed to the top of the band. A low one must be passed on the ground; a high one only cuts off the top of a jump arc | Stay on the ground, or time the jump so the arc passes beside it | Original kind (Bob) |
@@ -156,15 +158,17 @@ numbers: acceleration, top speed and jump time. As in the original (M1), where t
 handle exactly like the bike, every vehicle uses the standard handling (+0.0111 px per step, top
 2.78 px per step, jump 84 steps). The one exception is our own sci-fi hover bike, which floats.
 
-| Film | Vehicle | Handling |
-| --- | --- | --- |
-| Action, scene 1 | Motorbike | Standard |
-| Action, scene 2 | Jet-ski | Standard |
-| Western | Horse | Standard |
-| Horror | Rattling hearse-trike | Standard |
-| Sci-fi | Hover bike | Floaty: jump time 100 steps, same height (guess) |
-| Fantasy | Chariot | Standard |
-| Spy (snow) | Skis | Standard |
+Proposed for films 2–6: a vehicle per scene (open question 4). Every vehicle fits the rider's
+12 × 16 box, so drawing and crash tests cost the same for all of them.
+
+| Film | Scene 1 vehicle | Scene 2 vehicle | Handling |
+| --- | --- | --- | --- |
+| 1 Action | Motorbike (built) | Jet-ski (built) | Standard |
+| 2 Western | Horse | Mine cart | Standard |
+| 3 Horror | Rattling hearse-trike | Ghost-train car | Standard |
+| 4 Sci-fi | Hover bike | Hover bike | Floaty: jump time 100 steps, same 20 px height; a ramp jump 150 steps (guess) |
+| 5 Fantasy | Dragon hatchling (replaces the chariot, which can't fit a 12 px box) | Magic carpet | Standard |
+| 6 Spy | Skis | Snowmobile | Standard |
 
 ## Films, scenes and progression
 
@@ -175,15 +179,16 @@ layouts are new.
 | # | Film | Genre | Scene 1 hazards | Scene 2 |
 | --- | --- | --- | --- | --- |
 | 1 | *Rush Hour Rumble* | Action | Parked van (block), police car (runner), oil drums (block near the start), wrecking ball (dangler) | Harbour chase on a jet-ski: buoy (block), patrol boat (runner), low footbridge (ceiling block), slipway (ramp) |
-| 2 | *Dust at Dawn* | Western | Cactus (block), tumbleweed (runner), corral fence (block), swinging saloon sign (dangler) | Adds stampeding steer (fast runner), dry gulch (gap), branding-fire (jet) |
-| 3 | *Night of the Hearse* | Horror | Gravestone (block), shuffling ghoul (runner), open grave (gap), spider on a thread (dangler) | Adds crypt arch (ceiling block), will-o'-wisp (jet) |
-| 4 | *Moonbase Panic* | Sci-fi | Antenna (block), patrol robot (runner), crater (gap), descending crusher (dangler) | Adds laser gate (jet), launch pad (ramp) |
-| 5 | *Dragon's Keep* | Fantasy | Boulder (block), charging knight (runner), moat (gap), dragon's head (dangler) | Adds portcullis (ceiling block), fire breath (jet) |
-| 6 | *Cold Front* | Spy, snow, on skis | Snowman (block), rolling snowball (runner), crevasse (gap), icicles (dangler) | Adds ski-lift chair (ceiling block), geyser (jet) |
+| 2 | *Dust at Dawn* | Western | Main Street on a horse: water trough, hitching rail (blocks), tumbleweed (runner), saloon balcony (high ceiling), grain sack on a hoist (dangler) | Runaway Mine in a mine cart: ore pile, fallen rock (blocks), stray ore cart (runner), pit beams (low ceilings), gas flare (jet), buckled rail (ramp), rock bucket (dangler, billing 4 up) |
+| 3 | *Night of the Hearse* | Horror | Graveyard Lane on a hearse-trike: gravestone, stone angel (blocks), shuffling ghoul (runner), bat (flyer), lych-gate (low ceiling), open grave (gap), spider on a thread (dangler) | Tunnel of Terror in a ghost-train car: coffin (block), pop-up ghoul (jet), crypt arch (low ceiling), dropping skeleton (dangler), track hump (ramp) |
+| 4 | *Moonbase Panic* | Sci-fi | Crater Plains on the hover bike: fuel canister, antenna mast (blocks), patrol robot (runner), drone (flyer), cargo claw (dangler), gantry arm (high ceiling), crater (gap) | Reactor Corridor on the hover bike: crate (block), laser gate (jet), blast door (low ceiling), crusher piston (dangler), launch pad (ramp) |
+| 5 | *Dragon's Keep* | Fantasy | Castle Approach on a dragon hatchling: boulder, barrel stack (blocks), charging knight (fast runner), portcullis (dangler), moat (gap) | Moat by Moonlight on a magic carpet: rock (block), dragon's head breathing fire (jet), drawbridge underside (low ceiling), wyvern (flyer), half-raised drawbridge (ramp) |
+| 6 | *Cold Front* | Spy, snow | The Glacier on skis: snowman, pine (blocks), rolling snowball (runner), icicle overhang (low ceiling), abseiling agent (dangler), crevasse (gap) | Avalanche Pass on a snowmobile: tank trap (block), enemy snowmobile (runner), autogyro (flyer), steam vent (jet), ski-lift chairs (high ceiling), snow kicker (ramp) |
 
 Scene 1 of each film keeps to the original's kinds (ceiling blocks can appear in either scene); scene
 2 brings in jets and ramps. Each scene holds two to four hazards per track, and the last hazard on the
-first screen must be passed on the ground.
+first screen must be passed on the ground. Films 2–6 are designed track by track in "Films 2 to 6"
+below.
 
 **Billings** are the difficulty levels, the starting one picked on the title screen.
 
@@ -203,6 +208,380 @@ on its fifth screen. "Slow" above can be read as the original's speed, with fast
 Each scene is stored once with every gap it can have; each gap is tagged with the lowest billing that
 shows it, so one layout serves all six billings. Every scene must be proved beatable at every billing
 by a scripted run in the test harness before it ships.
+
+## Films 2 to 6
+
+Proposed 23 Nov 2026 for F6, not yet agreed with Bob: the questions are at the end of this file.
+This section goes into the Claude Doc once Bob agrees it.
+Positions are starting points in pixels from the left of the 228-pixel play width; `tools/solve`
+proves each scene at every billing and moves things where it must, as it did for film 1. Heights are
+band lines, 0 at the top of a band to 47 at the bottom: the rider stands on lines 28–43, the road is
+44–47, and at the top of a jump his head reaches line 8.
+
+### Rules every new scene follows
+
+- **One idea a track.** Track 1 warms up, track 4 is the scene's hardest, and each track has one
+  named idea (a "beat"): a pair to hop, a lane to time, "under, then over", a long ramp jump.
+- **Lanes.** A runner or flyer has a track to itself, with nothing it could drive through (Bob,
+  BUILD 10). Its lane only gets the "missing floor" gaps of billing 3 up, as the police car's has.
+- **Heights.** Blocks and jets at most 16 lines tall. A low ceiling block's underside sits at band
+  line 22–26: pass it on the ground. A high one's underside sits at line 8–10: it only clips the top
+  of the arc, so a jump must take off or land beside it. A flyer's underside sits at line 22–26
+  (just above the rider's head) and its top no higher than line 12.
+- **Gaps.** "Missing floor" gaps are tagged billing 3 to 6 as in film 1. From film 3 on, each film
+  also has one themed gap (open grave, crater, moat, crevasse) at every billing, as the original's
+  gaps start on its fifth screen (open question 2). Every gap gets a run-up before it and a landing
+  zone after it.
+- **Billings add hazards, not only gaps.** Any record can carry the lowest billing that shows it,
+  so billing 4 up can add one extra dangler, jet or flyer inside the step rules below (open
+  question 5). The kind byte has room: kind in the low 4 bits, lowest billing in the high 4.
+- **One new idea per film.** The season gets harder in order:
+
+| Scenes | Film | New in the season |
+| --- | --- | --- |
+| 1–2 | *Rush Hour Rumble* (built) | Block, runner, dangler, low ceiling, ramp; gaps from billing 3 |
+| 3–4 | *Dust at Dawn* | High ceiling; the jet (scene 4); a ramp jump over a jet |
+| 5–6 | *Night of the Hearse* | The flyer; the first themed gap; two moving things that move every step |
+| 7–8 | *Moonbase Panic* | Floaty handling; a ramp jump that carries across the wrap |
+| 9–10 | *Dragon's Keep* | The fast runner (1.5 times the billing's runner speed); jets in pairs |
+| 11–12 | *Cold Front* | Everything together; a ramp jump under high ceilings |
+
+### Step budget
+
+Measured so far: the worst step is 19,580 of 20,000 cycles (F5), on a screen with one runner (the
+police car) and one dangler (the wrecking ball). A step has room for the rider and one or two
+hazard redraws of about 5,500 cycles each, and a hazard that doesn't fit is drawn a step late (F3).
+New scenes keep inside that:
+
+- **At most two hazards that move every step** (runners and flyers) per scene, and **at most three
+  that move now and then** (danglers and jets).
+- **Narrow movers.** Runner and flyer art at most 18 px wide (a 4-cell box), except one wider one
+  per scene; the police car's 6-cell box is the widest proven.
+- **Jets cost only when they change**, and the layout staggers their phases so no two change in the
+  same step.
+- **Proof.** The harness's worst-step and late-draw checks run on every scene's winning runs at
+  every billing. Horror scene 1 is the first with two every-step movers, so it tests the rule. If it
+  overruns, or a hazard runs more than a step late, the fallback is for runners and flyers to move
+  every other step by twice the distance: half the redraws, a little coarser motion, and the model
+  moves them the same way so crashes still match the picture.
+
+### Colour
+
+The F1 rule stays: one paper and one ink per line, and the rider's ink is the same from band line 4
+to 43, so he never changes colour in a jump; hazards on those lines share it. Each scene's look comes
+from the sky's paper (dithered lines blend two colours), the top four lines' ink (clouds, stars,
+rock), and the ground's paper and ink. A ceiling block reaching into lines 0–3 gets that ink too,
+which gives it a second colour for free.
+
+| Scene | Title strip (paper / ink) | Sky paper, lines 0–27 | Paper, lines 28–43 | Ink, lines 4–43 (rider) | Ground, lines 44–47 (paper / ink) |
+| --- | --- | --- | --- | --- | --- |
+| 2-1 Main Street | Yellow / red | Magenta, dithered through red to yellow | Yellow | Black: silhouettes against the dawn | Red / yellow dust |
+| 2-2 Runaway Mine | Black / yellow | Black; lines 0–3 red rock ink | Black | Yellow: lamplight | Black / white rails, red sleepers |
+| 3-1 Graveyard Lane | Red / black | Blue dithered to black (moonlight); lines 0–3 white ink | Black | Green | Black / white cobbles |
+| 3-2 Tunnel of Terror | Magenta / black | Red | Red | Black | Black / yellow rails |
+| 4-1 Crater Plains | Blue / cyan | Black; lines 0–3 white stars | Black | Cyan | White / black regolith |
+| 4-2 Reactor Corridor | Black / yellow | Blue; lines 0–3 white ceiling lights | Blue | Yellow | Yellow / black hazard stripes |
+| 5-1 Castle Approach | Green / yellow | Cyan, dithered to green hills from line 20 | Green | Black | Yellow / green grass path |
+| 5-2 Moat by Moonlight | Magenta / yellow | Magenta dithered to black | Black | Yellow: torchlight | Blue / green moat water |
+| 6-1 The Glacier | Cyan / blue | Cyan dithered to white | White | Black | White / cyan ice |
+| 6-2 Avalanche Pass | Blue / white | Blue | Blue | White | White / blue snow |
+
+Inverse cells (bit 7: paper and ink swap to their complements for one cell) can add one sky feature
+per scene in band lines 0–7, above anything the rider or a mover draws: the sun at dawn, the moon over
+the graveyard, the Earth over the craters. Optional, and only where no ceiling block reaches.
+
+### Ground styles
+
+Film 1 has two grounds, road and water. Films 2–6 need more looks, but not more rules: every ground
+handles the same (Bob: sea and snow handle like land), and a gap crashes when the wheels' middle is
+over it on the surface. A ground is data: a byte pattern for each of the four ground lines (two
+bytes where it alternates, as rail sleepers do) and one of three gap looks.
+
+| Ground | Used in | Gap looks like |
+| --- | --- | --- |
+| Road (built) | 1-1 | Road missing |
+| Water (built) | 1-2, 5-2 | Rocks breaking the surface |
+| Dirt | 2-1 | Road missing (a dry wash) |
+| Rails | 2-2, 3-2 | Road missing (broken track) |
+| Cobbles | 3-1 | Dark fill (the open grave) |
+| Regolith | 4-1 | Dark fill (the crater) |
+| Deck plates | 4-2 | Road missing (an open hatch) |
+| Grass path | 5-1 | Dark fill (the moat) |
+| Snow | 6-1, 6-2 | Dark fill (the crevasse) |
+
+### The two new behaviours
+
+**Jet.** Record: x, art, and in its last byte a period code (high 4 bits) and a phase (low 4 bits,
+in sixteenths of the period), so jets on one screen can be staggered.
+
+1. Off: only the vent shows, drawn in the ground lines (44–47), which the rider never touches.
+2. Warning, 25 steps: the vent flickers (still harmless).
+3. On: the flame, steam or beam stands up to 16 lines above the road, drawn in two halves on
+   successive steps; a pixel touch crashes, as with any hazard. Jumping clears it as it clears a
+   block.
+
+At billing 1 a jet's period is 150 steps (3.0 s, the dangler's) with 50 steps on (guess); it
+shortens with the billing as the danglers' steps do (x 1, 0.83, 0.83, 0.67, 0.67, 0.5).
+
+**Flyer.** Record: x, art, speed (signed, as a runner's). Its height is part of its art: the art
+table gives the band line of its underside. It moves and wraps like a runner, at the billing's
+runner speed. On the ground the rider passes under it; any jump under it hits it.
+
+### Vehicles
+
+Each vehicle is four 12 × 16 frames (two riding, jump, crash), its column masks for crashes, and an
+engine voice. Engines use tone only, because the AY has a single noise generator and the effects
+need it; the skis are the exception (below).
+
+| Vehicle | Frames | Engine voice |
+| --- | --- | --- |
+| Horse | Legs at the gallop in two frames; tucked for the jump; on the crash Bob sails off and the horse sits down | Clip-clop: two short alternating tone blips, quicker with speed |
+| Mine cart | Wheels turning; Bob crouched in the tub; on the crash the cart tips | A low rumble with a click every 12 px travelled (a sleeper) |
+| Hearse-trike | A trike with a coffin box behind; the box lid lifts on the crash | A lower, rattling buzz than the motorbike (volume in an uneven 3-step pattern) |
+| Ghost-train car | A car with a skull on the nose; Bob's hair stands up on the jump | A deep rumble with a slow wobble in pitch |
+| Hover bike | No wheels; a glow line underneath that flickers between the two frames | A smooth hum, steady volume, gentle vibrato |
+| Dragon hatchling | Running legs, folded wings that open for the jump | Quick pattering blips with a puff every so often |
+| Magic carpet | Fringes rippling between the two frames; the carpet curls on the crash | A soft rising and falling tone |
+| Skis | Bob crouched, poles back; skis apart on the crash | A low-volume swish on noise, its period following speed; an effect that needs the noise takes it over for its length |
+| Snowmobile | Track turning, a ski in front | A harsher, higher two-stroke buzz than the motorbike |
+
+Each film's clapper card plays a 2–3 s sting of its own (F6 music), all composed for the game: a
+whistled four-note figure for the Western, falling organ chords for the horror, a rising arpeggio
+for the sci-fi, a fanfare in fourths for the fantasy and a twangy bass riff for the spy film.
+
+### *Dust at Dawn* (Western)
+
+**Scene 1, Main Street, on a horse.** A dusty street at sunrise, everything black against the dawn.
+
+| Hazard | Behaviour | Size (px) |
+| --- | --- | --- |
+| Water trough | Block | 18 × 10 |
+| Hitching rail | Block | 16 × 12 |
+| Tumbleweed | Runner, rolling towards the rider | 10 × 10 |
+| Saloon balcony | High ceiling block, underside at line 9 | 40 wide |
+| Grain sack on the store's hoist | Dangler | 8 × 10, on a rope |
+
+- Track 1, a low pair: trough at 90, hitching rail at 170.
+- Track 2, the tumbleweed's lane: it starts at 150.
+- Track 3, under the balcony: balcony at 50–90, trough at 160. A jump over the trough must not
+  take off while under the balcony.
+- Track 4, hop and wait: hitching rail at 40, sack at 130. Land, then time the sack, or stop.
+- Gaps from billing 3 (a dry wash). Movers: one every step, one now and then.
+
+**Scene 2, Runaway Mine, in a mine cart.** Lamplit tunnels: pit beams overhead everywhere.
+
+| Hazard | Behaviour | Size (px) |
+| --- | --- | --- |
+| Ore pile | Block | 14 × 10 |
+| Fallen rock | Block | 12 × 14 |
+| Stray ore cart | Runner, coming the other way | 16 × 12 |
+| Pit beam | Low ceiling block, underside at line 24 | 12 wide, with a prop down to it |
+| Gas flare | Jet, from a crack in the floor | 8 × 16 when on |
+| Buckled rail | Ramp | 16 × 6 |
+| Rock bucket on a chain | Dangler, billing 4 up | 8 × 8 |
+
+- Track 1, under then over: beam at 60, ore pile at 150.
+- Track 2, ramp over the flare: buckled rail at 30, fallen rock at 100 (the long jump clears it),
+  flare at 190 (land first and time it).
+- Track 3, the ore cart's lane: it starts at 170.
+- Track 4, the squeeze: beams at 40 and 120, ore pile at 180 between them and the edge; the rock
+  bucket joins at 80 from billing 4.
+- Movers: one every step, one jet (two now-and-then from billing 4).
+
+### *Night of the Hearse* (Horror)
+
+**Scene 1, Graveyard Lane, on the hearse-trike.** A cobbled lane through the graveyard by
+moonlight.
+
+| Hazard | Behaviour | Size (px) |
+| --- | --- | --- |
+| Gravestone | Block | 10 × 14 |
+| Stone angel | Block | 12 × 16 |
+| Shuffling ghoul | Runner, slow (0.75 times the billing's runner speed) | 10 × 16 |
+| Bat | Flyer, underside at line 24 | 12 × 6, two-frame wings |
+| Lych-gate | Low ceiling block, underside at line 22 | 24 wide, with posts |
+| Open grave | Gap, every billing | 20 |
+| Spider on a thread | Dangler | 8 × 8 |
+
+- Track 1, two stones: gravestone at 80, stone angel at 150 (one long jump or two short ones).
+- Track 2, the ghoul's lane: it shuffles from 160.
+- Track 3, under then over: lych-gate at 40–64, open grave at 130. Keep your speed under the gate.
+- Track 4, the bat's lane, with a spider: the spider at 110; the bat crosses the track. Pass the
+  spider on the ground when it is up, and don't jump while the bat is over you.
+- Movers: two every step (ghoul, bat), one dangler. The test of the step rule.
+
+**Scene 2, Tunnel of Terror, in a ghost-train car.** A fairground ghost train, red-lit.
+
+| Hazard | Behaviour | Size (px) |
+| --- | --- | --- |
+| Coffin | Block | 18 × 8 |
+| Pop-up ghoul | Jet: springs up from a trapdoor | 10 × 16 when up |
+| Crypt arch | Low ceiling block, underside at line 22 | 30 wide |
+| Dropping skeleton | Dangler | 10 × 14 |
+| Track hump | Ramp | 16 × 6 |
+
+- Track 1, coffins: at 90 and 170.
+- Track 2, two trapdoors: pop-up ghouls at 70 and 160, half a period apart.
+- Track 3, arch and skeleton: arch at 40–70, skeleton at 150.
+- Track 4, the hump: hump at 20, coffin at 110 (cleared by the long jump), skeleton at 190 (land
+  first).
+- Movers: none every step; two danglers and two jets.
+
+### *Moonbase Panic* (Sci-fi)
+
+Both scenes on the hover bike: its floaty jump (100 steps, 150 from a ramp) carries further, so the
+spacing is wider than on land.
+
+**Scene 1, Crater Plains.** Black sky, stars, a bright surface.
+
+| Hazard | Behaviour | Size (px) |
+| --- | --- | --- |
+| Fuel canister | Block | 10 × 12 |
+| Antenna mast | Block | 6 × 16 |
+| Patrol robot | Runner | 12 × 14 |
+| Drone | Flyer, underside at line 23 | 12 × 6 |
+| Cargo claw on a gantry | Dangler | 12 × 10 |
+| Gantry arm | High ceiling block, underside at line 10 | 36 wide |
+| Crater | Gap, every billing | 24 |
+
+- Track 1, learn the float: canister at 70, mast at 170.
+- Track 2, the robot's lane: from 160.
+- Track 3, crater and claw: crater at 60, claw at 160.
+- Track 4, the drone's lane, under the gantry: gantry at 40–76, mast at 140; the drone crosses.
+- Movers: two every step (robot, drone), one dangler.
+
+**Scene 2, Reactor Corridor.** A blue corridor with yellow warning stripes.
+
+| Hazard | Behaviour | Size (px) |
+| --- | --- | --- |
+| Crate | Block | 14 × 12 |
+| Laser gate | Jet: an emitter in the floor, beam up to 16 lines | 4 × 16 when on |
+| Blast door | Low ceiling block, underside at line 24 | 20 wide |
+| Conduit | High ceiling block, underside at line 9 | 60 wide |
+| Crusher piston | Dangler | 14 × 12 |
+| Launch pad | Ramp | 16 × 6 |
+
+- Track 1, crate and gate: crate at 80, laser gate at 160.
+- Track 2, the door: blast door at 30–50, crusher at 130, crate at 200.
+- Track 3, the big jump: launch pad at 40, laser gates at 110 and 170 under the jump, which
+  carries across the wrap into track 4 at height (Bob: the wrap keeps height and arc).
+- Track 4, the landing: clear for 80 px, then a high conduit (high ceiling block, underside at
+  line 9) at 90–150 that catches a launch taken too fast, and the crusher at 190. Take the pad at
+  middling speed and land in the clear stretch.
+- Movers: none every step; two danglers and three jets, staggered.
+
+### *Dragon's Keep* (Fantasy)
+
+**Scene 1, Castle Approach, on a dragon hatchling.** Green hills under a bright sky.
+
+| Hazard | Behaviour | Size (px) |
+| --- | --- | --- |
+| Boulder | Block | 14 × 12 |
+| Barrel stack | Block | 12 × 16 |
+| Charging knight | Fast runner (1.5 times the billing's runner speed), towards the rider | 18 × 16 (the scene's wide one) |
+| Portcullis | Dangler: rises and drops | 18 × 16 |
+| Moat | Gap, every billing | 28 |
+
+- Track 1, a hop and a high one: boulder at 60, barrel stack at 150.
+- Track 2, the knight's lane: he charges from 180.
+- Track 3, the moat: moat at 80 (needs some speed), boulder at 180.
+- Track 4, gate then moat: portcullis at 70, moat at 150. Pass under the gate while it is up, with
+  enough speed left to clear the moat.
+- Movers: one every step, one dangler.
+
+**Scene 2, Moat by Moonlight, on a magic carpet.** Skimming the moat by torchlight.
+
+| Hazard | Behaviour | Size (px) |
+| --- | --- | --- |
+| Rock | Block | 12 × 10 |
+| Dragon's head | Jet: rises from the water breathing fire | 10 × 16 when up |
+| Drawbridge underside | Low ceiling block, underside at line 22 | 36 wide |
+| Wyvern | Flyer, underside at line 24 | 16 × 8 |
+| Half-raised drawbridge | Ramp | 18 × 8 |
+
+- Track 1, rock and fire: rock at 80, dragon's head at 170.
+- Track 2, under the bridge: drawbridge at 50–86, rock at 150, dragon's head at 205.
+- Track 3, the wyvern's lane, with a rock at 100.
+- Track 4, over the fire: half-raised drawbridge at 30, dragon's heads at 100 and 150 half a
+  period apart (the long jump clears both, on or off), rock at 210.
+- Movers: one every step (the wyvern), three jets, staggered.
+
+### *Cold Front* (Spy, snow)
+
+**Scene 1, The Glacier, on skis.** A white snowfield under a pale sky.
+
+| Hazard | Behaviour | Size (px) |
+| --- | --- | --- |
+| Snowman | Block | 12 × 16 |
+| Pine | Block | 10 × 16 |
+| Rolling snowball | Runner, towards the rider | 12 × 12 |
+| Icicle overhang | Low ceiling block, underside at line 24 | 30 wide |
+| Abseiling agent | Dangler, on a rope from above | 10 × 14 |
+| Crevasse | Gap, every billing | 22 |
+
+- Track 1, two trees' worth: snowman at 90, pine at 170.
+- Track 2, the snowball's lane: from 160.
+- Track 3, under then over: overhang at 40–70, crevasse at 130.
+- Track 4, the agent: agent at 80, crevasse at 150, snowman at 205.
+- Movers: one every step, one dangler.
+
+**Scene 2, Avalanche Pass, on a snowmobile.** The season's finale, at night.
+
+| Hazard | Behaviour | Size (px) |
+| --- | --- | --- |
+| Tank trap | Block | 14 × 12 |
+| Enemy snowmobile | Runner | 16 × 12 |
+| Autogyro | Flyer, underside at line 22 | 18 × 10 |
+| Steam vent | Jet | 8 × 16 when on |
+| Ski-lift chair | High ceiling block, underside at line 9 | 12 wide, on the cable |
+| Snow kicker | Ramp | 16 × 6 |
+
+- Track 1, trap and vent: tank trap at 80, steam vent at 160.
+- Track 2, the snowmobile's lane: from 170.
+- Track 3, the kicker under the lift: kicker at 20, steam vents at 100 and 150 under the long
+  jump, ski-lift chairs at 70 and 180 overhead: the jump's top must pass between them.
+- Track 4, the autogyro's lane, with a tank trap at 60 and a steam vent at 180.
+- Movers: two every step (snowmobile, autogyro), three jets, staggered.
+
+### Memory
+
+F5 left 5,988 bytes free below `$9800`. Films 2–6 at film 1's way of storing art would need about
+20 KB more (each vehicle is 1,152 bytes pre-shifted and each moving hazard about 300), so the art
+has to be stored unshifted and shifted when a scene starts, while the clapper card is up (shifting a
+vehicle takes about 60,000 cycles, under the card's 300,000).
+
+| Item | Estimate |
+| --- | --- |
+| 10 scene layouts and palettes (palettes stored as runs of lines) | 1.2 KB |
+| 9 vehicles, unshifted (4 frames × 32 bytes) with crash masks | 1.8 KB |
+| One vehicle buffer, 1,152 bytes, in place of today's 2,304 bytes of pre-shifted bike and jet-ski | −0.9 KB |
+| About 45 hazard pictures with crash masks | 2.5 KB |
+| Moving hazards unshifted, plus a buffer for a scene's four movers, in place of today's 1,008 bytes | 1.3 KB |
+| Code: jet, flyer, ground styles, billing tags, shifting at scene start, engine voices | 1.5 KB |
+| F6 music and stings; key redefinition | 2.5 KB |
+| **Needed** | **9.9 KB** |
+
+| Where it comes from | Estimate |
+| --- | --- |
+| Free after F5 | 6.0 KB |
+| Pause's 1.4 KB save area shares the shift buffers (re-shift after a pause) | 1.4 KB |
+| The alternate character set's 1 KB at `$9C00`, if nothing uses it (to check) | 1.0 KB |
+| Palettes as runs (counted above) and `src/frame.c` text tables trimmed | 1.0 KB |
+| The trace output left out of Bob's builds (trace equality on a test build) | 0.3 KB |
+| **Available** | **9.7 KB** |
+
+That is about even, so the fallbacks stand ready, in this order: the music cut to 1 KB; vehicles at
+3 pre-shifts in the buffer (2-pixel steps; this saves buffer space only now); one vehicle per film
+(saves about 1 KB).
+
+### Build order for F6
+
+1. **F6a, the shared parts:** shifting at scene start, ground styles, billing tags on every record,
+   the jet and the flyer, the memory moves above; a stress scene with two every-step movers and three
+   jets proves the step rules before any film is laid out.
+2. **F6b to F6f, one film per build** in season order (Western, horror, sci-fi, fantasy, spy), each
+   proved at all six billings with `tools/solve`, each a build for Bob.
+3. **F6g:** music, stings and key redefinition.
 
 ## Presentation
 
@@ -294,6 +673,9 @@ built):
 
 If it gets tight, the vehicles drop to 3 pre-shifts (2-pixel steps), which saves 4 KB.
 
+These were first guesses. As built after F5, 5,988 bytes are left, and films 2–6 fit only if art is
+stored unshifted and shifted when a scene starts: see "Films 2 to 6: Memory".
+
 **Speed.** A 50 Hz step allows 20,000 cycles. The worst case is the rider plus four moving hazards
 at about 1,400 cycles each with one-pass, flicker-free redraws, plus logic and keys: about 12,000
 cycles. Scenes are limited to four moving hazards. If a scene ever overruns, the fallback is a 33 Hz
@@ -338,3 +720,25 @@ The build order is in `docs/PLAN.md`.
 | Level codes | Optional extra after film 1 |
 | Measuring | Time the BBC original frame by frame to set speeds, arc and handling |
 | After M1 | Bob agreed to follow the original on the stop, sea and snow handling, the held jump and the take refund. Levels: our billings already work like its skill levels (a start point in one continuous run); a billing stays one 12-scene season. Fees: per track, as in the original (Bob's decision). |
+
+## Open questions on films 2 to 6
+
+Each has a recommendation; F6 follows the recommendations unless Bob decides otherwise.
+
+1. **How long is a season?** The built game (F4, F5) runs 12 scenes a billing, six billings, with
+   fees up to £720 a track, as DESIGN's decisions say. A project note says "one 36-screen run", the
+   original's length. *Recommendation:* keep the built 12-scene seasons; 36 different screens
+   would need three times the layouts and memory we have.
+2. **Gaps at billing 1?** Bob asked for missing floors on harder levels, and film 1 has gaps only
+   from billing 3. The original's gaps start on its fifth screen, inside the first level.
+   *Recommendation:* from film 3 (scene 5, as in the original) one themed gap per film at every
+   billing (open grave, crater, moat, crevasse), with the "missing floor" gaps still from billing 3.
+3. **Add the flyer?** The original has hazards that fly across at head height from screen 4.
+   *Recommendation:* yes, from film 3 (bat, drone, wyvern, autogyro), within the step rules.
+4. **A vehicle per scene, or per film?** *Recommendation:* per scene (nine new vehicles), as
+   stored unshifted each costs about 200 bytes; one per film is the memory fallback. The fantasy
+   film's chariot becomes a dragon hatchling, because a horse and chariot won't fit the 12-pixel
+   rider box.
+5. **Should higher billings add hazards as well as gaps?** Today billings change only gaps and
+   speeds. *Recommendation:* yes: from billing 4 a scene may add one dangler, jet or flyer (tagged
+   like the gaps), so a higher billing feels like a new screen, as the original's later screens do.
