@@ -1,0 +1,88 @@
+# Harness (F0)
+
+The build and test set-up, reused from Oric Chuckie Egg (Bob's earlier Oric game, which passed on
+his real machines) and adapted for Stunt Man Bob. See `docs/ORIC-LESSONS.md` §5, §6 and §10.
+
+On Linux x86_64 (the cloud shell) `make` uses the vendored cc65 2.19 in `tools/vendor/cc65`
+(`bin-linux-x86_64`, `share/include`, `share/asminc`, `share/lib/none.lib`; git `eebf54a`, zlib
+licence). Elsewhere put cc65 2.19 on `PATH` (macOS: `brew install cc65`). Everything builds into
+`build/`.
+
+| Command | Result |
+| --- | --- |
+| `make` | `build/stuntbob.tap`: the release build for real hardware, plus `.bin`, `.map`, `.lbl` and a size line |
+| `make ORICUTRON=1` | `build/oricutron/stuntbob.tap`: **the build for Bob to test in Oricutron** (every noise period doubled: DESIGN "Sound") |
+| `make test` | both builds, emulator and native reference, then `tools/test_f0.py` |
+| `make ref` | `build/ref/ref`: the native model with its per-step trace |
+| `make emu` | `build/emu/emu`: the headless emulator |
+
+## Program layout
+
+| File | What |
+| --- | --- |
+| `src/crt0.s`, `src/oric48.cfg` | ROM-free start-up and ld65 config: load and run at `$0500`, 512 B C stack below `$9800` (from Chuckie Egg, unchanged) |
+| `src/system.s` | VIA T1 10 ms tick; the IRQ hooked through the RAM vector `$FFFE` points at (`$0228` ROM 1.0, `$0244` ROM 1.1), polling fallback for any other ROM; `step_wait` (2 ticks = 50 Hz) |
+| `src/keys.s` | scan of the six keys the game uses (Space, either Shift, Return, P, Esc), table in DATA for redefinition |
+| `src/sound.s` | AY set-up, placeholder engine tone and noise bursts; `ORICUTRON` doubles noise periods |
+| `src/model.c`, `src/model.h`, `src/physics.h` | the game model in portable C; the physics constants are **placeholders** until M1 |
+| `src/trace.c` | one trace line per step: Oric → debug port `$BFE0`, native → stdout |
+| `src/screen.c` | F0 placeholder display (F1 replaces it) |
+| `src/main.c` | the step loop: MARK, keys, model, trace, draw, sound, BUSY |
+| `tools/ref/ref.c` | native driver: key script in, trace out |
+
+## Trace
+
+One line per game step, in hex (`src/trace.h`):
+
+    SSSS T XXXX VVVV JJ HH FF EE II
+    step track x(1/256 px) speed(1/256 px/step) jump-step height flags events input
+
+flags: bit 0 stop unused, bit 1 paused, bits 4–7 scenes finished. events: 01 took off, 02
+landed, 04 stop used, 08 wrapped, 10 scene finished, 20 pause/resume, 40 quit. input: 01 jump,
+02 accelerate, 04 stop, 08 pause, 10 quit.
+
+**Rule:** the native reference and the Oric build print identical traces for the same key
+script. `make test` checks it on every script in `tests/keys/` and 6,000 random steps. A bug
+planted in the Oric build only (one speed unit at step 100) made three checks fail.
+
+## Key scripts
+
+    # comment
+    <from>[-<to>] token token ...
+
+Frame n is game step n. Lower-case tokens are game inputs (`jump accel stop pause quit`), used by
+both the emulator and the native reference; upper-case tokens are Oric keys for the emulator only
+(`SPACE LSHIFT RSHIFT RETURN P ESC`, full matrix in `tools/keyscript.py`).
+
+## tools/run.py
+
+    python3 tools/run.py build/stuntbob.tap --frames 300 --keys tests/keys/basic.keys \
+        --png shot.png --cycles --trace trace.txt --ay ay.txt --dump _m:16 --rom oric1
+
+- `--frames N` counts MARK writes (one per game step).
+- `--rom atmos|oric1|none` puts ROM 1.1's or ROM 1.0's IRQ vector at `$FFFE`, or none (the
+  game then polls). No ROM code is present or ever run.
+- `--cycles` prints the step period, the work per step (MARK to BUSY; budget 20,000) and the IRQ
+  handler's cost.
+- Exits 2 if the program runs code in `$C000–$FFFF`, hits BRK or an illegal opcode, or takes an
+  IRQ with no RAM vector.
+
+`import run` gives `run.run(prog, frames, keys=..., rom=...)` → a `Result` with `.mem`, `.rgb`,
+`.pixel(x, y)`, `.ay`, `.marks`, `.frame_stats()`, `.trace`, `.irq`.
+
+## Debug port `$BFE0–$BFE3`
+
+RAM after the last text row, never displayed; plain RAM on real hardware.
+
+| Address | Write means |
+| --- | --- |
+| `$BFE0` | append the byte to the trace |
+| `$BFE1` | MARK: start of a game step (key-script clock) |
+| `$BFE2` | HALT: stop the emulator, exit code = value |
+| `$BFE3` | BUSY: step's work done |
+
+## Emulator (tools/emu/emu.c)
+
+From Chuckie Egg, unchanged apart from its header. A 6502 (documented opcodes, cycle-exact,
+passes Klaus Dormann's functional test, `tools/emu/test/`, GPLv3), VIA, AY registers, keyboard
+matrix and ULA renderer following Oricutron's source. Details are in the file's header.

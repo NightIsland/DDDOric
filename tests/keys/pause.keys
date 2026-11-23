@@ -1,0 +1,11 @@
+# pause and resume; pause ignored while a game key is held; quit restarts
+5-60 accel
+20 pause
+30-31 accel
+40 pause
+80 pause
+90 jump
+100 stop
+130 quit
+150-160 accel pause
+170 quit

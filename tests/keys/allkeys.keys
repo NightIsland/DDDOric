@@ -1,0 +1,9 @@
+# every game key by its Oric name (emulator only: the input column shows each)
+10 SPACE
+20-21 LSHIFT
+30-31 RSHIFT
+40 RETURN
+50 P
+60 P
+70 ESC
+80-81 LSHIFT RSHIFT
