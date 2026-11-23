@@ -41,7 +41,7 @@ takes the next number.
 | --- | --- | --- | --- | --- |
 | M1 | Measure the BBC original: speeds, acceleration, jump arc and time, start speed, wrap, hanging-hazard period, sea and snow handling, fee on a retake | — | docs only | done, PR open (`docs/M1-MEASUREMENTS.md`) |
 | F0 | Skeleton and harness: cc65 2.19 built for the cloud shell, `none.lib`, own crt0 and ld65 config at $0500, ROM-free IRQ hook, autorun `.tap`, Makefile with size report and `ORICUTRON=1`; Chuckie Egg's emulator adapted, PNG output, key scripts, debug port at $BFE0; native C model with per-step trace | — | crt0 + cfg ≤ 256 B | merged (BUILD 1); BUILD 3 fixes Bob's fading and tearing rider |
-| F1 | Display: HIRES init, per-line paper/ink columns, a track screen drawn from scene data, status line in the text-row bitmap font, one-pass pre-shifted sprite draw | F0 | code ≤ 1.5 KB; sprite ≤ 1,400 cycles | not started |
+| F1 | Display: HIRES init, per-line paper/ink columns, a track screen drawn from scene data, status line in the text-row bitmap font, one-pass pre-shifted sprite draw | F0 | code ≤ 1.5 KB; sprite ≤ 1,400 cycles | BUILD 4, PR open (over both budgets, see Results) |
 | F2 | One track: rider physics (DESIGN "Physics"), keys (Space, either Shift, Return), 50 Hz step, engine sound | F0, F1 | logic ≤ 4,000 cycles a step | not started |
 | F3 | Whole scene: four tracks, wrapping, block, runner, dangler, gap and ceiling block, crashes, fees, the one stop | F2 | whole step ≤ 16,000 cycles | not started |
 | F4 | Film frame: clapper card, takes, "Cut!", scene cleared, "You're fired", title screen, billing select, top five | F3 | | not started |
@@ -118,6 +118,53 @@ Briefs written by the architect when the previous feature is merged, from DESIGN
   Oric** means the beam's position can't be read, so tearing can be made rare and small but not
   removed; locking the step to the video frame would make it permanent on one track instead.
   Worst step 16,708 cycles (the C preparation); F1's assembly sprite brings it down.
+
+### F1: Display (BUILD 4, 23 Nov 2026)
+
+No architect brief had been written; this follows the PLAN row and DESIGN "Screen structure",
+"Presentation" (art rules) and "Technical plan".
+
+- **Scene from data:** `src/scene.h` defines a scene as four tracks of up to four 4-byte hazard
+  records (kind, x, art or width, speed/period/ceiling line/lowest billing), so all seven behaviours
+  share one layout; gaps carry the lowest billing that shows them. `src/scene.c` holds film 1, *Rush
+  Hour Rumble*, scene 1 (a first sketch, F3/F5 make it rideable and tune it) and its night-city
+  palette: paper and ink per band line, white ink from band line 4 to the road so the rider never
+  changes colour in a jump, yellow kerb, white lane marks. `scene_draw` draws blocks, runners (at
+  their start), danglers (rope and weight, up), ceiling blocks (hung on two hangers) and gaps.
+- **Art:** `tools/mkart.py` holds every picture as text and generates `build/gen/art.s` and
+  `art.h`: Bob on his motorbike, 12 × 16, two riding frames (the wheels turn every 4 px) and a jump
+  frame, each pre-shifted to the 6 pixel phases (864 B); van, oil drums, police car, wrecking ball,
+  girder (unshifted, 270 B, shifted while the scene is drawn). `--png` writes a preview sheet.
+- **Status line:** text rows 25–27 in our own 5×7 font in the HIRES character set, plus icons
+  (pound sign, stop lamp lit/out, clapper for each take left): take, takes, stop lamp, fee, best fee;
+  speed, track and billing for testing; BUILD and keys. Plain character cells were enough: the
+  Chuckie Egg pixel-row trick is kept for when a status needs finer art.
+- **Rider drawing** (`src/draw.s`, Bob's rule: prepare first, then write in one burst): the old
+  and new pictures and the screen bytes under them are combined in a buffer first (one box of 4
+  cells when they overlap, else two boxes: new one drawn first, so the rider never vanishes), then
+  written top to bottom at **67 cycles a line**, close to the beam's 64, with IRQs held off. A
+  burst that keeps pace with the beam can't be overtaken by it, nor overtake it, over a box of up
+  to 21 lines. The only frames left that can show part of each picture are those where the beam
+  meets the burst within the ~45 cycles that the 4 writes of a line and the 3-cycle lag spread over:
+  **6 of 1,086 drawing steps** of `topjumps.keys`, a shear of at most one step's move (≤ 3 px). The
+  same harness count gives BUILD 3's 6 × 12 block 7 of 1,086, so a sprite twice the size now tears no
+  more often. The harness now counts torn frames this way (`tears()` in `tools/test_f0.py`: a frame is
+  torn if it scans some of a burst's bytes before their write and some after) and fails above 1%.
+- **Cost:** the rider costs about 4,000 cycles a step on average (read the box ~1,500, XOR the
+  pictures ~1,300, burst ~1,100, C ~300) and about 6,900 at a wrap (two boxes), against PLAN's 1,400
+  guess, which was for a plain XOR draw. Worst whole step 12,320 of 20,000 (BUILD 3: 16,708). For F3's
+  moving hazards: the same routine, but runners and danglers are smaller and move less often; if
+  four of them overrun, merge the read and XOR passes or drop to 3 pre-shifts (DESIGN fallback).
+- **Size:** display code 2.9 KB of C (`screen.c`) + 0.3 KB of assembly, against the 1.5 KB guess
+  (cc65's code is ~3× hand assembly, ORIC-LESSONS §5). Program ends at `$2661`; 28,575 bytes free.
+- **Tests** (`make test`, 39 checks): the scene is compared byte for byte with a pixel reference
+  built from `src/scene.c`'s data and `tools/mkart.py`'s art (`tools/scene_ref.py`), at billing 1 and,
+  in a test build (`make B=build/b3 CDEFS=-DBILLING_START=3`), at billing 3 with its gaps; the screen
+  after every key script = that scene + the rider where the trace says, with the right frame; one
+  write per byte per step; under 1% torn frames.
+- **Not in F1:** physics stay F0's placeholders (start speed 0.5 px a step, jump apex 24 px), so the
+  rider still moves off by himself and jumps 4 px higher than he will: F2 brings M1's values.
+  Hazards are scenery: nothing moves or collides until F3.
 
 ### M1 (23 Nov 2026)
 

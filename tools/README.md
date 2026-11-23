@@ -12,7 +12,7 @@ licence). Elsewhere put cc65 2.19 on `PATH` (macOS: `brew install cc65`). Everyt
 | --- | --- |
 | `make` | `build/stuntbob.tap`: the release build for real hardware, plus `.bin`, `.map`, `.lbl` and a size line |
 | `make ORICUTRON=1` | `build/oricutron/stuntbob.tap`: **the build for Bob to test in Oricutron** (every noise period doubled: DESIGN "Sound") |
-| `make test` | both builds, emulator and native reference, then `tools/test_f0.py` |
+| `make test` | both builds, a billing-3 test build (`build/b3/`), emulator and native reference, then `tools/test_f0.py` |
 | `make ref` | `build/ref/ref`: the native model with its per-step trace |
 | `make emu` | `build/emu/emu`: the headless emulator |
 
@@ -26,7 +26,11 @@ licence). Elsewhere put cc65 2.19 on `PATH` (macOS: `brew install cc65`). Everyt
 | `src/sound.s` | AY set-up, placeholder engine tone and noise bursts; `ORICUTRON` doubles noise periods |
 | `src/model.c`, `src/model.h`, `src/physics.h` | the game model in portable C; the physics constants are **placeholders** until M1 |
 | `src/trace.c` | one trace line per step: Oric → debug port `$BFE0`, native → stdout |
-| `src/screen.c` | F0 placeholder display (F1 replaces it) |
+| `src/screen.c`, `src/screen.h` | the display: scene drawing, status rows, rider placement (F1) |
+| `src/scene.c`, `src/scene.h` | scene layouts and film palettes (F1: Rush Hour Rumble scene 1) |
+| `src/draw.s` | rider move: prepare the box, then write it at the beam's pace (F1) |
+| `tools/mkart.py` | all pixel art as text → `build/gen/art.s`, `art.h`; `--png F` previews it |
+| `tools/scene_ref.py` | pixel reference of a scene and the rider, for `make test` |
 | `src/main.c` | the step loop: MARK, keys, model, trace, draw, sound, BUSY |
 | `tools/ref/ref.c` | native driver: key script in, trace out |
 

@@ -25,14 +25,14 @@ AFLAGS := --cpu 6502
 CDEFS  :=
 endif
 
-CFLAGS := -t none --cpu 6502 -O -Or -Cl -I src $(CDEFS)
+CFLAGS := -t none --cpu 6502 -O -Or -Cl -I src -I build/gen $(CDEFS)
 LDCFG  := src/oric48.cfg
 HOSTCC := cc
 NAME   := stuntbob
 
 OBJS := $(B)/crt0.o $(B)/main.o $(B)/model.o $(B)/trace.o $(B)/screen.o \
-        $(B)/system.o $(B)/keys.o $(B)/sound.o $(B)/draw.o
-HDRS := $(wildcard src/*.h)
+        $(B)/scene.o $(B)/system.o $(B)/keys.o $(B)/sound.o $(B)/draw.o $(B)/art.o
+HDRS := $(wildcard src/*.h) build/gen/art.h
 
 .PHONY: all test ref emu clean
 .SECONDARY:
@@ -41,6 +41,15 @@ HDRS := $(wildcard src/*.h)
 all: $(B)/$(NAME).tap
 
 $(B)/%.o: src/%.s
+	@mkdir -p $(B)
+	ca65 $(AFLAGS) -o $@ $<
+
+# pixel art, drawn as text in tools/mkart.py
+build/gen/art.s build/gen/art.h: tools/mkart.py
+	@mkdir -p build/gen
+	python3 tools/mkart.py build/gen/art.s
+
+$(B)/art.o: build/gen/art.s
 	@mkdir -p $(B)
 	ca65 $(AFLAGS) -o $@ $<
 
@@ -72,6 +81,7 @@ build/emu/emu: tools/emu/emu.c
 test:
 	$(MAKE) build/$(NAME).tap
 	$(MAKE) ORICUTRON=1 build/oricutron/$(NAME).tap
+	$(MAKE) B=build/b3 CDEFS=-DBILLING_START=3 build/b3/$(NAME).tap
 	$(MAKE) build/emu/emu build/ref/ref
 	python3 tools/test_f0.py
 

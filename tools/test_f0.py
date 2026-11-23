@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""test_f0.py - F0 acceptance checks (docs/PLAN.md F0).  Run by `make test`.
+"""test_f0.py - F0 and F1 acceptance checks (docs/PLAN.md).  Run by `make test`.
 
 Adapted from Oric Chuckie Egg's tools/test_f0.py.  Writes screenshots and
 traces to build/test/."""
@@ -66,28 +66,50 @@ for rom, mode in (("atmos", 1), ("oric1", 1), ("none", 0)):
           f"min {min(per)} max {max(per)} avg {avg:.1f}, {len(r.irq)} IRQs")
     worst = max(worst, max(busy))
 
-# 4. the screen
+# 4. the screen (F1): scene = pixel reference from src/scene.c + tools/mkart.py
+import scene_ref  # noqa: E402
 r = emu.run(TAP, frames=50, out=os.path.join(OUT, "screen"))
-emu.write_png(os.path.join(OUT, "f0-screen.png"), r.rgb, 2)
-BLK, BLUE, YEL, GRN, CYAN = (0, 0, 0), (0, 0, 255), (255, 255, 0), (0, 255, 0), (0, 255, 255)
+emu.write_png(os.path.join(OUT, "f1-screen.png"), r.rgb, 2)
+RED, YEL = (255, 0, 0), (255, 255, 0)
 check("ULA in HIRES mode, mode cell $BFDF = $1E", "hires=1" in r.summary and r.mem[0xBFDF] == 0x1E)
-check("title strip: blue paper, yellow text", r.pixel(0, 0) == BLUE and r.pixel(239, 7) == BLUE
-      and any(r.pixel(x, y) == YEL for x in range(12, 90) for y in range(7)))
+check("title strip: red paper, yellow film name", r.pixel(0, 0) == RED and r.pixel(239, 7) == RED
+      and any(r.pixel(x, y) == YEL for x in range(12, 90) for y in range(1, 8)))
+def with_rider(want, r):
+    """the reference scene plus the rider where the run's last trace line says"""
+    s_ = parse(r.trace.decode().splitlines()[-1])
+    x = s_["x"] >> 8
+    for a_, v in scene_ref.rider_bytes(s_["track"], x, s_["h"], scene_ref.frame_for(x, s_["jt"])).items():
+        want[a_ - 0xA000] ^= v
+    return want
+
+
+want = with_rider(scene_ref.scene_bytes(1), r)
+got = r.mem[0xA000:0xA000 + 8000]
+bad = [i for i in range(320, 8000) if want[i] != got[i]]
+check("scene drawn from its data: lines 8-199 = reference + rider (billing 1)", not bad,
+      f"{len(bad)} wrong bytes" + (f", first line {bad[0] // 40} cell {bad[0] % 40}" if bad else ""))
+check("title strip colour cells", all(got[y * 40:y * 40 + 2] == want[y * 40:y * 40 + 2] for y in range(8)))
 roads = [8 + 48 * b + 44 for b in range(4)]
-check("four road lines, solid green across the play width",
-      all(r.pixel(x, y) == GRN for y in roads for x in range(12, 240)), str(roads))
-check("attribute cells show paper (play starts at pixel 12)", all(r.pixel(x, y) == BLK for y in roads for x in range(12)))
-air = [(x, y) for b in range(4) for y in range(8 + 48 * b, 8 + 48 * b + 28) for x in range(12, 240)]
-check("air empty (no rider there at rest)", all(r.pixel(x, y) == BLK for x, y in air))
+check("four kerbs, yellow across the play width (no gaps at billing 1)",
+      all(r.pixel(x, y) == YEL for y in roads for x in range(12, 240)), str(roads))
+B3 = os.path.join(B, "b3", "stuntbob.tap")
+r3 = emu.run(B3, frames=5, out=os.path.join(OUT, "screen-b3"))
+emu.write_png(os.path.join(OUT, "f1-screen-billing3.png"), r3.rgb, 2)
+want3 = with_rider(scene_ref.scene_bytes(3), r3)
+got3 = r3.mem[0xA000:0xA000 + 8000]
+bad3 = [i for i in range(320, 8000) if want3[i] != got3[i]]
+holes = sum(1 for y in roads for x in range(12, 240) if r3.pixel(x, y) != YEL)
+check("billing 3 shows the gaps tagged for it (scene = reference)", not bad3 and holes == 18 + 24,
+      f"{len(bad3)} wrong bytes, {holes} kerb pixels missing")
 row0 = r.mem[0xBF68:0xBF68 + 40]
-check("status row shows BUILD and the number from src/version.h",
-      row0[1:9] == b"BUILD 01" or row0[1:9] == b"BUILD %02d" % int(open(os.path.join(ROOT, "src/version.h")).read().split()[-1]),
-      row0[1:9].decode())
-glyph0 = [r.pixel(7 * 6 + i, 200 + 1) for i in range(6)]
-check("BUILD digit drawn from our charset at $9800", r.mem[0x9800 + ord("0") * 8] == 0x0E and YEL in glyph0)
-r = emu.run(TAP, frames=1, out=os.path.join(OUT, "rider"))
-ry = 8 + 43
-check("rider block on track 1 at x 0-5 (placeholder)", all(r.pixel(12 + i, ry) == YEL for i in range(1, 5)))
+row2 = r.mem[0xBF68 + 80:0xBF68 + 120]
+ver = int(open(os.path.join(ROOT, "src/version.h")).read().split()[-1])
+check("status rows: take, stop lamp lit, fee; BUILD number from src/version.h",
+      row0[1:7] == b"TAKE 1" and row0[19] == ord("*") and b"FEE $0" in row0 and row2[1:9] == b"BUILD %02d" % ver,
+      row2[1:9].decode())
+glyph0 = [r.pixel(7 * 6 + i, 216 + 1) for i in range(6)]
+check("status glyphs drawn from our charset at $9800", r.mem[0x9800 + ord("0") * 8] == 0x0E
+      and r.mem[0x9800 + ord("$") * 8] == 0x06)
 
 # 5. every key by its Oric name -> input bits (trace column 9)
 ak = os.path.join(KEYS, "allkeys.keys")
@@ -170,55 +192,68 @@ seg = mp.split("Segment list:")[1]
 st = int(seg.split("STARTUP")[1].split()[2], 16)
 check("crt0 + cfg within 256 B", st <= 256, f"STARTUP {st} B")
 
-# 10. the rider (BUILD 2, Bob's fading bug): moved in one pass, so no screen byte is
-#     written twice in a step and the video never scans an erased rider; and the
-#     screen after every script = the empty scene + the rider where the trace says
+# 10. the rider (F1): moved in one pass, so no screen byte is written twice in a
+#     step; written at the beam's pace, so no video frame shows half a move; and
+#     the screen after every script = the scene + the rider where the trace says
 import bisect
 VF = 19968                                   # Oric video frame: 312 lines x 64 cycles
+blank = scene_ref.scene_bytes(1)
 
 
-def rider_bytes(track, xpx, h):
-    """{address: xor mask} of the placeholder rider block (src/screen.c)."""
-    c, sh = 2 + xpx // 6, xpx % 6
-    lm, rm = 0x3F >> sh, (0x3F << (6 - sh)) & 0x3F
-    if c == 39:
-        rm = 0
-    y0 = 8 + track * 48 + 43 - h
-    out = {}
-    for n in range(12):
-        a = 0xA000 + (y0 - n) * 40 + c
-        out[a] = lm
-        if rm:
-            out[a + 1] = rm
-    return out
+def tears(r):
+    """(steps in which some video frame showed part old, part new rider, drawing
+    steps, slowest burst in cycles a line).  Each step's writes are split into
+    bursts (gaps > 300 cycles: the two halves of a wrap); a frame f scans line y,
+    cell c at f * VF + y * 64 + c (the emulator's video timing).  A frame is torn
+    when it scans some of a burst's bytes before their write and some after."""
+    steps = {}
+    for a, v, c in r.wlog:
+        if c >= r.marks[0]:
+            steps.setdefault(bisect.bisect_right(r.marks, c), []).append((a - 0xA000, c))
+    bad, pace = 0, 0
+    for ws in steps.values():
+        bursts, cur = [], [ws[0]]
+        for w in ws[1:]:
+            if w[1] - cur[-1][1] > 300:
+                bursts.append(cur)
+                cur = []
+            cur.append(w)
+        bursts.append(cur)
+        torn = False
+        for bu in bursts:
+            t0, t1 = bu[0][1], bu[-1][1]
+            nl = len({o // 40 for o, _ in bu})
+            pace = max(pace, (t1 - t0 - 30) / max(1, nl - 1))
+            for f in range(t0 // VF - 1, t1 // VF + 1):
+                d = [c - (f * VF + (o // 40) * 64 + o % 40) for o, c in bu]
+                torn |= min(d) < 0 < max(d)
+        bad += torn
+    return bad, len(steps), pace
 
 
-blank = bytearray(emu.run(TAP, frames=1, out=os.path.join(OUT, "blank")).mem[0xA000:0xBF40])
-for a, v in rider_bytes(0, 0, 0).items():
-    blank[a - 0xA000] ^= v
 tj = os.path.join(KEYS, "topjumps.keys")
 for path, n in [(tj, 1500)] + scripts[:4]:
     r = emu.run(TAP, frames=n, keys=path, wlog=True, out=os.path.join(OUT, "rider-" + os.path.basename(path)))
-    last, twice, seen = {}, 0, 0
+    quits = {parse(l)["step"] for l in r.trace.decode().splitlines() if parse(l)["ev"] & 0x40}
+    last, twice = {}, 0
     for a, v, c in r.wlog:
         if c < r.marks[0]:
             continue
         st = bisect.bisect_right(r.marks, c)
-        if a in last and last[a][0] == st:
-            twice += 1
-            line = (a - 0xA000) // 40
-            k = (last[a][1] - line * 64 + VF - 1) // VF
-            seen += k * VF + line * 64 < c
-        last[a] = (st, c)
+        twice += a in last and last[a] == st and st not in quits
+        last[a] = st
+    torn, drawn, pace = tears(r)
     s_ = parse(r.trace.decode().splitlines()[-1])
+    x = s_["x"] >> 8
     want = bytearray(blank)
-    for a, v in rider_bytes(s_["track"], s_["x"] >> 8, s_["h"]).items():
+    for a, v in scene_ref.rider_bytes(s_["track"], x, s_["h"], scene_ref.frame_for(x, s_["jt"])).items():
         want[a - 0xA000] ^= v
-    got = r.mem[0xA000:0xBF40]
-    bad = [i for i in range(len(want)) if want[i] != got[i]]
-    check(f"rider {os.path.basename(path)}: one write per byte per step, never scanned erased; "
-          "screen = scene + rider", twice == 0 and seen == 0 and not bad,
-          f"{twice} double writes, {seen} seen erased, {len(bad)} wrong bytes")
+    got = r.mem[0xA000:0xA000 + 8000]
+    bad = [i for i in range(320, 8000) if want[i] != got[i]]
+    check(f"rider {os.path.basename(path)}: one write per byte per step, under 1% torn frames; "
+          "screen = scene + rider", twice == 0 and torn * 100 < drawn and not bad,
+          f"{twice} double writes, {torn} torn of {drawn} drawing steps, burst {pace:.0f} cycles a line, "
+          f"{len(bad)} wrong bytes")
 
 print(f"\n{'ALL PASS' if not fails else f'{fails} FAILED'}")
 sys.exit(1 if fails else 0)
