@@ -114,7 +114,7 @@ Briefs written by the architect when the previous feature is merged, from DESIGN
 - **BUILD 3 (Bob: "now the rider tears"):** BUILD 2's C writes were spread over ~7,000 cycles, so
   the beam crossed a half-moved rider in 272 of 1,086 drawing steps. Now C prepares every byte's
   mask first and an assembly loop (`src/draw.s`, ~70 cycles a line) writes them in one burst of
-  ~850 cycles: 120 of 1,086 steps, and then only a one-line shear. **No vertical sync on a stock
+  ~850 cycles: 73 of 1,086 steps, and then only a one-line shear. **No vertical sync on a stock
   Oric** means the beam's position can't be read, so tearing can be made rare and small but not
   removed; locking the step to the video frame would make it permanent on one track instead.
   Worst step 16,708 cycles (the C preparation); F1's assembly sprite brings it down.
