@@ -1,0 +1,7 @@
+# accelerate, jump, use the stop, move off again, try a second stop
+10-150 accel
+40 jump
+200 stop
+230-260 accel
+300 stop
+320 jump

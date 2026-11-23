@@ -40,7 +40,7 @@ takes the next number.
 | ID | Feature | Depends on | Budget | State |
 | --- | --- | --- | --- | --- |
 | M1 | Measure the BBC original: speeds, acceleration, jump arc and time, start speed, wrap, hanging-hazard period, sea and snow handling, fee on a retake | — | docs only | not started |
-| F0 | Skeleton and harness: cc65 2.19 built for the cloud shell, `none.lib`, own crt0 and ld65 config at $0500, ROM-free IRQ hook, autorun `.tap`, Makefile with size report and `ORICUTRON=1`; Chuckie Egg's emulator adapted, PNG output, key scripts, debug port at $BFE0; native C model with per-step trace | — | crt0 + cfg ≤ 256 B | not started |
+| F0 | Skeleton and harness: cc65 2.19 built for the cloud shell, `none.lib`, own crt0 and ld65 config at $0500, ROM-free IRQ hook, autorun `.tap`, Makefile with size report and `ORICUTRON=1`; Chuckie Egg's emulator adapted, PNG output, key scripts, debug port at $BFE0; native C model with per-step trace | — | crt0 + cfg ≤ 256 B | built (BUILD 1), waiting for Bob's Oricutron check |
 | F1 | Display: HIRES init, per-line paper/ink columns, a track screen drawn from scene data, status line in the text-row bitmap font, one-pass pre-shifted sprite draw | F0 | code ≤ 1.5 KB; sprite ≤ 1,400 cycles | not started |
 | F2 | One track: rider physics (DESIGN "Physics"), keys (Space, either Shift, Return), 50 Hz step, engine sound | F0, F1 | logic ≤ 4,000 cycles a step | not started |
 | F3 | Whole scene: four tracks, wrapping, block, runner, dangler, gap and ceiling block, crashes, fees, the one stop | F2 | whole step ≤ 16,000 cycles | not started |
@@ -78,4 +78,28 @@ Briefs written by the architect when the previous feature is merged, from DESIGN
 
 ## Results
 
-(none yet)
+### F0: Skeleton and harness (BUILD 1, 23 Nov 2026)
+
+- **Toolchain:** cc65 2.19 (git `eebf54a`) vendored for the cloud shell in `tools/vendor/cc65`
+  (x86_64 binaries, headers, `none.lib`); Chuckie Egg's `crt0.s` and `oric48.cfg` unchanged (crt0
+  27 B + zerobss 35 B = 62 B). `make` = release build, `make ORICUTRON=1` = Bob's Oricutron build
+  in `build/oricutron/`. Details in `tools/README.md`.
+- **System:** IRQ hooked through the RAM vector on ROM 1.0 and 1.1 with no ROM code, polling
+  fallback for an unknown ROM; 10 ms tick, 50 Hz step (20,000 cycles, measured exact on all three).
+  IRQ handler 77–123 cycles.
+- **Keys:** Space, either Shift, Return, P, Esc read directly (table in DATA for F6's
+  redefinition). Jump is a key-down edge seen at the step; DESIGN's "latch a tap between steps" is
+  left to F2.
+- **Model:** `src/model.c`, portable C, one rider on four tracks with DESIGN's speed, one-stop,
+  jump-from-the-ground, mid-air accelerate, wrap and pause/quit rules, on **placeholder constants**
+  in `src/physics.h` (DESIGN's guesses) until M1. Quit restarts the scene until F4 has a title.
+- **Trace:** native and Oric traces identical over 7,750 scripted steps (5 scripts incl. 6,000
+  random steps); a planted Oric-only bug fails the check.
+- **Screen:** placeholder (F1 replaces it): title strip, four bands with road lines, attribute
+  cells 0–1, status rows with BUILD, track, speed, stop; the rider is a 6 × 12 XOR block.
+- **Sound:** placeholder engine tone (pitch with speed) and noise bursts on jump, landing and
+  stop; noise periods doubled in the Oricutron build (checked from the AY log).
+- **Cost:** worst step 10,891 of 20,000 cycles, mostly the C placeholder display and the trace
+  output (about 1,500 cycles; it can move to a trace-only build if F3 needs the room). Program ends
+  at `$190A`; 31,990 bytes free below `$9800`.
+- `make test`: 34 checks, all pass.
