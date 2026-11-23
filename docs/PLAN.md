@@ -110,4 +110,4 @@ Briefs written by the architect when the previous feature is merged, from DESIGN
   cycles): 2,622 rider bytes scanned while erased over 1,500 steps of `tests/keys/topjumps.keys`;
   after the fix, 0. The rider now moves in one pass (old ^ new per byte, ORIC-LESSONS §7), and a
   new check per script proves one write per byte per step and the screen = scene + rider. The
-  C version costs more (worst step 15,532 cycles); F1's assembly sprite replaces it. 39 checks.
+  C version costs more (worst step 15,532 cycles); F1's assembly sprite replaces it. 38 checks.
