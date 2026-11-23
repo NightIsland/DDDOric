@@ -507,6 +507,21 @@ emu.write_png(os.path.join(OUT, "f4-lamps.png"), lk[0].rgb, 2)
 check("police lamps: the lamp line and the bar in red and blue, swapped 8 steps later",
       sorted(li[0]) == [1, 4] and li[1] == li[0][::-1], str(li))
 
+# Bob, BUILD 15: an ink cell colours its whole line, so the lamps take the
+# band's ink while the rider (neck and shoulders) is level with them
+CARS = [t for t, k, x, a in MOVING if k == 2]
+rl = emu.run(TAP, frames=1200, keys=os.path.join(KEYS, "season.keys"), out=os.path.join(OUT, "lampsr"))
+lv = [s_ for s_ in map(parse, rl.trace.decode().splitlines())
+      if s_["mode"] == PLAY and s_["track"] == CARS[0] and s_["h"] <= 11 and s_["step"] > 10]
+rl = emu.run(TAP, frames=lv[5]["step"], keys=os.path.join(KEYS, "season.keys"), out=os.path.join(OUT, "lampsr"))
+s_ = parse(rl.trace.decode().splitlines()[-1])
+y0, y1 = lamp_lines()[0]
+li = [rl.mem[0xA000 + y * 40] for y in (y0, y1, y1 + 1)]
+emu.write_png(os.path.join(OUT, "f4-lamps-level.png"), rl.rgb, 2)
+check("police lamps: the band's ink while the rider is level with them (Bob, BUILD 15)",
+      s_["track"] == CARS[0] and s_["h"] <= 11 and li[0] == li[1] == li[2] not in (1, 4),
+      f"track {s_['track']} height {s_['h']} inks {li}")
+
 # F4: the film frame (DESIGN "Presentation")
 r = emu.run(TAP, frames=30, out=os.path.join(OUT, "f4-title"))
 emu.write_png(os.path.join(OUT, "f4-title.png"), r.rgb, 2)

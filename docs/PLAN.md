@@ -196,6 +196,14 @@ Briefs written by the architect when the previous feature is merged, from DESIGN
   two lines of the band takes the colour too (the rider's neck as he passes). The torn-frame
   check leaves colour cells out; a check sees the swap.
 
+- **BUILD 15 (Bob: the flashing neck "does look a little weird"):** an ink cell colours its
+  whole line, and the rider's neck and shoulders share the lamp lines whenever he is level with
+  the car, so while he is (his rows overlap those two lines) the lamps take the band's ink, and
+  they flash again once he jumps clear or leaves the track. A per-cell colour change beside the
+  lamps was ruled out: the rider's XOR drawing over an attribute byte would turn it into a
+  different attribute (even a video-mode change), and pixel-touch crashes would read it as ink.
+  A check runs to a step with the rider level with the car and sees band ink on the lamp lines.
+
 ### F3: Whole scene (BUILD 9, 23 Nov 2026)
 
 - **Hazards move** (`src/model.c`, from `src/scene.h`'s records, so the native model has them too):
