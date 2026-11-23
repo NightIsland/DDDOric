@@ -39,11 +39,11 @@ frame by frame (JSBeeb, see PLAN M1) and the measured value written here.
 | Releasing Accelerate | The bike holds its current speed; it never slows by itself | Same (confirmed by Bob) |
 | Jump | Fixed arc, no steering, 1.68 s and 20 lines high at every speed; length set by speed, and accelerating in the air stretches it (M1) | Same |
 | Jump at top speed | Carries just over one whole track, so it crosses the wrap (M1) | About 234 px of travel (M1) |
-| Stop | Return stops the bike dead, once per track (given back at every wrap), also in mid-air (M1) | Once per scene, on the ground (Bob's decision; see M1 differences) |
+| Stop | Return stops the bike dead, once per take: given back on each retake and each new screen, not at a wrap; it also works in mid-air (M1, confirmed by Bob) | Same: once per take, also in mid-air |
 | Ceiling | Some fixed obstacles hang from the top of the track and catch a jump | Same: ceiling blocks |
-| Handling | Identical on land, sea and snow; only the pictures change (M1). Bob remembered sea looser and snow dragging | Per-vehicle handling, see Vehicles (for Bob to confirm after M1) |
-| Lives | 3 takes, then back to the menu; one lost take is given back after each land, sea, snow round (M1) | 3 takes per run |
-| Score | Wages per track completed, 10 × the screen number, paid again on a retake (M1) | £10 per hazard, more on harder billings |
+| Handling | Identical on land, sea and snow; only the pictures change (M1) | Same: one standard handling for every vehicle except the sci-fi hover bike, see Vehicles |
+| Lives | 3 takes, then back to the menu; one lost take is given back after each land, sea, snow round (M1) | 3 takes per run; one lost take back after every third scene cleared |
+| Score | Wages per track completed, 10 × the screen number, paid again on a retake (M1) | Same: £10 × the scene's number in the run per track, paid again on a retake (Bob's decision) |
 | Crash | Burst, rider flung away, pause, same screen restarts | Same, with "Cut!" and the clapper |
 | Difficulty | 36 screens in a fixed order cycling land, sea, snow; the skill level picks the starting screen (1, 7, 13, 19, 25, 31), so a level is 6 screens; gaps from screen 5, flying hazards from screen 4 (M1) | 6 billings; each is one season of 6 films, then the next billing starts by itself; gaps from billing 3 (guess) |
 
@@ -78,9 +78,9 @@ layout: one hand on Space, the other with a finger on Shift and one ready on Ret
 
 | Action | Default key | Behaviour |
 | --- | --- | --- |
-| Jump | Space | Starts a jump on key-down, from the ground only; holding it does not repeat |
+| Jump | Space | Starts a jump from the ground; held, it jumps again 3 steps after each landing, as in the original |
 | Accelerate | Either Shift | Held: speed builds, on the ground or in the air; released: the bike holds its current speed |
-| Stop | Return | Stops the bike dead; one use per scene; ignored in the air |
+| Stop | Return | Stops the bike dead, on the ground or in the air; one use per take |
 | Pause | P | Freezes the game; any key resumes |
 | Quit | Esc | Back to the title screen (asks Y/N) |
 | Sound | S (title screen) | Sound on or off |
@@ -118,17 +118,18 @@ when.
 1. **Jumping.** Jump starts the arc from the ground only. The arc's shape never changes; the bike
    keeps its forward speed, and Accelerate still adds to it in the air, so a jump can be stretched
    but never shortened.
-2. **Stopping.** Stop sets speed to zero at once and is then used up for this scene (the status line
-   icon goes out). A stopped bike waits; Accelerate moves it off from zero. Every retake gives the
-   stop back.
+2. **Stopping.** Stop sets speed to zero at once and is then used up for this take (the status line
+   icon goes out); passing to the next track does not give it back. A stopped bike waits;
+   Accelerate moves it off from zero. Stopped in mid-air, the bike drops straight down through the
+   rest of the arc. Every retake and every new scene gives the stop back.
 3. **Wrapping.** Passing the right edge puts Bob at the left of the next track down at the same
    speed. He keeps his height above the road and his point in the jump arc, so a jump that crosses
    the edge carries on over the next track. Leaving track 4 ends the scene.
 4. **Crashing.** Bob crashes if his box (shrunk by 2 px on each side, for fairness) touches a hazard,
    if he lands on top of an obstacle, if his wheels are over a gap when he is on the ground, or if his
    jump hits a ceiling block or anything else that must be passed on the ground.
-5. **Clearing.** A hazard is cleared, and pays its fee, once Bob's back wheel passes its far edge
-   without a crash.
+5. **Paying.** Finishing a track (wrapping to the next one, or leaving track 4) pays the scene's
+   track fee, as in the original. Hazards themselves pay nothing; they only stand in the way.
 
 ## Obstacles and vehicles
 
@@ -150,21 +151,19 @@ the gap between them; a dangler after a gap means you must land, slow down, and 
 which is where the one stop earns its keep.
 
 **Vehicles.** Each vehicle has its own look, engine sound and handling, where handling is three
-numbers: acceleration, top speed and jump time. Most vehicles use the standard handling. On water
-acceleration is a little looser and on snow it drags, as Bob remembers, and the sci-fi hover bike
-floats. M1 found the original's wetbike and skis handle exactly like its bike, so these differences
-are our own addition, for Bob to confirm. The guesses below are scaled to the measured standard
-handling (+0.0111 px per step, top 2.78 px per step, jump 84 steps).
+numbers: acceleration, top speed and jump time. As in the original (M1), where the wetbike and skis
+handle exactly like the bike, every vehicle uses the standard handling (+0.0111 px per step, top
+2.78 px per step, jump 84 steps). The one exception is our own sci-fi hover bike, which floats.
 
-| Film | Vehicle | Handling (guess) |
+| Film | Vehicle | Handling |
 | --- | --- | --- |
 | Action, scene 1 | Motorbike | Standard |
-| Action, scene 2 | Jet-ski | Looser: acceleration +0.0156 px per step |
+| Action, scene 2 | Jet-ski | Standard |
 | Western | Horse | Standard |
 | Horror | Rattling hearse-trike | Standard |
-| Sci-fi | Hover bike | Floaty: jump time 100 steps, same height |
+| Sci-fi | Hover bike | Floaty: jump time 100 steps, same height (guess) |
 | Fantasy | Chariot | Standard |
-| Spy (snow) | Skis | Drags: acceleration +0.008 px per step, top speed 2.4 px per step |
+| Spy (snow) | Skis | Standard |
 
 ## Films, scenes and progression
 
@@ -187,14 +186,14 @@ first screen must be passed on the ground.
 
 **Billings** are the difficulty levels, the starting one picked on the title screen.
 
-| Billing | Gaps | Runner and dangler speed | Fee per hazard |
+| Billing | Gaps | Runner and dangler speed | Fee per track |
 | --- | --- | --- | --- |
-| 1 Extra | None | Slow | £10 |
-| 2 Stand-in | None | Normal | £20 |
-| 3 Double | Small gaps added | Normal | £30 |
-| 4 Stunt Man | More gaps | Fast | £40 |
-| 5 Stunt Coordinator | Gaps in front of most hazards | Fast | £50 |
-| 6 Legend | Most track broken | Fastest | £60 |
+| 1 Extra | None | Slow | £10 to £120 |
+| 2 Stand-in | None | Normal | £130 to £240 |
+| 3 Double | Small gaps added | Normal | £250 to £360 |
+| 4 Stunt Man | More gaps | Fast | £370 to £480 |
+| 5 Stunt Coordinator | Gaps in front of most hazards | Fast | £490 to £600 |
+| 6 Legend | Most track broken | Fastest | £610 to £720 |
 
 In the original (M1) runners and danglers move at the same speed per step on every level (runner
 0.95 px per step, dangler 1 px per 3 steps in our units); only the layouts get harder, and gaps start
@@ -220,7 +219,7 @@ retakes stay quick. Any game key skips a card.
    the title strip with a big "CUT!" and a squawk. After about 1.5 s the clapper card returns with the
    take number one higher, and the scene restarts from track 1.
 5. **Scene cleared.** "THAT'S A PRINT!" with a fee tally for the scene, then the next scene's card.
-   Clearing a scene on its first take pays a one-take bonus of five times the hazard fee (guess).
+   Clearing a scene on its first take pays a one-take bonus of five times its track fee (guess).
 6. **Third crash.** "YOU'RE FIRED!" over the final fee, then initials for the top five if the fee
    qualifies, then the title screen.
 7. **Season finished.** "THAT'S A WRAP!" over a premiere poster with all six titles, then the next
@@ -231,16 +230,17 @@ about 12 × 16 pixels with two riding frames, a jump frame and a crash frame per
 
 ## Scoring, takes and fees
 
-- **Fee.** Each hazard cleared pays the billing's fee (£10 to £60). A scene cleared on its first take
-  adds the one-take bonus. Gaps count as hazards.
+- **Fee.** As in the original (M1, Bob's decision), each finished track pays the scene's track fee:
+  £10 × the scene's number in the run, counting on through the billings (billing 1 is scenes 1 to
+  12, £10 to £120 a track; billing 2 starts at scene 13, £130; and so on). The original paid 10 × its
+  screen number. A scene cleared on its first take adds the one-take bonus (our addition).
 - **Takes.** Three per run. A crash uses one and restarts the scene from track 1 with its stop
-  restored. Fees already earned are kept, but each hazard pays only once per scene, so a retake earns
-  only for hazards beyond the point where you fell. Example at Extra: take 1 clears 5 hazards (£50)
-  and crashes on the 6th; take 2 pays nothing for the first 5, then £10 for each new one. A crash
-  costs a take and the one-take bonus, never money already earned. The original instead pays per
-  track and pays again on a retake (M1); for Bob to confirm which we keep.
-- **No extra takes.** The original gives a lost take back after each land, sea, snow round (M1); for
-  Bob to confirm which we keep.
+  restored. Fees already earned are kept, and a retake pays again for every track it finishes, as in
+  the original. Example on scene 1: take 1 finishes two tracks (£20) and crashes on the third; take 2
+  finishes all four (£40 more, £60 in all). A crash costs a take and the one-take bonus, never money
+  already earned.
+- **Take back.** As in the original (M1), a lost take is given back after every third scene cleared
+  (the original did it after each land, sea, snow round of three screens). Never more than three.
 - **Best fees.** A top-five table with three initials, kept until the machine is switched off.
 
 ## Sound and music
@@ -252,7 +252,7 @@ about 12 × 16 pixels with two riding frames, a jump frame and a crash frame per
 | Crash | B + noise | Noise burst with a falling tone |
 | "Cut!" | B | Two-note megaphone squawk (no speech: the word is shown) |
 | Clapper | Noise | A sharp clack |
-| Fee paid | C | A short blip each time a hazard is cleared |
+| Fee paid | C | A short blip each time a track is finished |
 | Jingles | A–C | Title theme (about 20 s, loops), a 2–3 s sting per genre on the clapper card, "That's a print", "You're fired", "That's a wrap" fanfare |
 
 All tunes are composed for this game. Envelopes step from the 10 ms timer, as in Chuckie Egg. Noise
@@ -316,17 +316,17 @@ The build order is in `docs/PLAN.md`.
 | Topic | Decision |
 | --- | --- |
 | Machine | 48K Oric-1 and Atmos only |
-| Stop | One per scene (one screen of four tracks), restored on each new scene and each retake |
+| Stop | One per take: restored on each new scene and each retake, not at a wrap; works in mid-air (as the original, confirmed by Bob) |
 | Speed | Accelerate, hold your current speed, or stop dead once; the bike never slows by itself |
 | Wrapping | Same height, same point in the jump arc, same speed |
 | Run | Six films of two scenes; finishing them starts the next billing automatically, like the original's levels |
 | Billing | Starting billing picked on the title screen |
 | Genres | Action, Western, horror, sci-fi, fantasy, snowbound spy (on skis); the action film's scene 2 is a jet-ski chase |
-| Handling | Standard for most vehicles; looser on water, dragging on snow, floaty for the hover bike |
+| Handling | Standard for every vehicle, as in the original; only the hover bike floats |
 | Hazards | Ceiling blocks are an original kind; jets and ramps are new, in scene 2 |
 | Keys | Space jump, either Shift accelerate, Return stop; redefinable; no joystick |
-| Takes and fees | 3 takes, no extras; fees in pounds, each hazard paid once per scene |
+| Takes and fees | 3 takes, one lost take back after every third scene cleared (as the original); fees in pounds, paid per track finished and again on a retake (as the original) |
 | Oricutron builds | Noise played an octave lower to match real hardware |
 | Level codes | Optional extra after film 1 |
 | Measuring | Time the BBC original frame by frame to set speeds, arc and handling |
-| After M1 | Where the original differs from this design (stop per track, identical sea and snow, wages per track, held jump repeats, take refund, 6-screen levels): `docs/M1-MEASUREMENTS.md`, for Bob |
+| After M1 | Bob agreed to follow the original on the stop, sea and snow handling, the held jump and the take refund. Levels: our billings already work like its skill levels (a start point in one continuous run); a billing stays one 12-scene season. Fees: per track, as in the original (Bob's decision). |
