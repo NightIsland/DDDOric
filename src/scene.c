@@ -424,11 +424,12 @@ const struct scene scene_mp2 = {
 };
 
 /* Dragon's Keep (F6e).  Castle Approach: a bright sky, everything black
-   against it, the grass green on black below (the moat black). */
+   against it, the grass green on the sky below, so a gap (the moat too)
+   shows the sky through it (Bob, BUILD 26: on black it looked like ground). */
 static const uint8_t pal_hills[] = {
     BLACK, GREEN,
     /* paper */
-        R(31, CYAN), R(13, CYAN), R(4, BLACK),
+        R(31, CYAN), R(17, CYAN),
     /* ink */
         R(31, BLACK), R(13, BLACK), R(4, GREEN),
 };

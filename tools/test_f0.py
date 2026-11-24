@@ -615,6 +615,7 @@ for b in range(1, 7):
 # horse on the dusty street, the mine cart on the rails) = the reference
 # F6c: and the horror's (the hearse-trike on the cobbles, the ghost train)
 voice_runs = {}
+voice_air = {}
 for fr, what in ((1700, "Dust at Dawn scene 1 (horse, dirt street)"), (2200, "Dust at Dawn scene 2 (mine cart, rails)"),
                  (2800, "Night of the Hearse scene 1 (hearse-trike, cobbles)"),
                  (3400, "Night of the Hearse scene 2 (ghost-train car)"),
@@ -627,11 +628,21 @@ for fr, what in ((1700, "Dust at Dawn scene 1 (horse, dirt street)"), (2200, "Du
     r = emu.run(TAP, frames=fr, keys=os.path.join(KEYS, "win-b6.keys"), out=os.path.join(OUT, f"f6-{fr}"))
     emu.write_png(os.path.join(OUT, f"f6-{fr}.png"), r.rgb, 2)
     voice_runs[fr] = [(reg, v) for c, reg, v in r.ay if c >= r.marks[fr - 41]]
+    voice_air[fr] = all(parse(l)["jt"] for l in r.trace.decode().splitlines()[-40:])
     want = reference(r)
     got = r.mem[0xA000:0xA000 + 8000]
     bad = [i for i in range(320, 8000) if want[i] != got[i]]
     check(f"win-b6.keys at step {fr}: {what} = scene + rider + moving hazards", not bad,
           f"{scene_of(r)[0]}: {len(bad)} wrong bytes" + (f", first line {bad[0] // 40} cell {bad[0] % 40}" if bad else ""))
+# Bob, BUILD 26: on Night of the Hearse scene 1 a bat crossing a spider's
+# cord as the spider climbed left bits of cord behind (the cord was set and
+# cleared, not flipped, so it cut into the bat's picture)
+r = emu.run(TAP, frames=2490, keys=os.path.join(KEYS, "win-b5.keys"), out=os.path.join(OUT, "f6-cord"))
+want = reference(r)
+bad = [i for i in range(320, 8000) if want[i] != r.mem[0xA000 + i]]
+check("win-b5.keys at step 2490: Night of the Hearse scene 1 after the bat crossed the climbing spider's cord "
+      "= scene + rider + moving hazards (no bits of cord left)", scene_of(r)[0] == "scene_nh1" and not bad,
+      f"{scene_of(r)[0]}: {len(bad)} wrong bytes" + (f", first line {bad[0] // 40} cell {bad[0] % 40}" if bad else ""))
 # F6g: each vehicle's engine voice (src/sound.s voices): its volume pattern,
 # a vibrato on the period for the ghost train, the hover bike and the carpet,
 # the skis on noise B; the period x eng_mul / 8 (src/main.c)
@@ -650,7 +661,8 @@ for fr, (name, vols, kind, mul) in VOICES.items():
     swish = [v for reg, v in w if reg == 9 and v]
     # (a steady volume is written once, before the window; the period moves
     # with the speed too, so a vibrato shows as many periods)
-    ok = got <= vols if kind != 2 else (got <= {0} and set(swish) & {5, 6, 7})
+    # (hooves, feet and skis go quiet in the air: Bob, BUILD 27)
+    ok = got <= vols if kind != 2 else (got <= {0} and (set(swish) & {5, 6, 7} or voice_air[fr]))
     if kind == 1:
         ok = ok and len(pers) >= 3
     if pers:
@@ -853,6 +865,9 @@ eng = [v for c, reg, v in rq.ay if reg == 8 and v and rq.marks[30] <= c < rq.mar
 check("quit.keys: S turns the sound off (no engine while riding), S again on (the menu says ON)",
       not eng and text_at(rq, 24, 130, "ON") and rq.trace.decode().splitlines() == ref_trace(qk, 200)[:199],
       f"{len(eng)} engine volume writes")
+check("quit.keys: back on the title the screen is still HIRES (Bob, BUILD 26: the title's blank status rows "
+      "had wiped the mode cell, so every screen after showed as text)", rq.mem[0xBFDF] == 0x1E,
+      f"mode cell {rq.mem[0xBFDF]:#04x}")
 
 # 8. Oricutron build: noise an octave lower (every R6 value doubled)
 path = os.path.join(KEYS, "basic.keys")
@@ -989,16 +1004,21 @@ for path, n in runs:
 # (33 cells) no runner ever has a second picture.  Sampled every 5th step.
 ghosts = []
 k6 = os.path.join(KEYS, "win-b6.keys")
+cells = []
 for n in range(20, len(rhr["win-b6.keys"]), 5):
     r = emu.run(TAP, frames=n, keys=k6, out=os.path.join(OUT, "ghost"))
     if parse(r.trace.decode().splitlines()[-1])["mode"] != PLAY:
         continue
+    if any(r.mem[0xA000 + y * 40] & 0x40 for y in range(200)):   # (cell 1: the kerb's from it)
+        cells.append(n)
     for i, (t, k, x, a) in enumerate(moving(*scene_of(r))):
         g = 1 + i + 8
         if k == 2 and r.mem[syms["_sp_on"] + g] and abs(r.mem[syms["_sp_c"] + g] - r.mem[syms["_sp_c"] + 1 + i]) < 30:
             ghosts.append(n)
 check("win-b6.keys: no runner drawn twice but across a wrap (Bob, BUILD 17)", not ghosts,
       f"steps {ghosts[:8]}" if ghosts else "")
+check("win-b6.keys: every line's paper cell (0) untouched by drawing (Bob, BUILD 26: a runner "
+      "catching up across its wrap ran into the next lines' cells)", not cells, f"steps {cells[:8]}" if cells else "")
 check(f"scene: rider and hazards under 1% torn frames over the {len(runs)} scripts", sc_torn * 100 < sc_draw,
       f"{sc_torn} torn of {sc_draw} drawing steps")
 

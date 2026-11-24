@@ -343,6 +343,25 @@ static void arm(uint8_t rise, uint8_t old)
 
 static uint8_t shown_arm, shown_action;
 
+/* the film's name, large, with one-cell spaces between its words: NIGHT OF
+   THE HEARSE (35 cells) didn't fit the slate with two-cell ones (Bob, BUILD 27) */
+static void film_name(const char *f)
+{
+    static char ch[2];
+    uint8_t col = 5;
+    if (strlen(f) > 16)
+        col = 3;
+    for (; *f; ++f) {
+        if (*f == ' ') {
+            ++col;
+        } else {
+            ch[0] = *f;
+            big(col, 88, ch);
+            col += 2;
+        }
+    }
+}
+
 void frame_card(const struct scene *s)
 {
     uint8_t y, *p;
@@ -363,7 +382,7 @@ void frame_card(const struct scene *s)
         p[39] = 0x43;
     }
     text(5, 76, "FILM");
-    big(5, 88, s->film);
+    film_name(s->film);
     text(5, 112, "SCENE");
     text(24, 112, "TAKE");
     big(5, 122, num(s->number, 0));

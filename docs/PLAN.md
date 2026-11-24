@@ -218,6 +218,24 @@ before general music, 24 Nov 2026).
   release. Also fixed: the card's "scene fee a track" was 10 times too much since fees moved to
   £10s (scene 1 showed £100); a test now reads it.
 
+- **BUILD 27, Bob's bugs from the picker build:**
+  - *Garbage screens and a crash after going back to the title* (seen on Moonbase Panic 2 and
+    Cold Front 2): the title's blank status rows (BUILD 19) cleared 120 bytes, the last being the
+    mode cell at `$BFDF`, so the Oric fell back to text mode and showed the HIRES memory as text.
+    It never showed on a first game. Now 119; a test reads the mode cell after quitting.
+  - *Dust at Dawn 1, the screen's colours lost when the tumbleweed wraps*: the runner catch-up
+    (BUILD 18) took a wrap from 227 to 0 as being 29 px behind (256 - 228 = 28) and drew the
+    picture past cell 39, over the next lines' colour cells. Catch-up now needs the real
+    direction; a test checks every line's colour cells on the billing-6 win run.
+  - *Night of the Hearse 1, bits of cord left*: a dangler's cord was set and cleared, so where a
+    bat crossed it the cord cut into the bat's picture and the bat's next move left bits behind.
+    The cord is now flipped (`rope_xor`); a test compares the screen at the moment it happened.
+  - *Dragon's Keep 1, gaps that looked like ground*: the grass was on black, so a gap was black on
+    black. The grass now sits on the sky (cyan), so a gap shows the sky through it.
+  - *Hooves, the dragon's feet and the skis sound in the air*: their voices stop while airborne.
+  - *NIGHT OF THE HEARSE ran off the clapper*: the card's film name now puts one cell between
+    words, from cell 3 when the name is longer than 16 letters.
+
 ### F5: Rush Hour Rumble at all six billings (BUILD 16, 23 Nov 2026)
 
 - **Scene 2, the harbour chase** (`src/scene.c` `scene_rhr2`), on the jet-ski: buoys (blocks), the

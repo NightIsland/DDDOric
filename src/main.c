@@ -162,7 +162,9 @@ void main(void)
             voice = m.scene->vehicle;
             snd_voice(voice);
         }
-        if (m.mode == M_PLAY && !m.paused && m.sound)
+        if (m.mode == M_PLAY && !m.paused && m.sound
+            && !(m.jump_t && (voice == VH_HORSE || voice == VH_DRAGON || voice == VH_SKIS)))
+            /* (hooves, feet and skis are quiet in the air: Bob, BUILD 27) */
             period = (uint16_t)((1250 - 4 * m.speed) * eng_mul[voice]) >> 3;
         if (period != engine) {
             engine = period;

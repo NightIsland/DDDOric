@@ -364,20 +364,14 @@ extern uint8_t rp_b, rp_y, rp_c;
 #pragma zpsym ("rp_b")
 #pragma zpsym ("rp_y")
 #pragma zpsym ("rp_c")
-void __fastcall__ rope_or(uint8_t y1);
-void __fastcall__ rope_and(uint8_t y1);
+void __fastcall__ rope_xor(uint8_t y1);
 
-static void rope(uint8_t x, uint8_t y0, uint8_t y1, uint8_t on)
+static void rope(uint8_t x, uint8_t y0, uint8_t y1)
 {
     rp_y = y0;
     rp_c = xcell[x];
     rp_b = 0x20 >> xshift[x];
-    if (on) {
-        rope_or(y1);
-    } else {
-        rp_b = ~rp_b;
-        rope_and(y1);
-    }
+    rope_xor(y1);
 }
 
 /* The moving hazards of the scene, listed once by hazards_list (at most 4
@@ -637,11 +631,15 @@ void hazards_draw(void)
             room = HZ_ROOM;
             if (sp_on[sn]) {
                 d = x - mv_x[i];
-                if (d > 6 && d < 40) {
+                /* (x > mv_x[i] tested too: a wrap from 227 to 0 also makes
+                   d 29, as 256 - 228 = 28; catching up across it ran the
+                   picture past cell 39 into the next lines' colour cells:
+                   Bob, BUILD 26) */
+                if (d > 6 && d < 40 && x > mv_x[i]) {
                     x = mv_x[i] + 6;
                     if (d > 9)
                         room = LAG_ROOM;
-                } else if (d < (uint8_t)-6 && d > (uint8_t)-40) {
+                } else if (d < (uint8_t)-6 && d > (uint8_t)-40 && x < mv_x[i]) {
                     x = mv_x[i] - 6;
                     if (d < (uint8_t)-9)
                         room = LAG_ROOM;
@@ -703,10 +701,10 @@ void hazards_draw(void)
             r_fast = 0;
         } else {                            /* (far only up: a retake) */
             if (y < oy)
-                rope(mv_rope[i], y, oy, 0);
+                rope(mv_rope[i], y, oy);
             spr_move(sn);
             if (y > oy)
-                rope(mv_rope[i], oy, y, 1);
+                rope(mv_rope[i], oy, y);
         }
     }
     rr = i;
@@ -796,7 +794,7 @@ void status_update(void)
     big = 0;
     if (m.mode == M_TITLE) {
         if (rows_on) {
-            memset(TEXTROW(0), ' ', 3 * 40);
+            memset(TEXTROW(0), ' ', 3 * 40 - 1);  /* (not MODE_CELL, the last) */
             rows_on = 0;
         }
         return;
