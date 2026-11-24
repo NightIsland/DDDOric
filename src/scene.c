@@ -423,11 +423,187 @@ const struct scene scene_mp2 = {
     },
 };
 
+/* Dragon's Keep (F6e).  Castle Approach: a bright sky, everything black
+   against it, the grass green on black below (the moat black). */
+static const uint8_t pal_hills[] = {
+    BLACK, GREEN,
+    /* paper */
+        R(31, CYAN), R(13, CYAN), R(4, BLACK),
+    /* ink */
+        R(31, BLACK), R(13, BLACK), R(4, GREEN),
+};
+
+/* Scene 1 on a dragon hatchling.  Its signature: the moat at every billing
+   (28 px: it needs speed), and the charging knight, half as fast again as
+   any runner.  Billing 3 sends the knight sooner, 4 stacks barrels before
+   the second boulder, 5 puts a boulder before the gate; gaps from 3. */
+const struct scene scene_dk1 = {
+    film_dk, 1, VH_DRAGON, GROUND_GRASS, pal_hills,
+    {
+        {   { HZ_BLOCK, 60, ART_BOULDER, 0, 0 },
+            { HZ_BLOCK, 150, ART_BARRELS, 0, 0 },
+            { HZ_GAP, 100, 14, 3, 0 },
+            { HZ_GAP, 200, 14, 4, 0 },
+            { HZ_GAP, 20, 16, 6, 0 } },
+        /* the knight's lane: he charges at 1.5 times the runner speed */
+        {   { HZ_RUNNER, 180, ART_KNIGHT, 0x80 | 183, BILLS(0, 2) },
+            { HZ_RUNNER, 120, ART_KNIGHT, 0x80 | 183, BILLS(3, 0) },
+            { HZ_GAP, 60, 14, 3, 0 },
+            { HZ_GAP, 150, 12, 5, 0 },
+            { HZ_GAP, 200, 14, 6, 0 } },
+        {   { HZ_GAP, 80, 28, 1, 0 },
+            { HZ_BLOCK, 180, ART_BOULDER, 0, 0 },
+            { HZ_BLOCK, 140, ART_BARRELS, 0, BILLS(4, 0) },
+            { HZ_GAP, 30, 14, 3, 0 },
+            { HZ_GAP, 210, 12, 6, 0 } },
+        /* gate, then moat */
+        {   { HZ_DANGLER, 70, ART_PORTCULLIS, 0, 0 },
+            { HZ_GAP, 150, 28, 1, 0 },
+            { HZ_BLOCK, 25, ART_BOULDER, 0, BILLS(5, 0) },
+            { HZ_GAP, 200, 14, 3, 0 },
+            { HZ_GAP, 110, 12, 6, 0 } },
+    },
+};
+
+/* The moat by moonlight: torchlit yellow on black, the water blue. */
+static const uint8_t pal_moat[] = {
+    BLACK, YELLOW,
+    /* paper */
+        R(31, BLACK), R(13, BLACK), R(4, BLUE),
+    /* ink */
+        R(4, WHITE), R(31, YELLOW), R(9, YELLOW), R(4, CYAN),
+};
+
+/* Scene 2 on a magic carpet.  Its signature: fire: dragons' heads rising
+   from the moat, two of them under the half-raised drawbridge's long jump
+   (it clears them on or off), and the wyvern overhead.  Billing 3 adds a
+   rock in the wyvern's lane, 4 one by the drawbridge, 5 one in the warm-up;
+   gaps (rocks breaking the surface) from 3. */
+const struct scene scene_dk2 = {
+    film_dk, 2, VH_CARPET, GROUND_WATER, pal_moat,
+    {
+        {   { HZ_BLOCK, 80, ART_ROCK, 0, 0 },
+            { HZ_JET, 170, ART_DRAGONHEAD, 0, 0 },
+            { HZ_BLOCK, 35, ART_ROCK, 0, BILLS(5, 0) },
+            { HZ_GAP, 120, 14, 3, 0 },
+            { HZ_GAP, 210, 12, 6, 0 } },
+        /* under the drawbridge */
+        {   { HZ_CEILING, 50, ART_DRAWBRIDGE, 22, 0 },
+            { HZ_BLOCK, 150, ART_ROCK, 0, 0 },
+            { HZ_JET, 205, ART_DRAGONHEAD, 8, 0 },
+            { HZ_BLOCK, 110, ART_ROCK, 0, BILLS(4, 0) },
+            { HZ_GAP, 20, 14, 4, 0 },
+            { HZ_GAP, 175, 12, 6, 0 } },
+        /* the wyvern's lane */
+        {   { HZ_FLYER, 200, ART_WYVERN, 24, 0 },
+            { HZ_BLOCK, 100, ART_ROCK, 0, 0 },
+            { HZ_BLOCK, 170, ART_ROCK, 0, BILLS(3, 0) },
+            { HZ_GAP, 50, 14, 3, 0 },
+            { HZ_GAP, 140, 14, 5, 0 } },
+        /* over the fire */
+        {   { HZ_RAMP, 30, ART_RAMPBRIDGE, 0, 0 },
+            { HZ_JET, 100, ART_DRAGONHEAD, 4, 0 },
+            { HZ_JET, 150, ART_DRAGONHEAD, 12, 0 },
+            { HZ_BLOCK, 210, ART_ROCK, 0, 0 },
+            { HZ_GAP, 185, 12, 4, 0 } },
+    },
+};
+
+/* Cold Front (F6f), the season's finale.  The Glacier: a pale sky over a
+   white snowfield, everything blue on white, crevasses filled dark. */
+static const uint8_t pal_glacier[] = {
+    BLACK, WHITE,
+    /* paper */
+        R(8, CYAN), R(31, WHITE), R(9, WHITE),
+    /* ink */
+        R(31, BLUE), R(17, BLUE),
+};
+
+/* Scene 1 on skis.  Its signature: crevasses at every billing and the
+   abseiling agent dropping in just before one.  Billing 3 rolls the
+   snowball in sooner, 4 builds a snowman past the crevasse, 5 plants a
+   pine in the warm-up; more crevasses from 3. */
+const struct scene scene_cf1 = {
+    film_cf, 1, VH_SKIS, GROUND_SNOW, pal_glacier,
+    {
+        {   { HZ_BLOCK, 90, ART_SNOWMAN, 0, 0 },
+            { HZ_BLOCK, 170, ART_PINE, 0, 0 },
+            { HZ_BLOCK, 40, ART_PINE, 0, BILLS(5, 0) },
+            { HZ_GAP, 130, 14, 3, 0 },
+            { HZ_GAP, 210, 12, 4, 0 },
+            { HZ_GAP, 18, 14, 6, BILLS(0, 4) } },
+        /* the snowball's lane */
+        {   { HZ_RUNNER, 160, ART_SNOWBALL, 0, BILLS(0, 2) },
+            { HZ_RUNNER, 100, ART_SNOWBALL, 0, BILLS(3, 0) },
+            { HZ_GAP, 60, 14, 3, 0 },
+            { HZ_GAP, 200, 14, 5, 0 },
+            { HZ_GAP, 140, 12, 6, 0 } },
+        {   { HZ_CEILING, 40, ART_OVERHANG, 24, 0 },
+            { HZ_GAP, 130, 22, 1, 0 },
+            { HZ_BLOCK, 190, ART_SNOWMAN, 0, BILLS(4, 0) },
+            { HZ_GAP, 95, 12, 3, 0 },
+            { HZ_GAP, 210, 12, 6, 0 } },
+        /* the agent */
+        {   { HZ_DANGLER, 80, ART_AGENT, 0, 0 },
+            { HZ_GAP, 150, 22, 1, 0 },
+            { HZ_BLOCK, 205, ART_SNOWMAN, 0, 0 },
+            { HZ_GAP, 30, 14, 3, 0 },
+            { HZ_GAP, 120, 12, 6, 0 } },
+    },
+};
+
+/* Avalanche Pass by night: cyan figures on black, the snow lit white. */
+static const uint8_t pal_pass[] = {
+    BLACK, WHITE,
+    /* paper */
+        R(31, BLACK), R(13, BLACK), R(4, WHITE),
+    /* ink */
+        R(4, WHITE), R(31, CYAN), R(9, CYAN), R(4, BLUE),
+};
+
+/* Scene 2 on a snowmobile, the season's last.  Its signature: the snow
+   kicker's long jump threaded between two ski-lift chairs over two steam
+   vents, with the enemy snowmobile and the autogyro both on the move.
+   Billing 3 sends the enemy sooner, 4 opens the track past the vents, 5 a
+   tank trap in the warm-up and another for the first vent (the step
+   budget: two every-step movers and three jets at billing 6 starved the
+   enemy's draw); gaps (crevasses) from 3. */
+const struct scene scene_cf2 = {
+    film_cf, 2, VH_SLED, GROUND_SNOW, pal_pass,
+    {
+        {   { HZ_BLOCK, 80, ART_TANKTRAP, 0, 0 },
+            { HZ_JET, 160, ART_STEAM, 0, BILLS(0, 4) },
+            { HZ_BLOCK, 160, ART_TANKTRAP, 0, BILLS(5, 0) },
+            { HZ_BLOCK, 35, ART_TANKTRAP, 0, BILLS(5, 0) },
+            { HZ_GAP, 120, 14, 3, 0 },
+            { HZ_GAP, 200, 14, 6, 0 } },
+        /* the enemy snowmobile's lane */
+        {   { HZ_RUNNER, 170, ART_ENEMYSLED, 0, BILLS(0, 2) },
+            { HZ_RUNNER, 110, ART_ENEMYSLED, 0, BILLS(3, 0) },
+            { HZ_GAP, 60, 14, 3, 0 },
+            { HZ_GAP, 200, 14, 4, 0 },
+            { HZ_GAP, 140, 12, 6, 0 } },
+        /* the kicker under the lift */
+        {   { HZ_RAMP, 20, ART_BUCKLED, 0, 0 },
+            { HZ_JET, 100, ART_STEAM, 4, 0 },
+            { HZ_JET, 150, ART_STEAM, 12, 0 },
+            { HZ_CEILING, 70, ART_LIFTCHAIR, 9, 0 },
+            { HZ_CEILING, 180, ART_LIFTCHAIR, 9, 0 },
+            { HZ_GAP, 205, 12, 4, 0 } },
+        /* the autogyro's lane */
+        {   { HZ_FLYER, 200, ART_AUTOGYRO, 22, 0 },
+            { HZ_BLOCK, 60, ART_TANKTRAP, 0, 0 },
+            { HZ_BLOCK, 180, ART_PINE, 0, 0 },
+            { HZ_GAP, 120, 14, 3, 0 },
+            { HZ_GAP, 25, 12, 5, 0 } },
+    },
+};
+
 /* The season: 12 scenes, 6 films of 2 (DESIGN "Films, scenes and
-   progression").  Films not built yet repeat the built ones. */
+   progression"). */
 static const struct scene * const season[SEASON] = {
     &scene_rhr1, &scene_rhr2, &scene_dd1, &scene_dd2, &scene_nh1, &scene_nh2,
-    &scene_mp1, &scene_mp2, &scene_rhr1, &scene_rhr2, &scene_dd1, &scene_dd2,
+    &scene_mp1, &scene_mp2, &scene_dk1, &scene_dk2, &scene_cf1, &scene_cf2,
 };
 
 /* (GR_KERB only where line 44's paper is black: the kerb's byte takes the
@@ -447,6 +623,10 @@ const struct ground grounds[] = {
           { 0x55, 0x6A, 0x55, 0x6A }, { 0x44, 0x40, 0x50, 0x41 } }, 0 },
     {   { { 0x7F, 0x7F, 0x7F, 0x7F }, { 0x78, 0x78, 0x78, 0x78 },     /* stripes */
           { 0x5C, 0x5C, 0x5C, 0x5C }, { 0x4E, 0x4E, 0x4E, 0x4E } }, 0 },
+    {   { { 0x7F, 0x7F, 0x7F, 0x7F }, { 0x6D, 0x5B, 0x76, 0x6D },     /* grass */
+          { 0x52, 0x49, 0x64, 0x52 }, { 0x40, 0x44, 0x40, 0x50 } }, 0 },
+    {   { { 0x7F, 0x7F, 0x7F, 0x7F }, { 0x40, 0x48, 0x40, 0x41 },     /* snow */
+          { 0x44, 0x40, 0x50, 0x40 }, { 0x40, 0x42, 0x40, 0x60 } }, GR_FILL },
 };
 
 const struct scene *scene_only;

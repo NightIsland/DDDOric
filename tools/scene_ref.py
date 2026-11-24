@@ -24,6 +24,8 @@ GROUNDS = dict(
     RAILS=([[0x7F] * 4, [0x4C, 0x40, 0x4C, 0x40], [0x4C, 0x40, 0x4C, 0x40], [0x7F] * 4], False, False),
     MOON=([[0x7F] * 4, [0x7B, 0x6F, 0x7E, 0x5F], [0x55, 0x6A, 0x55, 0x6A], [0x44, 0x40, 0x50, 0x41]], False, False),
     STRIPES=([[0x7F] * 4, [0x78] * 4, [0x5C] * 4, [0x4E] * 4], False, False),
+    GRASS=([[0x7F] * 4, [0x6D, 0x5B, 0x76, 0x6D], [0x52, 0x49, 0x64, 0x52], [0x40, 0x44, 0x40, 0x50]], False, False),
+    SNOW=([[0x7F] * 4, [0x40, 0x48, 0x40, 0x41], [0x44, 0x40, 0x50, 0x40], [0x40, 0x42, 0x40, 0x60]], False, True),
     COBBLES=([[0x7F] * 4, [0x44, 0x50, 0x42, 0x48], [0x40] * 4, [0x52, 0x49, 0x44, 0x51]], False, False),
 )
 ONLY = None                                 # set: every scene is this one (a -DSCENE= build)
@@ -46,6 +48,7 @@ def shown(rec, billing):
 def load_scene(name="scene_rhr1", billing=None):
     """the scene's data; with a billing, only the records it shows, as (kind, x, a, b)"""
     src = open(os.path.join(ROOT, "src", "scene.c")).read()
+    src = re.sub(r"/\*.*?\*/", "", src, flags=re.S)  # (a comment among the records hid a track)
     body = src[src.index(name + " = {"):]
     body = body[:body.index("\n};")]
     head = body.split("{", 2)[1]                # "film", number, vehicle, ground, &pal,

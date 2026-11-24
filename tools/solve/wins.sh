@@ -7,7 +7,7 @@
 # and the first scene of the next billing.
 set -e
 S=build/solve/solve
-SCENES=8                 # films built so far x 2
+SCENES=12                # films built so far x 2
 set -- 8 8 6 6 5 4
 b=1
 for w in "$@"; do

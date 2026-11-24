@@ -46,7 +46,7 @@ takes the next number.
 | F3 | Whole scene: four tracks, wrapping, block, runner, dangler, gap and ceiling block, crashes, fees, the one stop | F2 | whole step ≤ 16,000 cycles | merged (BUILD 11, PR #10); budget missed: average 16,100 riding flat out, worst 19,750 (see Results) |
 | F4 | Film frame: clapper card, takes, "Cut!", scene cleared, "You're fired", title screen, billing select, top five | F3 | riding steps stay under 20,000 cycles | merged (BUILD 13, PR #12; police lamps BUILD 14-15, PR #13) |
 | F5 | Film 1 (*Rush Hour Rumble*) complete at all six billings, tuned to M1's numbers; Bob judges the feel against the original | F4, M1 | | BUILD 20, PR #14 merged |
-| F6 | Films 2–6, jets and ramps, per-vehicle handling, music (no key redefinition: Bob, 24 Nov 2026) | F5 | memory ≤ 37 KB | F6a, F6b (Western) at BUILD 21, F6c (Horror) at BUILD 22, F6d (Sci-fi) at BUILD 23 |
+| F6 | Films 2–6, jets and ramps, per-vehicle handling, music (no key redefinition: Bob, 24 Nov 2026) | F5 | memory ≤ 37 KB | F6a, F6b (Western) at BUILD 21, F6c (Horror) at BUILD 22, F6d (Sci-fi) at BUILD 23, F6e-f (Fantasy, Spy: the whole season) at BUILD 24; F6g music next |
 | X1 | Optional: level codes from a seed, with a solver run over thousands of seeds in the harness | F5 | ≤ 2 KB | not started |
 
 M1 and F0 can run in parallel. F5 is the prototype milestone (plan step 3); F6 and X1 are polish
@@ -173,6 +173,28 @@ Horror, F6d Sci-fi, F6e Fantasy, F6f Spy), then F6g music.
   draw was starved and left a ghost, so that claw became a canister. Worst steps at billing 6:
   3 of 730 and 6 of 470 over budget. The win runs prove films 1-4 (8 scenes); 125 checks pass.
   1,552 bytes free below `$9800`.
+
+- **More memory**: the crash masks are made from the pictures when a scene loads (`art_cols` in
+  `src/model.c`, `HIT_MAX` columns, a test checks every scene fits) instead of 2 KB stored;
+  `hazards_list` caches its record's fields. 1,552 bytes free became 3,354.
+- **F6e, Dragon's Keep, and F6f, Cold Front** (BUILD 24), so the season is whole: 12 scenes,
+  6 films. Castle Approach on a dragon hatchling (boulders, barrels, a charging knight at 1.5
+  times the runner speed, a portcullis, the moat at every billing); Moat by Moonlight on a magic
+  carpet (rocks, dragons' heads breathing fire, the drawbridge, a wyvern, the half-raised
+  drawbridge's long jump over two heads); The Glacier on skis (snowmen, pines, a rolling snowball,
+  an icicle overhang, an abseiling agent, crevasses at every billing, filled dark); Avalanche Pass
+  on a snowmobile (tank traps, an enemy snowmobile, an autogyro, steam vents, the kicker's jump
+  between ski-lift chairs). Grass and snow grounds. The portcullis is 12 wide and the enemy
+  snowmobile 12 (the 18 px autogyro and a 16 px snowmobile together starved a draw: a ghost at
+  billing 6); at billings 5-6 the pass's first vent becomes a tank trap.
+- **Fees in £10s** (`m.fee`, `best_fee[]`, shown with their 0): a season at billing 6 passed
+  65,535 pounds and wrapped round. Every fee is a multiple of 10, so the same 16 bits now hold
+  655,350.
+- **Tests** (130 checks, all pass): the win runs prove the whole season at all six billings; every
+  film's screens = reference mid-ride; `scene_ref` strips comments (one among the records had
+  hidden a track); the rider's torn-frame rate is taken over the whole win runs (36,000 drawing
+  steps, 0.5%), since a short sample catches more or fewer clusters as startup timing moves the
+  step's phase. Billing 6 over budget on 1-3 steps of 400-830 per new scene. 1,561 bytes free.
 
 ### F5: Rush Hour Rumble at all six billings (BUILD 16, 23 Nov 2026)
 

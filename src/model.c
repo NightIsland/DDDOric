@@ -4,7 +4,7 @@
 #include "art.h"
 
 struct model m;
-uint16_t best_fee[NBEST] = { 250, 200, 150, 100, 50 };     /* the film crew's */
+uint16_t best_fee[NBEST] = { 25, 20, 15, 10, 5 };     /* the film crew's (in £10s) */
 char best_name[NBEST][3] = { {'D','I','R'}, {'C','A','M'}, {'S','F','X'}, {'M','U','A'}, {'G','A','F'} };
 
 uint8_t hz_px[NHAZ], hz_drop[NHAZ];
@@ -600,13 +600,13 @@ void model_step(uint8_t in, uint8_t key)
     if (m.x >= TRACK_W_FP) {
         m.x -= TRACK_W_FP;
         m.events |= EV_WRAP;
-        m.fee += 10 * m.run_scene;          /* rule 5: each finished track pays */
-        m.scene_fee += 10 * m.run_scene;
+        m.fee += m.run_scene;               /* rule 5: each finished track pays */
+        m.scene_fee += m.run_scene;         /* 10 x the scene (money in £10s) */
         m.ev2 |= EV2_FEE;
         if (++m.track == NTRACKS) {         /* scene cleared: "THAT'S A PRINT!" */
             m.bonus = 0;
             if (m.take_no == 1) {
-                m.bonus = BONUS_X * 10 * m.run_scene;
+                m.bonus = BONUS_X * m.run_scene;
                 m.fee += m.bonus;
                 m.scene_fee += m.bonus;
                 m.ev2 |= EV2_BONUS;

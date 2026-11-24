@@ -730,6 +730,7 @@ static const char icons[4][4] = { "   ", "@  ", "@@ ", "@@@" };   /* takes left 
 
 /* v in 5 cells from p, left-aligned (no division: cc65's is slow) */
 static const uint16_t pow10[4] = { 10000, 1000, 100, 10 };
+/* money, kept in £10s (F6): its digits and a 0, padded to 6 */
 static void put_num(uint8_t *p, uint16_t v)
 {
     uint8_t i, d, started = 0, n = 0;
@@ -742,7 +743,9 @@ static void put_num(uint8_t *p, uint16_t v)
         }
     }
     p[n++] = '0' + (uint8_t)v;
-    while (n < 5)
+    if (started | v)
+        p[n++] = '0';
+    while (n < 6)
         p[n++] = ' ';
 }
 

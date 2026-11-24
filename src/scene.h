@@ -61,6 +61,8 @@ typedef uint8_t palette_t;
 #define GROUND_COBBLES 4         /* a cobbled lane; a gap: an open grave */
 #define GROUND_MOON  5           /* a bright surface; a gap: a crater */
 #define GROUND_STRIPES 6         /* a floor of warning stripes; a gap: a pit */
+#define GROUND_GRASS 7           /* a grassy hillside; a gap: the moat */
+#define GROUND_SNOW  8           /* a snowfield; a gap: a crevasse, filled dark */
 
 #define GR_KERB 1                /* line 0 starts at cell 1 (the road's kerb) */
 #define GR_FILL 2                /* a gap sets the pixels */
@@ -80,13 +82,14 @@ struct scene {
 };
 
 extern const struct scene scene_rhr1, scene_rhr2, scene_dd1, scene_dd2, scene_nh1, scene_nh2,
-    scene_mp1, scene_mp2;
+    scene_mp1, scene_mp2, scene_dk1, scene_dk2,
+    scene_cf1, scene_cf2;
 extern const char * const films[6];      /* the films' names, in season order */
 extern const struct scene scene_test;     /* no hazards: harness only */
 extern const struct scene scene_stress;   /* F6a: two every-step movers, three jets: harness only */
 
 /* the scene at a place in the run (1 ..): a season is 12 scenes, 6 films of
-   2; until F6 brings films 2-6, film 1's two scenes take turns.  Test builds
+   2 (F6).  Test builds
    with -DSCENE=x ride scene x everywhere (scene_pick). */
 const struct scene *scene_at(uint8_t run_scene);
 extern const struct scene *scene_only;    /* set: every scene is this one */

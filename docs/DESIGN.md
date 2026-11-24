@@ -564,7 +564,7 @@ spacing is wider than on land.
 | Hazard | Behaviour | Size (px) |
 | --- | --- | --- |
 | Tank trap | Block | 14 × 12 |
-| Enemy snowmobile | Runner | 16 × 12 |
+| Enemy snowmobile | Runner | 12 × 12 (F6f: with the 18 px autogyro, two wide movers starved a draw) |
 | Autogyro | Flyer, underside at line 22 | 18 × 10 |
 | Steam vent | Jet | 8 × 16 when on |
 | Ski-lift chair | High ceiling block, underside at line 9 | 12 wide, on the cable |

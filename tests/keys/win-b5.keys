@@ -1,4 +1,4 @@
-# solve 5 8: billing 5 from the title, 8 scene(s), each on its first take
+# solve 5 12: billing 5 from the title, 12 scene(s), each on its first take
 1 L
 3 L
 5 L
@@ -30,6 +30,19 @@
 3951-4214 accel
 4294-4513 accel
 4719-4768 accel
+4788-5167 accel
+5229-5243 accel
+5249-5278 accel
+5364-5448 accel
+5549-5673 accel
+5759-5773 accel
+5859-6039 accel
+6044-6243 accel
+6329-6333 accel
+6419-6518 accel
+6539-6628 accel
+6684-6898 accel
+7249-7380 accel
 10 jump
 95 jump
 194 jump
@@ -86,6 +99,40 @@
 4515 jump
 4617 jump
 4727 jump
+4770 jump
+4772 jump
+4824 jump
+4910 jump
+4995 jump
+5080 jump
+5190 jump
+5221 jump
+5223 jump
+5279 jump
+5364 jump
+5449 jump
+5551 jump
+5674 jump
+5774 jump
+5867 jump
+6041 jump
+6043 jump
+6071 jump
+6159 jump
+6244 jump
+6334 jump
+6434 jump
+6541 jump
+6650 jump
+6681 jump
+6683 jump
+6702 jump
+6814 jump
+6901 jump
+6993 jump
+7078 jump
+7249 jump
+7338 jump
 303 stop
 1060 stop
 2213 stop
@@ -93,4 +140,7 @@
 3234 stop
 3679 stop
 4303 stop
-# 4768 steps
+5628 stop
+6158 stop
+6781 stop
+# 7380 steps

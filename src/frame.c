@@ -142,9 +142,10 @@ static void pic2(uint8_t n, uint8_t col, uint8_t y)
 }
 
 /* "$1234" or "1234" */
-static char nbuf[8];
+static char nbuf[9];
 static const uint16_t pow10[4] = { 10000, 1000, 100, 10 };
 
+/* pound: money, kept in £10s (F6), shown with "$" (the pound sign) and its 0 */
 static char *num(uint16_t v, uint8_t pound)
 {
     uint8_t i, n = 0, d, started = 0;
@@ -159,6 +160,8 @@ static char *num(uint16_t v, uint8_t pound)
         }
     }
     nbuf[n++] = '0' + (uint8_t)v;
+    if (pound && started | v)
+        nbuf[n++] = '0';
     nbuf[n] = 0;
     return nbuf;
 }

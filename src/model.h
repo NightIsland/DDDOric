@@ -94,8 +94,8 @@ struct model {
     uint8_t  takes;         /* takes left in the run, TAKES .. 1 (0 during the last crash) */
     uint8_t  take_no;       /* this scene's take, 1 .. */
     uint8_t  run_scene;     /* the scene's number in the run, 1 .. (fees: 10 x this) */
-    uint16_t fee;           /* pounds earned this run */
-    uint16_t best;          /* best fee this session */
+    uint16_t fee;           /* earned this run, in £10s (F6: a whole career passes 65,535 pounds) */
+    uint16_t best;          /* best fee this session (£10s, as are the other fees) */
     uint8_t  hz_sum;        /* the moving hazards' positions folded into a byte (trace) */
     uint8_t  mode;          /* M_*: F4 */
     uint8_t  t;             /* steps in this mode (wraps) */

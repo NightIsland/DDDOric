@@ -45,7 +45,7 @@ def parse(line):
     return dict(step=int(f[0], 16), track=int(f[1], 16), x=int(f[2], 16), speed=int(f[3], 16),
                 jt=int(f[4], 16), h=int(f[5], 16), flags=int(f[6], 16), ev=int(f[7], 16), inp=int(f[8], 16),
                 ev2=int(f[9], 16), crash_t=int(f[10], 16), takes=int(f[11], 16) >> 4, take=int(f[11], 16) & 15,
-                fee=int(f[12], 16), hz=int(f[13], 16), mode=int(f[14], 16) & 15, billing=int(f[14], 16) >> 4,
+                fee=int(f[12], 16) * 10, hz=int(f[13], 16), mode=int(f[14], 16) & 15, billing=int(f[14], 16) >> 4,
                 mt=int(f[15], 16), key=int(f[16], 16))
 
 
@@ -456,9 +456,9 @@ rhr = {os.path.basename(p): ref_trace(p, n) for p, n in scripts}
 rhr["clear.keys"] = ref_trace(os.path.join(KEYS, "clear.keys"), 452)
 rhr["takeback.keys"] = ref_trace(os.path.join(KEYS, "takeback.keys"), 2000)
 WIN_W = [8, 8, 6, 6, 5, 4]                   # tools/solve/wins.sh
-WIN_SCENES = 8                              # tools/solve/wins.sh SCENES: films built x 2
+WIN_SCENES = 12                             # tools/solve/wins.sh SCENES: films built x 2
 for b in range(1, 7):
-    rhr[f"win-b{b}.keys"] = ref_trace(os.path.join(KEYS, f"win-b{b}.keys"), 5100)
+    rhr[f"win-b{b}.keys"] = ref_trace(os.path.join(KEYS, f"win-b{b}.keys"), 7800)
 errs = sum((f3_rules(t) for t in rhr.values()), [])
 evs = [parse(l) for t in rhr.values() for l in t]
 check("F3 rules: crash = dead stop, a take lost, 1.5 s pause, then the clapper card for the retake from the "
@@ -598,13 +598,14 @@ check("takeback.keys: a crash, then three scenes cleared: the lost take comes ba
 # F5: film 1 proved beatable at every billing (DESIGN "Billings"): each
 # win-bN.keys (searched by tools/solve, every jump with a window of WIN_W
 # steps to press it in) starts billing N from the title and clears every
-# built scene (F6d: films 1 to 4) on its first take;
+# built scene (F6f: the whole season, films 1 to 6) on its first take;
 # the Oric plays it the same
 wins = []
 for b in range(1, 7):
     w = [parse(l) for l in rhr[f"win-b{b}.keys"]]
     clears = [s for s in w if s["ev"] & 0x10]
-    ok = len(clears) >= WIN_SCENES and all(s["ev2"] & 0x02 for s in clears[:WIN_SCENES]) and w[-1]["billing"] == b \
+    ok = len(clears) >= WIN_SCENES and all(s["ev2"] & 0x02 for s in clears[:WIN_SCENES]) \
+        and clears[WIN_SCENES - 1]["billing"] == b \
         and not any(s["ev"] & 0x80 for s in w if s["step"] <= clears[WIN_SCENES - 1]["step"])
     wins.append(f"B{b}: {'cleared' if ok else 'FAILED'}"
                 + (f" by step {clears[WIN_SCENES - 1]['step']}" if len(clears) >= WIN_SCENES else ""))
@@ -617,7 +618,11 @@ for fr, what in ((1700, "Dust at Dawn scene 1 (horse, dirt street)"), (2200, "Du
                  (2800, "Night of the Hearse scene 1 (hearse-trike, cobbles)"),
                  (3400, "Night of the Hearse scene 2 (ghost-train car)"),
                  (4100, "Moonbase Panic scene 1 (hover bike, craters)"),
-                 (4750, "Moonbase Panic scene 2 (hover bike, reactor corridor)")):
+                 (4750, "Moonbase Panic scene 2 (hover bike, reactor corridor)"),
+                 (5250, "Dragon's Keep scene 1 (dragon hatchling, grass)"),
+                 (5900, "Dragon's Keep scene 2 (magic carpet, the moat)"),
+                 (6600, "Cold Front scene 1 (skis, the glacier)"),
+                 (7250, "Cold Front scene 2 (snowmobile, Avalanche Pass)")):
     r = emu.run(TAP, frames=fr, keys=os.path.join(KEYS, "win-b6.keys"), out=os.path.join(OUT, f"f6-{fr}"))
     emu.write_png(os.path.join(OUT, f"f6-{fr}.png"), r.rgb, 2)
     want = reference(r)
@@ -735,7 +740,7 @@ for name, at in (("print", next(s_["step"] for s_ in ft if s_["mode"] == PRINT) 
     emu.write_png(os.path.join(OUT, f"f4-{name}.png"), shots[name].rgb, 2)
 rf = shots["end"]
 check("flow.keys on the Oric: same trace as the native model", rf.trace.decode().splitlines() == ref_trace(fl, 1300)[:len(rf.trace.decode().splitlines())])
-bf = [rf.mem[syms["_best_fee"] + 2 * i] | rf.mem[syms["_best_fee"] + 2 * i + 1] << 8 for i in range(5)]
+bf = [10 * (rf.mem[syms["_best_fee"] + 2 * i] | rf.mem[syms["_best_fee"] + 2 * i + 1] << 8) for i in range(5)]   # (F6: kept in £10s)
 bn = bytes(rf.mem[syms["_best_name"]:syms["_best_name"] + 15]).decode()
 check("top five: $90 goes in fifth with the initials typed, BOB; the title shows it",
       bf == [250, 200, 150, 100, 90] and bn == "DIRCAMSFXMUABOB" and text_at(rf, 16, 193, "BOB")
@@ -872,11 +877,14 @@ tj = os.path.join(KEYS, "topjumps.keys")
 blank = scene_ref.scene_bytes(1, "scene_test")
 all_torn = all_drawn = 0
 # (F5: with the win runs' first scenes too, ridden on the empty track: the
-# rate is a property of the drawing, and more riding steps measure it better)
+# rate is a property of the drawing, and more riding steps measure it better;
+# F6: the whole win runs, a season each: the tears come in clusters where the
+# step's phase drifts past the beam, 32 cycles a frame, and a short sample
+# can catch a cluster or two more or less as startup timing moves the phase)
 rider_runs = [(tj, 1500)] + scripts[:5]
 for b in range(1, 7):
     cl = [parse(l)["step"] for l in rhr[f"win-b{b}.keys"] if int(l.split()[7], 16) & 0x10]
-    rider_runs.append((os.path.join(KEYS, f"win-b{b}.keys"), cl[0] - 30))
+    rider_runs.append((os.path.join(KEYS, f"win-b{b}.keys"), cl[WIN_SCENES - 1] - 30))
 for path, n in rider_runs:
     r = emu.run(ETAP, frames=n, keys=path, wlog=True, out=os.path.join(OUT, "rider-" + os.path.basename(path)))
     ok_steps = steady(r.trace.decode().splitlines())
@@ -914,7 +922,7 @@ check("rider: under 1% torn frames over all the scripts", all_torn * 100 < all_d
 # clusters fall; BUILD 13: the three short scripts alone read 1.3%, so the
 # long season run is in the sample too)
 # F5: the win runs too, each stopped 30 steps before it clears its last scene
-# (F6b-d: the reactor corridor last, after the harbour, the Western, the horror and the craters)
+# (F6b-f: the whole season, Avalanche Pass last)
 sc_torn = sc_draw = 0
 runs = [(os.path.join(KEYS, "clear.keys"), 430), (os.path.join(KEYS, "takeback.keys"), 1950), (rnd, RND_N),
         (os.path.join(KEYS, "season.keys"), 7700)]
