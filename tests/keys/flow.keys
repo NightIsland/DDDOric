@@ -2,7 +2,8 @@
 # each card.  Scene 1 cleared on take 1 (clear.keys: $90 with the bonus),
 # "THAT'S A PRINT!", the next card; then three crashes into the drums (no
 # jumps): "CUT!", the card with the next take, and after the third "YOU'RE
-# FIRED!"; $90 makes the top five, so the initials B, O, B; back to the title.
+# FIRED!"; $90 makes the top five, so initials: B, O, X, Del, B, then Return
+# (Bob, BUILD 17: three letters don't end it; Return does); back to the title.
 1 1
 2 jump
 3-1200 accel
@@ -16,4 +17,7 @@
 1086 jump
 1091 B
 1096 O
-1101 B
+1101 X
+1106 DEL
+1111 B
+1116 RETURN

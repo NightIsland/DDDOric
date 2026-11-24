@@ -83,6 +83,75 @@ CRASH = """
 RIDER_FRAMES = [("ride_a", RIDE_A), ("ride_b", RIDE_B), ("jump", JUMP), ("crash", CRASH)]
 RIDER_W, RIDER_H = 12, 16
 
+# Bob on the jet-ski (Rush Hour Rumble, scene 2, F5): seated low behind the
+# handlebars, the hull on the water and its spray, which changes every 4 px
+# like the bike's wheels.  Same 12 x 16 box, same frame order.
+JET_BODY = """
+....###.....
+...#####....
+...###.##...
+...#####....
+....##......
+...####..#..
+..######.#..
+..##.#####..
+..###...##..
+.#####...#..
+"""
+JET_HULL = """
+############
+.##########.
+..########..
+"""
+JET_RIDE_A = JET_BODY.strip("\n") + "\n" + JET_HULL.strip("\n") + """
+............
+#.#......#..
+.#.#.#.#..#.
+"""
+JET_RIDE_B = JET_BODY.strip("\n") + "\n" + JET_HULL.strip("\n") + """
+............
+.#.#....#.#.
+#.#.#.#.#..#
+"""
+JET_JUMP = """
+.....###....
+....#####...
+....###.##..
+....#####...
+.....##.....
+....####.#..
+...#######..
+...##.####..
+..##....#...
+.##.....##..
+..........##
+.##########.
+###########.
+.########...
+............
+............
+"""
+JET_CRASH = """
+........#...
+.#..#..###..
+..#.#.####..
+...######...
+...######...
+..##.##.##..
+.##..##..##.
+.....##.....
+....#..#....
+...#....#...
+#.........#.
+.#.#....#.#.
+.##########.
+############
+.#.#.#.#.#.#
+#.#.#.#.#.#.
+"""
+JET_FRAMES = [("ride_a", JET_RIDE_A), ("ride_b", JET_RIDE_B), ("jump", JET_JUMP), ("crash", JET_CRASH)]
+VEHICLES = [("bike", RIDER_FRAMES), ("jetski", JET_FRAMES)]
+
 # ---------------------------------------------------- Rush Hour Rumble, scene 1
 # Solid shapes, wheels and windows cut out (Bob, BUILD 4: "less wireframe").
 # The van is parked facing right, the way Bob rides: cab and windscreen at the
@@ -156,7 +225,75 @@ GIRDER = """
 .#.#.#.#.#.#.#.#.#.#.#.#
 ########################
 """
-SCENERY = [("van", VAN), ("drums", DRUMS), ("police", POLICE), ("ball", BALL), ("girder", GIRDER)]
+
+# ------------------------------------------------- Rush Hour Rumble, scene 2
+# The harbour chase (F5).  The patrol boat runs bow first to the left, like
+# the police car, with the same lamp on its cabin roof in its top two rows
+# (src/screen.c lamps() flashes them).  The footbridge hangs low across the
+# channel; the slipway is a concrete launch ramp rising to the right.
+BUOY = """
+.....##.....
+....####....
+.....##.....
+....####....
+...######...
+...#.##.#...
+..########..
+..#.####.#..
+.##########.
+.#.######.#.
+############
+############
+.##########.
+..########..
+"""
+BOAT = """
+..........##.##.........
+..........#####.........
+.........#######........
+.........#.#.#.#........
+........#########.......
+........#.#.#.#.##......
+.......############.....
+########################
+.#######################
+..######################
+...#####################
+.....###################
+"""
+BRIDGE = """
+#.....#.....#.....#.....#.....
+##############################
+#.....#.....#.....#.....#.....
+##############################
+.#.#.#.#.#.#.#.#.#.#.#.#.#.#.#
+##############################
+"""
+SLIPWAY = """
+..................######
+............############
+......######.#.#.#######
+######.#.#.#.#.#########
+########################
+#.#.#.#.#.#.#.#.#.#.#.#.
+"""
+# a crate on the harbour crane's hook (a dangler from billing 4, BUILD 17)
+CRATE = """
+.....##.....
+....#..#....
+.....##.....
+############
+#.#.#.#.#.#.
+############
+#..........#
+#.########.#
+#.#......#.#
+#.########.#
+#..........#
+############
+"""
+SCENERY = [("van", VAN), ("drums", DRUMS), ("police", POLICE), ("ball", BALL), ("girder", GIRDER),
+           ("buoy", BUOY), ("boat", BOAT), ("bridge", BRIDGE), ("slipway", SLIPWAY), ("crate", CRATE)]
 
 
 # ------------------------------------------------- the film frame (F4)
@@ -238,7 +375,7 @@ def shifted(rows, shift, ncols):
 # line first.  The police car keeps its own 12 lines (it only moves sideways,
 # so a shorter box saves time every step); the ball is padded to 16 ("top"
 # keeps its top at line 0).
-SPRITES = [("police", None, 5), ("ball", "top", 3)]
+SPRITES = [("police", None, 5), ("ball", "top", 3), ("boat", None, 5), ("crate", "top", 3)]
 
 
 def sprite(name):
@@ -251,9 +388,9 @@ def sprite(name):
     return ncols, {s_: shifted(rows, s_, ncols) for s_ in range(6)}
 
 
-def rider(name):
+def rider(name, vehicle="bike"):
     """{shift: [col][line]} for a rider frame"""
-    rows = bits(dict(RIDER_FRAMES)[name])
+    rows = bits(dict(dict(VEHICLES)[vehicle])[name])
     assert len(rows) == RIDER_H and len(rows[0]) == RIDER_W, name
     return {s: shifted(rows, s, 3) for s in range(6)}
 
@@ -269,14 +406,15 @@ def write_s(path):
          "        .export         " + ", ".join(f"_spr_{n}" for n, _, _ in SPRITES), "",
          "        .export         _pic_art, _pic_nb, _pic_h", "",
          '        .segment        "RODATA"', "",
-         "; rider: frame x shift x column x line (bottom first), 48 bytes per shift",
+         "; rider: vehicle x frame x shift x column x line (bottom first), 48 bytes per shift",
          "_rider_art:"]
-    for name, _ in RIDER_FRAMES:
-        r = rider(name)
-        o.append(f"; {name}")
-        for s in range(6):
+    for vname, frames in VEHICLES:
+      for name, _ in frames:
+        r = rider(name, vname)
+        o.append(f"; {vname} {name}")
+        for s_ in range(6):
             for c in range(3):
-                o.append("        .byte   " + ",".join(f"${v:02X}" for v in reversed(r[s][c])))
+                o.append("        .byte   " + ",".join(f"${v:02X}" for v in reversed(r[s_][c])))
     for name, _, _ in SPRITES:
         nc, sp = sprite(name)
         o.append(f"; moving hazard {name}: shift x {nc} columns x {len(sp[0][0])} lines (bottom first)")
@@ -328,7 +466,9 @@ def write_s(path):
 def write_h(path):
     o = ["/* art.h - generated by tools/mkart.py: do not edit. */", "#ifndef ART_H", "#define ART_H", "",
          "#include <stdint.h>", "", f"#define RIDER_W {RIDER_W}", f"#define RIDER_H {RIDER_H}",
-         "#define RIDER_SHIFT_BYTES 48", "#define RIDER_FRAME_BYTES 288"]
+         "#define RIDER_SHIFT_BYTES 48", "#define RIDER_FRAME_BYTES 288", "#define RIDER_VEHICLE_BYTES 1152"]
+    for i, (name, _) in enumerate(VEHICLES):
+        o.append(f"#define VH_{name.upper()} {i}")
     for i, (name, _) in enumerate(RIDER_FRAMES):
         o.append(f"#define FR_{name.upper()} {i}")
     for i, (name, _) in enumerate(SCENERY):
@@ -343,7 +483,7 @@ def write_h(path):
     # bit r = row r from the top, for src/model.c (Oric and native alike)
     def cols(rows):
         return [sum(1 << r for r in range(len(rows)) if rows[r][c]) for c in range(len(rows[0]))]
-    o.append("#define HIT_RIDER_DATA " + ", ".join(f"{v}u" for n, _ in RIDER_FRAMES[:3] for v in cols(bits(dict(RIDER_FRAMES)[n]))))
+    o.append("#define HIT_RIDER_DATA " + ", ".join(f"{v}u" for _, fr in VEHICLES for n, t in fr[:3] for v in cols(bits(t))))
     hs, ofs = [], []
     for n, _ in SCENERY:
         ofs.append(len(hs))
@@ -361,7 +501,7 @@ def write_h(path):
 def preview(path):
     sys.path.insert(0, __import__("os").path.dirname(__file__))
     import struct, zlib
-    pics = [bits(t) for _, t in RIDER_FRAMES] + [bits(t) for _, t in SCENERY] + [bits(t) for _, t in PICTURES]
+    pics = [bits(t) for _, fr in VEHICLES for _, t in fr] + [bits(t) for _, t in SCENERY] + [bits(t) for _, t in PICTURES]
     S, gap = 8, 4
     W = sum(len(p[0]) + gap for p in pics) + gap
     H = max(len(p) for p in pics) + 2 * gap

@@ -1,0 +1,28 @@
+# solve 3 2: billing 3 from the title, 2 scene(s), each on its first take
+1 L
+3 L
+5 1
+7-261 accel
+272-356 accel
+372-376 accel
+387-391 accel
+407-411 accel
+417-421 accel
+442-451 accel
+537-654 accel
+659-813 accel
+899-993 accel
+6 jump
+89 jump
+176 jump
+272 jump
+452 jump
+537 jump
+656 jump
+658 jump
+725 jump
+814 jump
+901 jump
+1005 jump
+266 stop
+# 1122 steps

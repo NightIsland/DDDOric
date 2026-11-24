@@ -15,6 +15,22 @@ licence). Elsewhere put cc65 2.19 on `PATH` (macOS: `brew install cc65`). Everyt
 | `make test` | both builds, a billing-3 test build (`build/b3/`), the empty test track (`build/empty/`, `-DSCENE=scene_test`: physics, sound and rider checks without crashes), emulator and native reference, then `tools/test_f0.py` |
 | `make ref` | `build/ref/ref`: the native model with its per-step trace (`ref SCRIPT STEPS [test]`: `test` rides the empty test track) |
 | `make emu` | `build/emu/emu`: the headless emulator |
+| `make solve` | `build/solve/solve`: searches the native model for winning runs (F5, below) |
+| `make wins` | re-searches `tests/keys/win-b1..6.keys`, `takeback.keys` and `season.keys` (`tools/solve/wins.sh`) after a layout or rule change |
+
+## Solver (F5, `tools/solve/`)
+
+DESIGN "Billings": every scene must be proved beatable at every billing. `solve BILLING NSCENES
+[BEAM [W]]` starts a run at that billing from the title, skips each card with a tap on Space and
+searches the native model (`src/model.c`, compiled in) for inputs that clear NSCENES scenes on
+their first take, then prints them as a key script. It is a beam search over riding steps (all
+states in the beam share one clock, so the hazards are the same for all of them; states the same
+to a quarter BBC byte are merged; the furthest states are kept, half the room going to a spread of
+the rest). It plays like a person: Accelerate changes only every 5 steps and not in the air, and a
+jump is taken only if pressing it any of the next W - 1 steps instead also lands safely, so every
+jump in the run has a window of W steps (W x 20 ms). `SOLVE_CRASH=1` crashes on take 1 first;
+`SOLVE_SKIP=n` starts n scenes further on (for measuring only: not replayable from the title).
+`window.py WIN.keys N` replays a script with each jump moved earlier and later to show its slack.
 
 ## Program layout
 

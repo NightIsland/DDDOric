@@ -44,9 +44,9 @@ takes the next number.
 | F1 | Display: HIRES init, per-line paper/ink columns, a track screen drawn from scene data, status line in the text-row bitmap font, one-pass pre-shifted sprite draw | F0 | code ≤ 1.5 KB; sprite ≤ 1,400 cycles | BUILD 4 merged (PR #6); BUILD 5–6 fixes in a follow-up PR |
 | F2 | One track: rider physics (DESIGN "Physics"), keys (Space, either Shift, Return), 50 Hz step, engine sound | F0, F1 | logic ≤ 4,000 cycles a step | merged (BUILD 8, PR #8) |
 | F3 | Whole scene: four tracks, wrapping, block, runner, dangler, gap and ceiling block, crashes, fees, the one stop | F2 | whole step ≤ 16,000 cycles | merged (BUILD 11, PR #10); budget missed: average 16,100 riding flat out, worst 19,750 (see Results) |
-| F4 | Film frame: clapper card, takes, "Cut!", scene cleared, "You're fired", title screen, billing select, top five | F3 | riding steps stay under 20,000 cycles | BUILD 13, PR open |
-| F5 | Film 1 (*Rush Hour Rumble*) complete at all six billings, tuned to M1's numbers; Bob judges the feel against the original | F4, M1 | | not started |
-| F6 | Films 2–6, jets and ramps, per-vehicle handling, music, key redefinition | F5 | memory ≤ 37 KB | not started |
+| F4 | Film frame: clapper card, takes, "Cut!", scene cleared, "You're fired", title screen, billing select, top five | F3 | riding steps stay under 20,000 cycles | merged (BUILD 13, PR #12; police lamps BUILD 14-15, PR #13) |
+| F5 | Film 1 (*Rush Hour Rumble*) complete at all six billings, tuned to M1's numbers; Bob judges the feel against the original | F4, M1 | | BUILD 20, PR #14 open |
+| F6 | Films 2–6, jets and ramps, per-vehicle handling, music (no key redefinition: Bob, 24 Nov 2026) | F5 | memory ≤ 37 KB | not started |
 | X1 | Optional: level codes from a seed, with a solver run over thousands of seeds in the harness | F5 | ≤ 2 KB | not started |
 
 M1 and F0 can run in parallel. F5 is the prototype milestone (plan step 3); F6 and X1 are polish
@@ -119,6 +119,80 @@ Briefs written by the architect when the previous feature is merged, from DESIGN
   Oric** means the beam's position can't be read, so tearing can be made rare and small but not
   removed; locking the step to the video frame would make it permanent on one track instead.
   Worst step 16,708 cycles (the C preparation); F1's assembly sprite brings it down.
+
+### F5: Rush Hour Rumble at all six billings (BUILD 16, 23 Nov 2026)
+
+- **Scene 2, the harbour chase** (`src/scene.c` `scene_rhr2`), on the jet-ski: buoys (blocks), the
+  patrol boat (a runner, the police car's size, with the same flashing lamp), a low footbridge
+  (ceiling block) and two slipways. Night palette: black sky, blue water from the surface line with
+  cyan waves; a gap on water shows as rocks breaking the surface (same rule: the wheels' middle
+  over it on the surface crashes). A scene now names its vehicle and ground (`src/scene.h`).
+- **The slipway** (DESIGN "Ramp"): riding onto it with the wheels' middle fires a jump 1.5 times as
+  long (126 steps), same 20 px apex: the M1 arc with its entries held 4 and 5 steps in turn
+  (`src/physics.h`). It is never a hazard.
+- **A run of scenes**: `scene_at(run_scene)` gives each place in the run its scene; until F6 brings
+  films 2-6, film 1's two scenes take turns through the season. The model loads each scene's
+  hazards when it starts (`scene_load`); test builds with `-DSCENE=` still ride one scene.
+- **Billings change speeds** (DESIGN "Billings": slow, normal, normal, fast, fast, fastest):
+  runners x 1, 1.25, 1.25, 1.5, 1.5, 1.75 of M1's 0.95 px a step; danglers a line every 3, 2.5,
+  2.5, 2, 2, 1.5 steps. Billing 1 is exactly M1 (and F3's timing).
+- **Gaps by billing**: each scene stores every gap with the lowest billing that shows it
+  (`SC_MAX` is now 6 records a track). Billing 1-2 is F3's scene 1 untouched; billing 3 adds small
+  gaps, 4 more, 5 gaps in front of most hazards, 6 wide breaks.
+- **Proved beatable** (`tools/solve`, tools/README "Solver"): a beam search over the native model
+  that plays like a person (Accelerate changes at most every 5 steps and not in the air; every
+  jump must land safely if pressed any of the next W - 1 steps instead). `tests/keys/win-b1..6.keys`
+  clear both scenes on the first take at each billing with W = 8, 8, 6, 6, 5, 4 steps (160 ms down
+  to 80 ms to press each jump in); `make wins` re-searches them. `takeback.keys` and
+  `season.keys` were re-searched the same way for the new season.
+- **Tests** (112 checks, all pass): each win run on the native model and on the Oric (same trace),
+  its screen = pixel reference (water, rocks, slipways, jet-ski, boat), pixel-touch crashes and gap
+  falls replayed independently at every billing's speeds, F3 fee rules from any billing, torn
+  frames over more scripts (rider 24 of 4,588 drawing steps; scene well under 1%).
+- Worst step 19,580 cycles over 9,930 scripted steps. 5,988 bytes free below `$9800` (the
+  jet-ski's four frames and the harbour art took 2.8 KB; F6's other vehicles will need the
+  3-pre-shift fallback from DESIGN "Memory").
+
+- **BUILD 20 (Bob):** a gap above the title's top five: the menu 11 lines apart from line 108,
+  the top five from line 149 (`MENU_Y`, `TOP5_Y` in `src/frame.c`).
+
+- **BUILD 19 (Bob):** the title screen has no status rows; `status_update` blanks them in M_TITLE
+  and writes their fixed text afresh when play (or a card) comes.
+
+- **BUILD 18 (Bob on BUILD 17: at Legend "the police car has a break and stretches almost
+  double"):** the car's draws waited for room (on Legend's street the rider's slow draw under the
+  wrecking ball left ~27 of the 34 units a draw needs, for 30 steps), then one far move left the old
+  picture up for a step. Now (`src/screen.c` hazards_draw):
+  - a car 7 to 39 px behind catches up 6 px a draw: always one cell, so old and new go in one box
+    (7 or 8 px could cross two cells, two draws in a step);
+  - on an empty road (no scenery, rider or other car in its box: `car_blank`, with each car's
+    scenery cells worked out once in `hazards_list`) the move is a fast draw, writing blank bytes
+    and the new picture, no reading and no old picture to take out;
+  - a car more than 9 px behind may make that fast draw with 26 units left (`LAG_ROOM`);
+  - `hazards_list` clears every hazard sprite of the last scene.
+  - A new check samples win-b6 every 5th step: no runner has a second picture except across a wrap.
+    Long steps in the win runs stay where BUILD 17 had them (9 to 15 over 20,000 cycles in a run at
+    billings 4 to 6; the scripted runs' worst is 18,950).
+
+- **BUILD 17 (Bob on BUILD 16: "it felt like you were only adding gaps"; initials accepted on the
+  third letter):**
+  - Billings now add and move hazards too, with DESIGN's billing tags brought forward from F6a:
+    every record has a fifth byte, the lowest and highest billing that show it (`BILLS(lo, hi)`,
+    `hz_shown` in `src/scene.c`; `SC_MAX` 8). Street: from billing 3 the police car starts at 90
+    instead of 170 (it meets you on the track's first half), from 4 a second wrecking ball hangs
+    just past the girder on track 3, from 5 the warm-up track gets a low girder after its drums,
+    and 6 has a 30 px break before the ball. Harbour: from billing 3 the patrol boat starts at 80,
+    from 4 a crate swings on the crane's hook between the footbridge and the buoy (new art), and from
+    5 a second footbridge hangs over track 1. Gaps that would sit under a new ceiling stop at
+    billing 4.
+  - Every billing is still proved with the same windows (8, 8, 6, 6, 5, 4 steps); `make wins`
+    re-searched all the runs. The solver also takes `SOLVE_NOSTOP=1`: billing 6 can still be
+    cleared without the stop, so DESIGN's "a track that needs the stop" is not there yet.
+  - Initials: three letters no longer end the entry; Del takes one back and Return finishes it.
+  - While the jet-ski rides the slipway (its slow draw), the patrol boat's draw can wait several
+    steps and then jump, leaving its old picture for one step as designed; the test reference now
+    draws that ghost too.
+  - 5,066 bytes free.
 
 ### F4: Film frame (BUILD 12, 23 Nov 2026)
 

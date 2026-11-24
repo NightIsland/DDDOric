@@ -107,6 +107,8 @@ struct model {
     uint8_t  gave_take;     /* 1: the scene just cleared gave a take back */
     uint8_t  name_slot;     /* M_NAME: the top-five line being named */
     uint8_t  name_len;      /*   initials typed */
+    uint8_t  jump_long;     /* 1: this jump came off a slipway (JUMP_LONG steps) */
+    const struct scene *scene;  /* the scene being played (scene_at(run_scene)) */
 };
 
 extern struct model m;
@@ -121,9 +123,9 @@ extern uint8_t hz_drop[NHAZ];   /* danglers: lines below the top position, 0 .. 
 extern uint16_t best_fee[NBEST];
 extern char best_name[NBEST][3];
 
-void model_init(const struct scene *s, uint8_t billing);
+void model_init(uint8_t billing);
 void model_scene_start(void);
-void model_billing(uint8_t billing);   /* which gaps show */
+void model_billing(uint8_t billing);   /* which gaps show, how fast hazards move */
 /* in: IN_* bits; key: the key code held (keys_ascii), read only off M_PLAY */
 void model_step(uint8_t in, uint8_t key);
 uint8_t model_px(void);     /* the rider's left edge in pixels, 0 .. 213 */
