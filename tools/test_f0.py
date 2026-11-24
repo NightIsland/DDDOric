@@ -168,6 +168,15 @@ MOVING = moving()
 NSLOT = 8                                   # src/scene.h SC_MAX
 
 
+def runner_shift(r, sy, i, a, img):
+    """the pixel shift of moving hazard i's picture at img: F6a pre-shifts it
+    at scene start into src/screen.c mov_buf from mv_img[i], 6 shifts of
+    columns x lines"""
+    base = r.mem[sy["_mv_img"] + 2 * i] | r.mem[sy["_mv_img"] + 2 * i + 1] << 8
+    rows, w, h = mkart.scenery(mkart.SCENERY[a][0])
+    return (img - base) // (mkart.sprite_cols(w) * h)
+
+
 def drawn_pos(r, tap=TAP, name=None):
     """where the moving hazards are drawn (src/draw.s sprite table: sprite
     1 + i), as hazard_bytes positions: a runner's x px, a dangler's drop"""
@@ -179,8 +188,7 @@ def drawn_pos(r, tap=TAP, name=None):
         y, c = r.mem[sy["_sp_y"] + n], r.mem[sy["_sp_c"] + n]
         img = r.mem[sy["_sp_lo"] + n] | r.mem[sy["_sp_hi"] + n] << 8
         if k == 2:
-            base = sy["_spr_" + mkart.SCENERY[a][0]]
-            pos.append((c - 2) * 6 + (img - base) // (5 * 12))
+            pos.append((c - 2) * 6 + runner_shift(r, sy, i, a, img))
         else:
             pos.append(y - (8 + 48 * t + scene_ref.DANGLE_TOP))
     return pos
@@ -203,7 +211,7 @@ def with_hazards(want, r, tap=TAP):
         if k == 2 and r.mem[sy["_sp_on"] + g]:
             c = r.mem[sy["_sp_c"] + g]
             img = r.mem[sy["_sp_lo"] + g] | r.mem[sy["_sp_hi"] + g] << 8
-            gx = (c - 2) * 6 + (img - sy["_spr_" + mkart.SCENERY[a][0]]) // (5 * 12)
+            gx = (c - 2) * 6 + runner_shift(r, sy, i, a, img)
             art = mkart.SCENERY[a][0]
             for a_, v in scene_ref.sprite_bytes(art, gx, 8 + 48 * t + scene_ref.ROAD - mkart.scenery(art)[2]).items():
                 want[a_ - 0xA000] ^= v

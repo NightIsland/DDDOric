@@ -241,7 +241,7 @@ Briefs written by the architect when the previous feature is merged, from DESIGN
   the video, and with it where the clusters fall (23 of 3,335 drawing steps).
 - **Size:** program ends at `$6A9F`, 11,105 bytes free below `$9800` (F3: 20,800). The film
   frame is ~5 KB of cc65 code (`src/frame.c` 4.5 KB); F6's films and music may need it smaller.
-- **Not yet:** K (redefine keys) is F6 with the rest of the key work; the top five is shown
+- **Not yet:** the top five is shown
   whole rather than scrolling; jingles are F6.
 
 - **BUILD 13 (Bob on BUILD 12: "the clapperboard stripes on the top bar should point the other
