@@ -45,7 +45,7 @@ takes the next number.
 | F2 | One track: rider physics (DESIGN "Physics"), keys (Space, either Shift, Return), 50 Hz step, engine sound | F0, F1 | logic ≤ 4,000 cycles a step | merged (BUILD 8, PR #8) |
 | F3 | Whole scene: four tracks, wrapping, block, runner, dangler, gap and ceiling block, crashes, fees, the one stop | F2 | whole step ≤ 16,000 cycles | merged (BUILD 11, PR #10); budget missed: average 16,100 riding flat out, worst 19,750 (see Results) |
 | F4 | Film frame: clapper card, takes, "Cut!", scene cleared, "You're fired", title screen, billing select, top five | F3 | riding steps stay under 20,000 cycles | merged (BUILD 13, PR #12; police lamps BUILD 14-15, PR #13) |
-| F5 | Film 1 (*Rush Hour Rumble*) complete at all six billings, tuned to M1's numbers; Bob judges the feel against the original | F4, M1 | | BUILD 17, PR #14 open |
+| F5 | Film 1 (*Rush Hour Rumble*) complete at all six billings, tuned to M1's numbers; Bob judges the feel against the original | F4, M1 | | BUILD 18, PR #14 open |
 | F6 | Films 2–6, jets and ramps, per-vehicle handling, music (no key redefinition: Bob, 24 Nov 2026) | F5 | memory ≤ 37 KB | not started |
 | X1 | Optional: level codes from a seed, with a solver run over thousands of seeds in the harness | F5 | ≤ 2 KB | not started |
 
@@ -152,6 +152,21 @@ Briefs written by the architect when the previous feature is merged, from DESIGN
 - Worst step 19,580 cycles over 9,930 scripted steps. 5,988 bytes free below `$9800` (the
   jet-ski's four frames and the harbour art took 2.8 KB; F6's other vehicles will need the
   3-pre-shift fallback from DESIGN "Memory").
+
+- **BUILD 18 (Bob on BUILD 17: at Legend "the police car has a break and stretches almost
+  double"):** the car's draws waited for room (on Legend's street the rider's slow draw under the
+  wrecking ball left ~27 of the 34 units a draw needs, for 30 steps), then one far move left the old
+  picture up for a step. Now (`src/screen.c` hazards_draw):
+  - a car 7 to 39 px behind catches up 6 px a draw: always one cell, so old and new go in one box
+    (7 or 8 px could cross two cells, two draws in a step);
+  - on an empty road (no scenery, rider or other car in its box: `car_blank`, with each car's
+    scenery cells worked out once in `hazards_list`) the move is a fast draw, writing blank bytes
+    and the new picture, no reading and no old picture to take out;
+  - a car more than 9 px behind may make that fast draw with 26 units left (`LAG_ROOM`);
+  - `hazards_list` clears every hazard sprite of the last scene.
+  - A new check samples win-b6 every 5th step: no runner has a second picture except across a wrap.
+    Long steps in the win runs stay where BUILD 17 had them (9 to 15 over 20,000 cycles in a run at
+    billings 4 to 6; the scripted runs' worst is 18,950).
 
 - **BUILD 17 (Bob on BUILD 16: "it felt like you were only adding gaps"; initials accepted on the
   third letter):**

@@ -295,7 +295,7 @@ _spr_region:
         dex
         lda     _r_fast
         beq     @rd
-@fill:  lda     p               ; 4-cell box only
+@fill:  lda     p               ; (the 6-cell box too: the police car, BUILD 18)
         sta     alo,x
         lda     p+1
         sta     ahi,x
@@ -304,6 +304,8 @@ _spr_region:
         sta     buf1,x
         sta     buf2,x
         sta     buf3,x
+        sta     buf4,x
+        sta     buf5,x
         lda     p
         clc
         adc     #40

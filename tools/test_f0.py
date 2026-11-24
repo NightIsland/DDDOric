@@ -871,6 +871,22 @@ for path, n in runs:
           pace < 70 and not bad, f"{torn} torn of {ndraw} drawing steps, slowest burst "
           f"{pace:.0f} cycles a line, {len(bad)} wrong bytes"
           + (f", first line {bad[0] // 40} cell {bad[0] % 40}" if bad else ""))
+# Bob on BUILD 17: at Legend the police car "has a break and stretches almost
+# double": its draws waited, then one far move left the old picture up for a
+# step.  BUILD 18: a lagging car catches up 6 px a draw, so outside a wrap
+# (33 cells) no runner ever has a second picture.  Sampled every 5th step.
+ghosts = []
+k6 = os.path.join(KEYS, "win-b6.keys")
+for n in range(20, len(rhr["win-b6.keys"]), 5):
+    r = emu.run(TAP, frames=n, keys=k6, out=os.path.join(OUT, "ghost"))
+    if parse(r.trace.decode().splitlines()[-1])["mode"] != PLAY:
+        continue
+    for i, (t, k, x, a) in enumerate(moving(*scene_of(r))):
+        g = 1 + i + 8
+        if k == 2 and r.mem[syms["_sp_on"] + g] and abs(r.mem[syms["_sp_c"] + g] - r.mem[syms["_sp_c"] + 1 + i]) < 30:
+            ghosts.append(n)
+check("win-b6.keys: no runner drawn twice but across a wrap (Bob, BUILD 17)", not ghosts,
+      f"steps {ghosts[:8]}" if ghosts else "")
 check(f"scene: rider and hazards under 1% torn frames over the {len(runs)} scripts", sc_torn * 100 < sc_draw,
       f"{sc_torn} torn of {sc_draw} drawing steps")
 
