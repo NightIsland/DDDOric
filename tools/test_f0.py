@@ -640,6 +640,10 @@ def text_at(r, col, y, s):
 check("title: the menu and today's top five (the film crew's fees to beat)",
       text_at(r, 12, 110, "1  START") and text_at(r, 24, 122, "EXTRA") and text_at(r, 24, 134, "ON")
       and text_at(r, 16, 158, "DIR") and text_at(r, 21, 190, "$50"))
+r_play = emu.run(TAP, frames=60, keys=START, out=os.path.join(OUT, "f4-rows"))
+check("title: no status rows (Bob, BUILD 19); they come back for play",
+      sorted(r.mem[0xBF68:0xBF68 + 120]).count(0x20) == 119   # (and the HIRES mode cell)
+      and bytes(r_play.mem[0xBF68 + 1:0xBF68 + 5]) == b"TAKE")
 ck = os.path.join(OUT, "card.keys")
 open(ck, "w").write("1 1\n")
 r = emu.run(TAP, frames=100, keys=ck, out=os.path.join(OUT, "f4-card"))

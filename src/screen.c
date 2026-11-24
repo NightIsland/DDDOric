@@ -223,17 +223,7 @@ void screen_init(void)
     for (i = 0; glyph_chars[i]; ++i)
         memcpy(CHARSET + (uint8_t)glyph_chars[i] * 8, glyphs[i], 7);
 
-    for (i = 0; i < 3; ++i)
-        memset(TEXTROW(i), ' ', 39);
-    TEXTROW(0)[0] = 3;                      /* yellow */
-    TEXTROW(1)[0] = 6;                      /* cyan */
-    TEXTROW(2)[0] = 7;                      /* white */
-    put(0, 1, "TAKE 1 @@@   STOP     FEE $0");
-    put(1, 13, "TRACK      BEST $0");     /* no speed (Bob, BUILD 12): you judge it */
-    put(2, 1, "BUILD");
-    TEXTROW(2)[7] = '0' + BUILD_VERSION / 10;
-    TEXTROW(2)[8] = '0' + BUILD_VERSION % 10;
-    put(2, 11, "SPACE SHIFT RETURN P ESC");
+    memset(TEXTROW(0), ' ', 3 * 40);        /* the status rows: blank on the title */
     MODE_CELL = 0x1E;                       /* HIRES, 50 Hz: switches the ULA */
 }
 
@@ -659,10 +649,39 @@ void play_reset(void)
     shown_fee = shown_best = 0xFFFF;
 }
 
+/* The status rows' fixed text.  The title screen has none (Bob, BUILD 19):
+   they are blanked while it shows and written afresh when it goes. */
+static uint8_t rows_on;
+
+static void status_rows(void)
+{
+    TEXTROW(0)[0] = 3;                      /* yellow */
+    TEXTROW(1)[0] = 6;                      /* cyan */
+    TEXTROW(2)[0] = 7;                      /* white */
+    put(0, 1, "TAKE 1 @@@   STOP     FEE $0");
+    put(1, 13, "TRACK      BEST $0");     /* no speed (Bob, BUILD 12): you judge it */
+    put(2, 1, "BUILD");
+    TEXTROW(2)[7] = '0' + BUILD_VERSION / 10;
+    TEXTROW(2)[8] = '0' + BUILD_VERSION % 10;
+    shown_track = shown_stop = shown_msg = shown_take = shown_takes = 0xFF;
+    shown_fee = shown_best = 0xFFFF;
+}
+
 void status_update(void)
 {
     uint8_t *t = TEXTROW(1), msg;
     big = 0;
+    if (m.mode == M_TITLE) {
+        if (rows_on) {
+            memset(TEXTROW(0), ' ', 3 * 40);
+            rows_on = 0;
+        }
+        return;
+    }
+    if (!rows_on) {
+        status_rows();
+        rows_on = 1;
+    }
     if (m.track != shown_track) {
         shown_track = m.track;
         t[19] = '1' + m.track;
