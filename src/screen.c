@@ -435,63 +435,70 @@ static uint8_t box_blank(uint8_t t, uint8_t top, uint8_t bot, uint8_t c0, uint8_
 void hazards_list(const struct scene *sc, uint8_t billing)
 {
     const struct hazard *h = &sc->h[0][0];
-    uint8_t i;
-    uint8_t band, w, nc, hp, k;
+    uint8_t i, t, band, w, nc, hp, k, a, x, n, sn, nb;
+    uint8_t *dst;
     uint16_t o;
     nmov = rr = nrect = mov_top = 0;
     memset(sp_on + SPR_MOV, 0, NSPR - SPR_MOV);  /* (the last scene's too: a new screen) */
     for (i = 0; i < NHAZ && nmov < MAXMOV; ++i, ++h) {
         if (!hz_shown(h, billing))
             continue;
-        band = TITLE_LINES + (i / SC_MAX) * BAND_LINES;
-        w = 0;
-        if (h->kind == HZ_BLOCK || h->kind == HZ_CEILING || h->kind == HZ_DANGLER || h->kind == HZ_RAMP
-            || h->kind == HZ_JET)
-            w = scenery_w[h->a];
-        if (h->kind == HZ_BLOCK || h->kind == HZ_RAMP || h->kind == HZ_JET)
-            rect_add(i / SC_MAX, h->x, h->x + w - 1, band + ROAD_LINE - scenery_h[h->a], band + ROAD_LINE);
-        else if (h->kind == HZ_CEILING)
-            rect_add(i / SC_MAX, h->x, h->x + w - 1, band, band + h->b + 1);
-        else if (h->kind == HZ_DANGLER)
-            rect_add(i / SC_MAX, h->x, h->x + w - 1, band, band + DANGLE_TOP + DANGLE_MAX + 16);
-        if (h->kind != HZ_RUNNER && h->kind != HZ_DANGLER && h->kind != HZ_JET && h->kind != HZ_FLYER)
+        k = h->kind;
+        if (k == HZ_GAP || k == HZ_NONE)            /* (an unused record shows) */
             continue;
-        mv_t[nmov] = i / SC_MAX;
-        mv_slot[nmov] = i;
-        mv_kind[nmov] = h->kind == HZ_FLYER ? HZ_RUNNER : h->kind;   /* (a flyer is drawn as a runner) */
-        mv_hot[nmov] = 0;
-        mv_band[nmov] = TITLE_LINES + (i / SC_MAX) * BAND_LINES;
-        w = scenery_w[h->a];
-        nc = w <= 13 ? 3 : 5;                   /* (tools/mkart.py sprite_cols) */
-        sp_w[SPR_MOV + nmov] = nc;
-        mv_lamp[nmov] = h->a == ART_POLICE || h->a == ART_BOAT;
-        mv_img[nmov] = mov_buf + mov_top;
-        if (h->kind == HZ_RUNNER || h->kind == HZ_FLYER) {   /* all 6 shifts, its own lines */
-            hp = scenery_h[h->a];
-            sp_h[SPR_MOV + nmov] = hp;          /* runners: their top line */
-            mv_band[nmov] += ROAD_LINE - hp;
-            if (h->kind == HZ_FLYER)            /* (b: its underside's band line) */
-                mv_band[nmov] += h->b + 1 - ROAD_LINE;
-            for (k = 0, o = 0; k < 6; ++k, o += nc * hp)
-                mv_so[nmov][k] = o;
-            mov_top = art_shift(mov_buf + mov_top, scenery_art[h->a], (w + 5) / 6, hp, nc, hp, 0, 6) - mov_buf;
-        } else if (h->kind == HZ_JET) {         /* x is fixed: one shift, its own lines */
-            hp = scenery_h[h->a];
-            sp_h[SPR_MOV + nmov] = hp;
-            mv_band[nmov] += ROAD_LINE - hp;
-            mv_c[nmov] = xcell[h->x];
-            mv_rope[nmov] = xcell[h->x + w / 2];    /* (jets: the vent's cell) */
-            mov_top = art_shift(mov_buf + mov_top, scenery_art[h->a], (w + 5) / 6, hp, nc, hp,
-                                xshift[h->x], 1) - mov_buf;
-        } else {                                /* danglers: x is fixed, one shift */
-            sp_h[SPR_MOV + nmov] = 16;
-            mv_rope[nmov] = h->x + w / 2;
-            mv_c[nmov] = xcell[h->x];
-            mov_top = art_shift(mov_buf + mov_top, scenery_art[h->a], (w + 5) / 6, scenery_h[h->a], nc, 16,
-                                xshift[h->x], 1) - mov_buf;
+        t = i / SC_MAX;
+        band = TITLE_LINES + t * BAND_LINES;
+        a = h->a;
+        x = h->x;
+        w = scenery_w[a];
+        hp = scenery_h[a];
+        if (k == HZ_CEILING)
+            rect_add(t, x, x + w - 1, band, band + h->b + 1);
+        else if (k == HZ_DANGLER)
+            rect_add(t, x, x + w - 1, band, band + DANGLE_TOP + DANGLE_MAX + 16);
+        else if (k != HZ_RUNNER && k != HZ_FLYER)   /* blocks, ramps, jets */
+            rect_add(t, x, x + w - 1, band + ROAD_LINE - hp, band + ROAD_LINE);
+        if (k != HZ_RUNNER && k != HZ_DANGLER && k != HZ_JET && k != HZ_FLYER)
+            continue;
+        n = nmov;
+        sn = SPR_MOV + n;
+        mv_t[n] = t;
+        mv_slot[n] = i;
+        mv_hot[n] = 0;
+        nc = 3;                                 /* (tools/mkart.py sprite_cols) */
+        if (w > 13)
+            nc = 5;
+        sp_w[sn] = nc;
+        mv_lamp[n] = a == ART_POLICE || a == ART_BOAT;
+        dst = mov_buf + mov_top;
+        mv_img[n] = dst;
+        nb = (w + 5) / 6;
+        sp_h[sn] = hp;
+        if (k == HZ_DANGLER) {                  /* danglers: x is fixed, one shift, 16 lines */
+            sp_h[sn] = 16;                      /* (band: the band's top line) */
+            mv_rope[n] = x + w / 2;
+            mv_c[n] = xcell[x];
+            dst = art_shift(dst, scenery_art[a], nb, hp, nc, 16, xshift[x], 1);
+        } else if (k == HZ_JET) {               /* x is fixed: one shift, its own lines */
+            band += ROAD_LINE - hp;             /* standing on the road */
+            mv_c[n] = xcell[x];
+            mv_rope[n] = xcell[x + w / 2];      /* (jets: the vent's cell) */
+            dst = art_shift(dst, scenery_art[a], nb, hp, nc, hp, xshift[x], 1);
+        } else {                                /* runners and flyers: all 6 shifts */
+            band += ROAD_LINE - hp;
+            if (k == HZ_FLYER) {                /* (b: its underside's band line) */
+                band += h->b + 1 - ROAD_LINE;
+                k = HZ_RUNNER;                  /* (a flyer is drawn as a runner) */
+            }
+            for (x = 0, o = 0; x < 6; ++x, o += nc * hp)
+                mv_so[n][x] = o;
+            dst = art_shift(dst, scenery_art[a], nb, hp, nc, hp, 0, 6);
         }
-        sp_on[SPR_MOV + nmov] = 0;
-        sp_on[SPR_MOV + nmov + GHOST] = 0;
+        mv_kind[n] = k;
+        mv_band[n] = band;
+        mov_top = dst - mov_buf;
+        sp_on[sn] = 0;
+        sp_on[sn + GHOST] = 0;
         ++nmov;
     }
     /* each runner's box lines are fixed: which cells hold scenery there,
@@ -499,12 +506,15 @@ void hazards_list(const struct scene *sc, uint8_t billing)
     for (i = 0; i < nmov; ++i) {
         if (mv_kind[i] != HZ_RUNNER)
             continue;
-        memset(mv_block[i], 0, 40);
-        for (band = 0; band < nrect; ++band)
-            if (rc_t[band] == mv_t[i] && mv_band[i] < rc_y1[band]
-                && rc_y0[band] < (uint8_t)(mv_band[i] + sp_h[SPR_MOV + i]))
-                for (w = rc_c0[band]; w <= rc_c1[band]; ++w)
-                    mv_block[i][w] = 1;
+        dst = mv_block[i];
+        memset(dst, 0, 40);
+        t = mv_t[i];
+        band = mv_band[i];
+        hp = band + sp_h[SPR_MOV + i];
+        for (k = 0; k < nrect; ++k)
+            if (rc_t[k] == t && band < rc_y1[k] && rc_y0[k] < hp)
+                for (w = rc_c0[k]; w <= rc_c1[k]; ++w)
+                    dst[w] = 1;
     }
 }
 

@@ -10,7 +10,7 @@ step 3.
 
 Adapted from Oric Chuckie Egg's tools/test_f0.py.  Writes screenshots and
 traces to build/test/."""
-import os, random, subprocess, sys
+import os, random, re, subprocess, sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "tools"))
@@ -574,6 +574,14 @@ def touch_errors(lines):
 
 
 errs = sum((touch_errors(t) for t in rhr.values()), [])
+# F6: src/model.c makes each scene's crash masks into HIT_MAX columns
+hit_cols = {}
+for name_ in re.findall(r"const struct scene (scene_\w+) =", open(os.path.join(ROOT, "src", "scene.c")).read()):
+    arts_ = {a for b_ in range(1, 7) for recs in scene_ref.load_scene(name_, b_)["tracks"] for k, x, a, b in recs if k != 4}
+    hit_cols[name_] = sum(mkart.scenery(mkart.SCENERY[a][0])[1] for a in arts_)
+HIT_MAX = int(re.search(r"#define HIT_MAX (\d+)", open(os.path.join(ROOT, "src", "model.c")).read()).group(1))
+check(f"every scene's pictures fit the crash masks' {HIT_MAX} columns (src/model.c HIT_MAX)",
+      max(hit_cols.values()) <= HIT_MAX, f"widest {max(hit_cols, key=hit_cols.get)}: {max(hit_cols.values())}")
 check("crashes only on a real touch: a rider pixel on a hazard pixel or the wheels over a gap, every step of "
       "every trace, both scenes, all billings (Bob, BUILD 10)",
       not errs, "; ".join(errs[:3]))

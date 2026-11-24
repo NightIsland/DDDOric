@@ -8,7 +8,17 @@ uint16_t best_fee[NBEST] = { 250, 200, 150, 100, 50 };     /* the film crew's */
 char best_name[NBEST][3] = { {'D','I','R'}, {'C','A','M'}, {'S','F','X'}, {'M','U','A'}, {'G','A','F'} };
 
 uint8_t hz_px[NHAZ], hz_drop[NHAZ];
+#ifdef __CC65__                     /* the pictures: art.s on the Oric */
+#define art_w scenery_w
+#define art_h scenery_h
+#define SC_ART(a) (scenery_art[a])
+#else                               /* and the same bytes here for the host */
 static const uint8_t art_w[] = { SCENERY_W_DATA }, art_h[] = { SCENERY_H_DATA };
+const uint8_t veh_art[] = { VEH_ART_DATA };
+static const uint8_t sc_bytes[] = { SCENERY_ART_DATA };
+static const uint16_t sc_ofs[] = { SCENERY_ART_OFS };
+#define SC_ART(a) (sc_bytes + sc_ofs[a])
+#endif
 
 /* Runner speed: M1 measured 1 BBC byte per 3 steps = 0.95 px a step; a
    record's b holds it in 1/128 px a step (bit 7: drives left), 0 = M1's.
@@ -140,10 +150,34 @@ static void hazards_step(void)
    row r) are compared column by column, the hazard's shifted by the
    difference in their top rows.  The rider's picture is the one main.c
    shows.  A gap: the wheels' middle over it, on the road. */
-static const uint16_t hit_rider[NVEH * 3 * RIDER_W] = { HIT_RIDER_DATA };  /* per vehicle: ride_a, ride_b, jump */
-static const uint16_t *hit_vh;      /* this scene's vehicle's */
-static const uint16_t hit_scenery[] = { HIT_SCENERY_DATA };
-static const uint16_t hit_ofs[] = { HIT_SCENERY_OFS };
+/* F6: the column masks are made from the pictures when a scene loads (2 KB
+   of stored masks for 7 vehicles and 44 pictures became these buffers):
+   the scene's vehicle's ride_a, ride_b and jump, and each picture the
+   scene shows, once. */
+#define HIT_MAX 160                 /* columns: the widest scene has 124 */
+static uint16_t hit_vh[3 * RIDER_W];
+static uint16_t hit_buf[HIT_MAX];
+static uint8_t hit_veh = 0xFF;      /* the vehicle in hit_vh */
+
+/* a picture's column masks: nb bytes a row (6 px each, bit 5 leftmost), w
+   px wide, h rows */
+static void art_cols(uint16_t *dst, const uint8_t *src, uint8_t nb, uint8_t w, uint8_t h)
+{
+    uint8_t x, b, v;
+    uint16_t bit = 1;
+    for (x = 0; x < w; ++x)
+        dst[x] = 0;
+    for (; h; --h, bit <<= 1, src += nb)
+        for (x = 0, b = 0, v = 0x20; x < w; ++x) {
+            if (src[b] & v)
+                dst[x] |= bit;
+            v >>= 1;
+            if (!v) {
+                v = 0x20;
+                ++b;
+            }
+        }
+}
 
 static uint8_t crashed(void)
 {
@@ -258,11 +292,19 @@ static void run_start(void)
    them, moving hazards at the billing's speed. */
 static void scene_load(void)
 {
-    uint8_t i, sp;
+    uint8_t i, j, sp, nseen, hit_top;
+    uint8_t seen_a[NHAZ];
+    uint16_t *seen_c[NHAZ];
     const struct hazard *h;
     m.scene = scene_at(m.run_scene);
     h = &m.scene->h[0][0];                  /* the bands' hazards, all in a row */
-    hit_vh = hit_rider + m.scene->vehicle * (3 * RIDER_W);
+    if (m.scene->vehicle != hit_veh) {
+        hit_veh = m.scene->vehicle;
+        for (i = 0; i < 3; ++i)
+            art_cols(hit_vh + i * RIDER_W, veh_art + hit_veh * VEH_BYTES + i * VEH_FRAME_BYTES, 2, RIDER_W, RIDER_H);
+    }
+    hit_top = 0;
+    nseen = 0;
     dangle_reload = dangle_half[m.billing];
     jet_p = jet_period[m.billing];
     jet_on = jet_p / 3;
@@ -278,7 +320,16 @@ static void scene_load(void)
         if (h->kind != HZ_GAP && h->kind != HZ_NONE) {
             hw[i] = art_w[h->a];
             hh[i] = art_h[h->a];
-            hcol[i] = hit_scenery + hit_ofs[h->a];
+            for (j = 0; j < nseen && seen_a[j] != h->a; ++j)
+                ;
+            if (j == nseen) {               /* a picture new to this scene */
+                seen_a[j] = h->a;
+                seen_c[j] = hit_buf + hit_top;
+                ++nseen;
+                art_cols(hit_buf + hit_top, SC_ART(h->a), (hw[i] + 5) / 6, hw[i], hh[i]);
+                hit_top += hw[i];
+            }
+            hcol[i] = seen_c[j];
             htop[i] = ROAD_TOP_LINE - hh[i];   /* blocks and runners stand on the road */
         }
         switch (h->kind) {
