@@ -456,8 +456,9 @@ rhr = {os.path.basename(p): ref_trace(p, n) for p, n in scripts}
 rhr["clear.keys"] = ref_trace(os.path.join(KEYS, "clear.keys"), 452)
 rhr["takeback.keys"] = ref_trace(os.path.join(KEYS, "takeback.keys"), 2000)
 WIN_W = [8, 8, 6, 6, 5, 4]                   # tools/solve/wins.sh
+WIN_SCENES = 4                              # tools/solve/wins.sh SCENES: films built x 2
 for b in range(1, 7):
-    rhr[f"win-b{b}.keys"] = ref_trace(os.path.join(KEYS, f"win-b{b}.keys"), 2000)
+    rhr[f"win-b{b}.keys"] = ref_trace(os.path.join(KEYS, f"win-b{b}.keys"), 2600)
 errs = sum((f3_rules(t) for t in rhr.values()), [])
 evs = [parse(l) for t in rhr.values() for l in t]
 check("F3 rules: crash = dead stop, a take lost, 1.5 s pause, then the clapper card for the retake from the "
@@ -569,17 +570,29 @@ check("takeback.keys: a crash, then three scenes cleared: the lost take comes ba
       f"step {gb['step']}, takes {gb['takes']}, fee ${gb['fee']}" if gb else "no take given back")
 # F5: film 1 proved beatable at every billing (DESIGN "Billings"): each
 # win-bN.keys (searched by tools/solve, every jump with a window of WIN_W
-# steps to press it in) starts billing N from the title and clears both
-# scenes of Rush Hour Rumble on their first take; the Oric plays it the same
+# steps to press it in) starts billing N from the title and clears every
+# built scene (F6b: Rush Hour Rumble and Dust at Dawn) on its first take;
+# the Oric plays it the same
 wins = []
 for b in range(1, 7):
     w = [parse(l) for l in rhr[f"win-b{b}.keys"]]
     clears = [s for s in w if s["ev"] & 0x10]
-    ok = len(clears) >= 2 and all(s["ev2"] & 0x02 for s in clears[:2]) and w[-1]["billing"] == b \
-        and not any(s["ev"] & 0x80 for s in w if s["step"] <= clears[1]["step"])
-    wins.append(f"B{b}: {'cleared' if ok else 'FAILED'}" + (f" by step {clears[1]['step']}" if len(clears) > 1 else ""))
-    check(f"win-b{b}.keys: billing {b}, both scenes of film 1 cleared on the first take "
+    ok = len(clears) >= WIN_SCENES and all(s["ev2"] & 0x02 for s in clears[:WIN_SCENES]) and w[-1]["billing"] == b \
+        and not any(s["ev"] & 0x80 for s in w if s["step"] <= clears[WIN_SCENES - 1]["step"])
+    wins.append(f"B{b}: {'cleared' if ok else 'FAILED'}"
+                + (f" by step {clears[WIN_SCENES - 1]['step']}" if len(clears) >= WIN_SCENES else ""))
+    check(f"win-b{b}.keys: billing {b}, films 1-{WIN_SCENES // 2} ({WIN_SCENES} scenes) cleared on the first take "
           f"(every jump has {WIN_W[b - 1]} steps to press it in)", ok, wins[-1])
+# F6b: the Western's two scenes on the Oric, mid-ride at billing 6 (the
+# horse on the dusty street, the mine cart on the rails) = the reference
+for fr, what in ((1700, "Dust at Dawn scene 1 (horse, dirt street)"), (2200, "Dust at Dawn scene 2 (mine cart, rails)")):
+    r = emu.run(TAP, frames=fr, keys=os.path.join(KEYS, "win-b6.keys"), out=os.path.join(OUT, f"f6-{fr}"))
+    emu.write_png(os.path.join(OUT, f"f6-{fr}.png"), r.rgb, 2)
+    want = reference(r)
+    got = r.mem[0xA000:0xA000 + 8000]
+    bad = [i for i in range(320, 8000) if want[i] != got[i]]
+    check(f"win-b6.keys at step {fr}: {what} = scene + rider + moving hazards", not bad,
+          f"{scene_of(r)[0]}: {len(bad)} wrong bytes" + (f", first line {bad[0] // 40} cell {bad[0] % 40}" if bad else ""))
 # hazards in the game: the police car drives left 1 px a step (122/128) and
 # wraps; the ball bobs 1 line every 3 steps, 0..25 below its top
 syms = emu.symbols(TAP)
@@ -803,7 +816,7 @@ def tears(r, ok_steps):
     for ws in steps.values():
         bursts, cur = [], [ws[0]]
         for w in ws[1:]:
-            if w[1] - cur[-1][1] > 300:
+            if w[1] - cur[-1][1] > 300 or abs(w[0] // 40 - cur[-1][0] // 40) > 2:
                 bursts.append(cur)
                 cur = []
             cur.append(w)
@@ -866,14 +879,14 @@ check("rider: under 1% torn frames over all the scripts", all_torn * 100 < all_d
 # cards move the steps' phase against the video, and with it where the
 # clusters fall; BUILD 13: the three short scripts alone read 1.3%, so the
 # long season run is in the sample too)
-# F5: the win runs too, each stopped 30 steps before it clears the harbour
-# (the jet-ski, the patrol boat, the water and every gap of its billing)
+# F5: the win runs too, each stopped 30 steps before it clears its last scene
+# (F6b: the mine cart on the rails, after the harbour and the horse)
 sc_torn = sc_draw = 0
 runs = [(os.path.join(KEYS, "clear.keys"), 430), (os.path.join(KEYS, "takeback.keys"), 1950), (rnd, RND_N),
         (os.path.join(KEYS, "season.keys"), 7700)]
 for b in range(1, 7):
     cl = [parse(l)["step"] for l in rhr[f"win-b{b}.keys"] if int(l.split()[7], 16) & 0x10]
-    runs.append((os.path.join(KEYS, f"win-b{b}.keys"), cl[1] - 30))
+    runs.append((os.path.join(KEYS, f"win-b{b}.keys"), cl[WIN_SCENES - 1] - 30))
 for path, n in runs:
     r = emu.run(TAP, frames=n, keys=path, wlog=True, out=os.path.join(OUT, "scene-" + os.path.basename(path)))
     torn, ndraw, pace = tears(r, steady(r.trace.decode().splitlines()))

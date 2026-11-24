@@ -1,8 +1,10 @@
-# solve 2 2: billing 2 from the title, 2 scene(s), each on its first take
+# solve 2 4: billing 2 from the title, 4 scene(s), each on its first take
 1 L
 3 1
 5-294 accel
 441-690 accel
+877-1181 accel
+1313-1868 accel
 4 jump
 117 jump
 210 jump
@@ -13,4 +15,15 @@
 520 jump
 605 jump
 753 jump
-# 872 steps
+874 jump
+876 jump
+984 jump
+1095 jump
+1185 jump
+1310 jump
+1312 jump
+1439 jump
+1650 jump
+1836 jump
+1649 stop
+# 1868 steps

@@ -50,8 +50,22 @@ struct palette {
     uint8_t paper[48], ink[48];     /* per band line (DESIGN "Colour") */
 };
 
+/* Grounds (DESIGN "Ground styles", F6a): every ground handles the same; a
+   ground is its four lines' bytes, cells 2-39 repeating every 4 cells, and
+   how a gap looks: road missing (pixels cleared) or filled (pixels set:
+   rocks in water, the dark of a grave or a crevasse). */
 #define GROUND_ROAD  0           /* kerb and lane marks; a gap: road missing */
 #define GROUND_WATER 1           /* waves; a gap: rocks breaking the surface */
+#define GROUND_DIRT  2           /* a dusty street; a gap: a dry wash */
+#define GROUND_RAILS 3           /* rails on sleepers; a gap: broken track */
+
+#define GR_KERB 1                /* line 0 starts at cell 1 (the road's kerb) */
+#define GR_FILL 2                /* a gap sets the pixels */
+struct ground {
+    uint8_t line[4][4];
+    uint8_t flags;
+};
+extern const struct ground grounds[];
 
 struct scene {
     const char *film;           /* title strip: film name */
@@ -62,7 +76,7 @@ struct scene {
     struct hazard h[4][SC_MAX];
 };
 
-extern const struct scene scene_rhr1, scene_rhr2;
+extern const struct scene scene_rhr1, scene_rhr2, scene_dd1, scene_dd2;
 extern const struct scene scene_test;     /* no hazards: harness only */
 extern const struct scene scene_stress;   /* F6a: two every-step movers, three jets: harness only */
 

@@ -45,8 +45,8 @@ takes the next number.
 | F2 | One track: rider physics (DESIGN "Physics"), keys (Space, either Shift, Return), 50 Hz step, engine sound | F0, F1 | logic ≤ 4,000 cycles a step | merged (BUILD 8, PR #8) |
 | F3 | Whole scene: four tracks, wrapping, block, runner, dangler, gap and ceiling block, crashes, fees, the one stop | F2 | whole step ≤ 16,000 cycles | merged (BUILD 11, PR #10); budget missed: average 16,100 riding flat out, worst 19,750 (see Results) |
 | F4 | Film frame: clapper card, takes, "Cut!", scene cleared, "You're fired", title screen, billing select, top five | F3 | riding steps stay under 20,000 cycles | merged (BUILD 13, PR #12; police lamps BUILD 14-15, PR #13) |
-| F5 | Film 1 (*Rush Hour Rumble*) complete at all six billings, tuned to M1's numbers; Bob judges the feel against the original | F4, M1 | | BUILD 20, PR #14 open |
-| F6 | Films 2–6, jets and ramps, per-vehicle handling, music (no key redefinition: Bob, 24 Nov 2026) | F5 | memory ≤ 37 KB | not started |
+| F5 | Film 1 (*Rush Hour Rumble*) complete at all six billings, tuned to M1's numbers; Bob judges the feel against the original | F4, M1 | | BUILD 20, PR #14 merged |
+| F6 | Films 2–6, jets and ramps, per-vehicle handling, music (no key redefinition: Bob, 24 Nov 2026) | F5 | memory ≤ 37 KB | F6a, F6b (Western) at BUILD 21 |
 | X1 | Optional: level codes from a seed, with a solver run over thousands of seeds in the harness | F5 | ≤ 2 KB | not started |
 
 M1 and F0 can run in parallel. F5 is the prototype milestone (plan step 3); F6 and X1 are polish
@@ -120,6 +120,35 @@ Briefs written by the architect when the previous feature is merged, from DESIGN
   removed; locking the step to the video frame would make it permanent on one track instead.
   Worst step 16,708 cycles (the C preparation); F1's assembly sprite brings it down.
 
+### F6: Films 2 to 6 (BUILD 21 onward, 24 Nov 2026)
+
+Built in DESIGN "Films 2 to 6" order: F6a shared parts, then one film a build (F6b Western, F6c
+Horror, F6d Sci-fi, F6e Fantasy, F6f Spy), then F6g music.
+
+- **F6a, art shifted at scene start** (DESIGN "Memory"): vehicles are stored unshifted
+  (`veh_art`, 128 bytes each) and shifted into `veh_buf` when the scene's vehicle changes; the
+  moving hazards are shifted into `mov_buf` (the alternate character set at `$9C00`, 1 KB):
+  runners and flyers 6 shifts, danglers and jets one.
+- **Jets** (kind 6): a vent in the road, a period by billing (150 steps at billing 1 down to 75),
+  on a third of it, 25 steps of warning before (the vent glows, toggling every 4 steps); a jet
+  crashes only when on. **Flyers** (kind 8): a runner in the air, its underside at a band line.
+- **Grounds**: a scene names one of road, water, dirt street or rails (`grounds[]` in
+  `src/scene.c`); each is four lines repeating every 4 cells, and a gap either clears the road or
+  fills it.
+- **12-scene seasons**: `season[]` in `src/scene.c`; films not built yet repeat the built ones.
+- **Step budget proved** on `scene_stress` (two every-step movers, three jets, a flyer, billing 6):
+  9 of 1,178 riding steps over 20,000 cycles, mostly wrap steps; moving hazards drawn within
+  4 px of the game. The trace now goes out as 21 binary bytes a step (`$BFE4`), saving ~1,200
+  cycles a step and the hex tables.
+- **F6b, Dust at Dawn** (BUILD 21): scene 1 on horseback down a dusty street at dawn (troughs,
+  hitching rails, a rolling tumbleweed, a low balcony, a dangling sack); scene 2 on a mine cart
+  on rails underground (ore heaps, rocks, a runaway ore cart, beams, buckled rail, a swinging
+  bucket). `tests/keys/win-b1..6.keys` now clear films 1 and 2 (4 scenes) on the first take at
+  every billing; `make wins` re-searches them.
+- **Tests** (121 checks, all pass): the Western scenes' screens = reference mid-ride, the win runs
+  to the end of the mine cart scene on the Oric (same trace, screen = reference, beam pace).
+  Worst step in win-b6 22,918 cycles (8 of 2,400 over). 2,757 bytes free below `$9800`.
+
 ### F5: Rush Hour Rumble at all six billings (BUILD 16, 23 Nov 2026)
 
 - **Scene 2, the harbour chase** (`src/scene.c` `scene_rhr2`), on the jet-ski: buoys (blocks), the
@@ -130,8 +159,8 @@ Briefs written by the architect when the previous feature is merged, from DESIGN
 - **The slipway** (DESIGN "Ramp"): riding onto it with the wheels' middle fires a jump 1.5 times as
   long (126 steps), same 20 px apex: the M1 arc with its entries held 4 and 5 steps in turn
   (`src/physics.h`). It is never a hazard.
-- **A run of scenes**: `scene_at(run_scene)` gives each place in the run its scene; until F6 brings
-  films 2-6, film 1's two scenes take turns through the season. The model loads each scene's
+- **A run of scenes**: `scene_at(run_scene)` gives each place in the run its scene (F6a: from the
+  12-scene `season[]` table). The model loads each scene's
   hazards when it starts (`scene_load`); test builds with `-DSCENE=` still ride one scene.
 - **Billings change speeds** (DESIGN "Billings": slow, normal, normal, fast, fast, fastest):
   runners x 1, 1.25, 1.25, 1.5, 1.5, 1.75 of M1's 0.95 px a step; danglers a line every 3, 2.5,

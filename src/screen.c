@@ -174,6 +174,8 @@ static uint8_t *art_shift(uint8_t *dst, const uint8_t *src, uint8_t nb, uint8_t 
 void scene_draw(const struct scene *s, uint8_t billing)
 {
     const struct palette *pal = s->pal;
+    const struct ground *gr = &grounds[s->ground];
+    const uint8_t *gl;
     const struct hazard *hz;
     uint8_t t, i, j, y, *p, mid;
     char num[2];
@@ -197,19 +199,12 @@ void scene_draw(const struct scene *s, uint8_t billing)
         y = TITLE_LINES + t * BAND_LINES;
         for (i = 0; i < BAND_LINES; ++i, ++y) {
             p = line_colours(y, pal->paper[i], pal->ink[i]);
-            if (s->ground == GROUND_WATER) {            /* waves: crests, troughs, ripples */
-                if (i == ROAD_LINE)
-                    memset(p + 2, 0x4C, 38);
-                else if (i == ROAD_LINE + 1)
-                    memset(p + 2, 0x73, 38);
-                else if (i == ROAD_LINE + 3)
-                    for (j = 3; j < 40; j += 2)
-                        p[j] = 0x46;
-            } else if (i == ROAD_LINE) {                /* kerb, from cell 1 */
-                memset(p + 1, 0x7F, 39);                /* (road paper is black) */
-            } else if (i == ROAD_LINE + 2) {
-                for (j = 2; j < 40; j += 4)             /* lane marks */
-                    p[j] = p[j + 1] = 0x7F;
+            if (i >= ROAD_LINE) {                       /* the ground's line */
+                gl = gr->line[i - ROAD_LINE];
+                for (j = 2; j < 40; ++j)
+                    p[j] = gl[(j - 2) & 3];
+                if (i == ROAD_LINE && (gr->flags & GR_KERB))
+                    p[1] = gl[0];                       /* the kerb from cell 1 */
             }
         }
         y = TITLE_LINES + t * BAND_LINES;               /* band's line 0 */
@@ -237,7 +232,7 @@ void scene_draw(const struct scene *s, uint8_t billing)
                 for (i = 0; i < 4; ++i) {               /* on water, solid rocks   */
                     p = LINE(y + ROAD_LINE + i);
                     for (mid = hz->x; mid != (uint8_t)(hz->x + hz->a); ++mid)
-                        if (s->ground == GROUND_WATER)
+                        if (gr->flags & GR_FILL)
                             p[xcell[mid]] |= 0x20 >> xshift[mid];
                         else
                             p[xcell[mid]] &= ~(0x20 >> xshift[mid]);

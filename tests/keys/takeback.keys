@@ -3,7 +3,7 @@
 3-136 accel
 214-513 accel
 650-944 accel
-1086-1385 accel
+1086-1614 accel
 2 jump
 213 jump
 333 jump
@@ -16,7 +16,8 @@
 969 jump
 1083 jump
 1085 jump
-1205 jump
-1298 jump
-1396 jump
-# 1517 steps
+1200 jump
+1314 jump
+1399 jump
+1484 stop
+# 1614 steps

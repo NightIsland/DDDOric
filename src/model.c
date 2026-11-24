@@ -140,10 +140,10 @@ static void hazards_step(void)
    row r) are compared column by column, the hazard's shifted by the
    difference in their top rows.  The rider's picture is the one main.c
    shows.  A gap: the wheels' middle over it, on the road. */
-static const uint16_t hit_rider[2 * 3 * RIDER_W] = { HIT_RIDER_DATA };  /* per vehicle: ride_a, ride_b, jump */
+static const uint16_t hit_rider[NVEH * 3 * RIDER_W] = { HIT_RIDER_DATA };  /* per vehicle: ride_a, ride_b, jump */
 static const uint16_t *hit_vh;      /* this scene's vehicle's */
 static const uint16_t hit_scenery[] = { HIT_SCENERY_DATA };
-static const uint8_t hit_ofs[] = { HIT_SCENERY_OFS };
+static const uint16_t hit_ofs[] = { HIT_SCENERY_OFS };
 
 static uint8_t crashed(void)
 {

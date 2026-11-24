@@ -15,6 +15,14 @@ import mkart  # noqa: E402
 COLOURS = dict(BLACK=0, RED=1, GREEN=2, YELLOW=3, BLUE=4, MAGENTA=5, CYAN=6, WHITE=7)
 KINDS = dict(HZ_NONE=0, HZ_BLOCK=1, HZ_RUNNER=2, HZ_DANGLER=3, HZ_GAP=4, HZ_CEILING=5, HZ_JET=6, HZ_RAMP=7, HZ_FLYER=8)
 VENT, VENT_HOT = 0x5E, 0x1E                  # a jet's grate on the road's second line; XORed below while it warns
+# grounds (DESIGN "Ground styles"): each line's bytes for cells 2-39, repeating
+# every 4; kerb: line 0 from cell 1; fill: a gap sets the pixels (else clears)
+GROUNDS = dict(
+    ROAD=([[0x7F] * 4, [0x40] * 4, [0x7F, 0x7F, 0x40, 0x40], [0x40] * 4], True, False),
+    WATER=([[0x4C] * 4, [0x73] * 4, [0x40] * 4, [0x40, 0x46, 0x40, 0x46]], False, True),
+    DIRT=([[0x7F] * 4, [0x52, 0x40, 0x49, 0x40], [0x40, 0x44, 0x40, 0x60], [0x48, 0x40, 0x40, 0x42]], False, False),
+    RAILS=([[0x7F] * 4, [0x4C, 0x40, 0x4C, 0x40], [0x4C, 0x40, 0x4C, 0x40], [0x7F] * 4], False, False),
+)
 ONLY = None                                 # set: every scene is this one (a -DSCENE= build)
 ART = {f"ART_{n.upper()}": i for i, (n, _) in enumerate(mkart.SCENERY)}
 TITLE, BAND, RIDER_TOP, ROAD = 8, 48, 28, 44
@@ -40,7 +48,7 @@ def load_scene(name="scene_rhr1", billing=None):
     head = body.split("{", 2)[1]                # "film", number, vehicle, ground, &pal,
     pname = re.search(r"&(pal_\w+)", head).group(1)
     vehicle = re.search(r"VH_(\w+)", head).group(1).lower()
-    ground = 1 if "GROUND_WATER" in head else 0
+    ground = re.search(r"GROUND_(\w+)", head).group(1)
     pal = src[src.index(pname + " = {"):src.index("};", src.index(pname + " = {"))]
     names = re.findall(r"\b(BLACK|RED|GREEN|YELLOW|BLUE|MAGENTA|CYAN|WHITE)\b", pal.split("{", 1)[1])
     cols = [COLOURS[n] for n in names]
@@ -58,14 +66,17 @@ def load_scene(name="scene_rhr1", billing=None):
         tracks.append(recs)
     tracks += [[] for _ in range(4 - len(tracks))]
     return dict(title_paper=title_paper, title_ink=title_ink, paper=paper, ink=ink, tracks=tracks,
-                vehicle=vehicle, water=bool(ground))
+                vehicle=vehicle, ground=ground, water=GROUNDS[ground][2])
 
 
 def scene_at(run_scene):
-    """src/scene.c scene_at: film 1's two scenes take turns (until F6)"""
+    """src/scene.c scene_at: the season's table of 12 scenes"""
     if ONLY:
         return ONLY
-    return "scene_rhr1" if run_scene % 2 else "scene_rhr2"
+    src = open(os.path.join(ROOT, "src", "scene.c")).read()
+    tab = src[src.index("season[SEASON] = {"):]
+    names = re.findall(r"&(scene_\w+)", tab[:tab.index("};")])
+    return names[(run_scene - 1) % len(names)]
 
 
 def scene_bytes(billing=1, name="scene_rhr1"):
@@ -97,22 +108,12 @@ def scene_bytes(billing=1, name="scene_rhr1"):
         y0 = TITLE + t * BAND
         for i in range(BAND):
             colours(y0 + i, sc["paper"][i], sc["ink"][i])
-            if sc["water"]:                 # waves: crests, troughs, ripples (DESIGN film 1 scene 2)
+            if i >= ROAD:                   # the ground's lines
+                lines, kerb, fill = GROUNDS[sc["ground"]]
                 for c in range(2, 40):
-                    if i == ROAD:
-                        mem[(y0 + i) * 40 + c] = 0x4C
-                    elif i == ROAD + 1:
-                        mem[(y0 + i) * 40 + c] = 0x73
-                    elif i == ROAD + 3 and c % 2:
-                        mem[(y0 + i) * 40 + c] = 0x46
-                continue
-            if i == ROAD:
-                for c in range(1, 40):
-                    mem[(y0 + i) * 40 + c] = 0x7F
-            if i == ROAD + 2:
-                for c in range(2, 40):
-                    if (c - 2) % 4 < 2:
-                        mem[(y0 + i) * 40 + c] = 0x7F
+                    mem[(y0 + i) * 40 + c] = lines[i - ROAD][(c - 2) % 4]
+                if i == ROAD and kerb:
+                    mem[(y0 + i) * 40 + 1] = lines[0][0]
         for kind, x, a, b in recs:
             if kind in (1, 7):                  # blocks and slipways stand on the road
                 blit(a, x, y0 + ROAD - 1)

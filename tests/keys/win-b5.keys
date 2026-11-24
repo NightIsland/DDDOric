@@ -1,4 +1,4 @@
-# solve 5 2: billing 5 from the title, 2 scene(s), each on its first take
+# solve 5 4: billing 5 from the title, 4 scene(s), each on its first take
 1 L
 3 L
 5 L
@@ -15,6 +15,11 @@
 1031-1035 accel
 1061-1200 accel
 1286-1344 accel
+1364-1558 accel
+1659-1663 accel
+1754-1835 accel
+1840-2179 accel
+2215-2385 accel
 10 jump
 95 jump
 194 jump
@@ -27,6 +32,20 @@
 915 jump
 1114 jump
 1201 jump
+1346 jump
+1348 jump
+1389 jump
+1474 jump
+1574 jump
+1669 jump
+1754 jump
+1837 jump
+1839 jump
+1850 jump
+1965 jump
+2234 jump
+2340 jump
 303 stop
 1060 stop
-# 1344 steps
+2213 stop
+# 2385 steps
