@@ -195,13 +195,20 @@ static void bulb_at(uint8_t n, uint8_t y, uint8_t c)
     p[0] = p[80] = 0x4C;                    /* a bulb's round top and bottom */
 }
 
+/* The title's menu and top five: the menu a little tighter and the top five
+   lower, for a gap between them (Bob, BUILD 20: with the status rows gone
+   the screen's foot was empty) */
+#define MENU_Y  108
+#define MENU_DY 11
+#define TOP5_Y  149
+
 static void title_menu(void)
 {
-    text(24, 122, "           ");
-    text(24, 122, billing_name[m.billing]);
-    text(24, 134, "OFF");
+    text(24, MENU_Y + MENU_DY, "           ");
+    text(24, MENU_Y + MENU_DY, billing_name[m.billing]);
+    text(24, MENU_Y + 2 * MENU_DY, "OFF");
     if (m.sound)
-        text(24, 134, "ON ");
+        text(24, MENU_Y + 2 * MENU_DY, "ON ");
     shown_billing = m.billing;
     shown_sound = m.sound;
 }
@@ -245,16 +252,16 @@ void frame_title(void)
     memset(line_colours(102, BLACK, YELLOW) + 2, 0x7F, 38);
 
     band(104, 141, BLACK, CYAN);            /* the menu */
-    text(12, 110, "1  START");
-    text(12, 122, "L  BILLING");
-    text(12, 134, "S  SOUND");
+    text(12, MENU_Y, "1  START");
+    text(12, MENU_Y + MENU_DY, "L  BILLING");
+    text(12, MENU_Y + 2 * MENU_DY, "S  SOUND");
     title_menu();
 
     band(142, 199, BLACK, WHITE);           /* the top five */
-    ink(146, 153, BLACK, YELLOW);
-    ctext(146, "TODAY'S TOP FIVE");
+    ink(TOP5_Y, TOP5_Y + 7, BLACK, YELLOW);
+    ctext(TOP5_Y, "TODAY'S TOP FIVE");
     for (i = 0; i < NBEST; ++i)
-        best_line(i, 158 + 8 * i);
+        best_line(i, TOP5_Y + 12 + 8 * i);
 }
 
 void frame_title_step(void)

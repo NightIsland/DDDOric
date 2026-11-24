@@ -638,8 +638,8 @@ def text_at(r, col, y, s):
 
 
 check("title: the menu and today's top five (the film crew's fees to beat)",
-      text_at(r, 12, 110, "1  START") and text_at(r, 24, 122, "EXTRA") and text_at(r, 24, 134, "ON")
-      and text_at(r, 16, 158, "DIR") and text_at(r, 21, 190, "$50"))
+      text_at(r, 12, 108, "1  START") and text_at(r, 24, 119, "EXTRA") and text_at(r, 24, 130, "ON")
+      and text_at(r, 16, 161, "DIR") and text_at(r, 21, 193, "$50"))
 r_play = emu.run(TAP, frames=60, keys=START, out=os.path.join(OUT, "f4-rows"))
 check("title: no status rows (Bob, BUILD 19); they come back for play",
       sorted(r.mem[0xBF68:0xBF68 + 120]).count(0x20) == 119   # (and the HIRES mode cell)
@@ -679,8 +679,8 @@ check("flow.keys on the Oric: same trace as the native model", rf.trace.decode()
 bf = [rf.mem[syms["_best_fee"] + 2 * i] | rf.mem[syms["_best_fee"] + 2 * i + 1] << 8 for i in range(5)]
 bn = bytes(rf.mem[syms["_best_name"]:syms["_best_name"] + 15]).decode()
 check("top five: $90 goes in fifth with the initials typed, BOB; the title shows it",
-      bf == [250, 200, 150, 100, 90] and bn == "DIRCAMSFXMUABOB" and text_at(rf, 16, 190, "BOB")
-      and text_at(rf, 21, 190, "$90"), f"{bf} {bn}")
+      bf == [250, 200, 150, 100, 90] and bn == "DIRCAMSFXMUABOB" and text_at(rf, 16, 193, "BOB")
+      and text_at(rf, 21, 193, "$90"), f"{bf} {bn}")
 fm = {s_["step"]: s_["mode"] for s_ in ft}
 check("initials (Bob, BUILD 17): a third letter doesn't end them; Del takes one back; Return finishes",
       fm[1103] == NAME and fm[1114] == NAME and fm[1117] == TITLE, f"modes {fm[1103]}, {fm[1114]}, {fm[1117]}")
@@ -746,7 +746,7 @@ check("RAM full of junk at load (as on a booted Oric): the first scene and rider
 rq = emu.run(TAP, frames=200, keys=qk, out=os.path.join(OUT, "f4-quit"))
 eng = [v for c, reg, v in rq.ay if reg == 8 and v and rq.marks[30] <= c < rq.marks[150]]
 check("quit.keys: S turns the sound off (no engine while riding), S again on (the menu says ON)",
-      not eng and text_at(rq, 24, 134, "ON") and rq.trace.decode().splitlines() == ref_trace(qk, 200)[:199],
+      not eng and text_at(rq, 24, 130, "ON") and rq.trace.decode().splitlines() == ref_trace(qk, 200)[:199],
       f"{len(eng)} engine volume writes")
 
 # 8. Oricutron build: noise an octave lower (every R6 value doubled)
