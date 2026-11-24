@@ -78,10 +78,28 @@ const struct scene scene_rhr1 = {
 /* The test track: the same street with nothing on it, for the harness's
    physics and drawing checks (make test builds it as build/empty with
    -DSCENE=scene_test; tools/ref/ref.c takes "test"). */
+#if !defined(__CC65__) || defined(SCENE)    /* (not in the game itself) */
 const struct scene scene_test = {
     "TEST TRACK", 1, VH_BIKE, GROUND_ROAD, &pal_city,
     {   { { HZ_NONE, 0, 0, 0, 0 } } },
 };
+
+/* F6a's stress scene (DESIGN "Step budget"): two hazards that move every step
+   (the police car and a bat) and three jets, staggered, to prove the step
+   rules before any film is laid out (make test builds it as build/stress). */
+const struct scene scene_stress = {
+    "STRESS TEST", 1, VH_BIKE, GROUND_ROAD, &pal_city,
+    {
+        {   { HZ_JET, 100, ART_FLARE, 0, 0 },
+            { HZ_BLOCK, 180, ART_DRUMS, 0, 0 } },
+        {   { HZ_RUNNER, 150, ART_POLICE, 0, 0 } },
+        {   { HZ_JET, 60, ART_FLARE, 5, 0 },
+            { HZ_JET, 160, ART_FLARE, 10, 0 } },
+        {   { HZ_BLOCK, 100, ART_DRUMS, 0, 0 },
+            { HZ_FLYER, 170, ART_BAT, 24, 0 } },
+    },
+};
+#endif
 
 /* Night harbour: black sky over the channel, the rider in white; the water
    from the surface line down is blue with cyan waves (and rocks, where a gap

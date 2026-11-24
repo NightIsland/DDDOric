@@ -160,7 +160,7 @@ def reference(r):
 
 def moving(name="scene_rhr1", bill=1):
     sc = scene_ref.load_scene(name, bill)
-    return [(t, k, x, a) for t, recs in enumerate(sc["tracks"]) for k, x, a, b in recs if k in (2, 3)]
+    return [(t, k, x, a) for t, recs in enumerate(sc["tracks"]) for k, x, a, b in recs if k in (2, 3, 6, 8)]
 
 
 SC = scene_ref.load_scene(billing=1)
@@ -187,8 +187,10 @@ def drawn_pos(r, tap=TAP, name=None):
         n = 1 + i
         y, c = r.mem[sy["_sp_y"] + n], r.mem[sy["_sp_c"] + n]
         img = r.mem[sy["_sp_lo"] + n] | r.mem[sy["_sp_hi"] + n] << 8
-        if k == 2:
+        if k in (2, 8):
             pos.append((c - 2) * 6 + runner_shift(r, sy, i, a, img))
+        elif k == 6:                            # a jet: drawn (on) or not
+            pos.append(2 if r.mem[sy["_sp_on"] + n] else 0)
         else:
             pos.append(y - (8 + 48 * t + scene_ref.DANGLE_TOP))
     return pos
@@ -196,7 +198,8 @@ def drawn_pos(r, tap=TAP, name=None):
 
 def lamp_lines(name="scene_rhr1", bill=1):
     """the runners' top two lines: their ink flashes red and blue (Bob, BUILD 13)"""
-    return [(8 + 48 * t + 44 - 12, 8 + 48 * t + 45 - 12) for t, k, x, a in moving(name, bill) if k == 2]
+    return [(8 + 48 * t + 44 - 12, 8 + 48 * t + 45 - 12) for t, k, x, a in moving(name, bill)
+            if k == 2 and mkart.SCENERY[a][0] in ("police", "boat")]
 
 
 def with_hazards(want, r, tap=TAP):
@@ -208,12 +211,15 @@ def with_hazards(want, r, tap=TAP):
     sy = emu.symbols(tap)
     for i, (t, k, x, a) in enumerate(moving(name, bill)):
         g = 1 + i + 8
-        if k == 2 and r.mem[sy["_sp_on"] + g]:
+        if k == 6 and r.mem[sy["_mv_hot"] + i]:     # a jet's warning: its vent glows
+            w = mkart.scenery(mkart.SCENERY[a][0])[1]
+            want[(8 + 48 * t + 44 + 2) * 40 + 2 + (x + w // 2) // 6] ^= scene_ref.VENT_HOT
+        if k in (2, 8) and r.mem[sy["_sp_on"] + g]:
             c = r.mem[sy["_sp_c"] + g]
             img = r.mem[sy["_sp_lo"] + g] | r.mem[sy["_sp_hi"] + g] << 8
             gx = (c - 2) * 6 + runner_shift(r, sy, i, a, img)
             art = mkart.SCENERY[a][0]
-            for a_, v in scene_ref.sprite_bytes(art, gx, 8 + 48 * t + scene_ref.ROAD - mkart.scenery(art)[2]).items():
+            for a_, v in scene_ref.sprite_bytes(art, gx, r.mem[sy["_sp_y"] + g]).items():
                 want[a_ - 0xA000] ^= v
     for y0, y1 in lamp_lines(name, bill):   # red and blue, either way round
         inks = (r.mem[0xA000 + y0 * 40], r.mem[0xA000 + y1 * 40])
@@ -901,6 +907,50 @@ check("win-b6.keys: no runner drawn twice but across a wrap (Bob, BUILD 17)", no
       f"steps {ghosts[:8]}" if ghosts else "")
 check(f"scene: rider and hazards under 1% torn frames over the {len(runs)} scripts", sc_torn * 100 < sc_draw,
       f"{sc_torn} torn of {sc_draw} drawing steps")
+
+# F6a: the stress scene (src/scene.c scene_stress, DESIGN "Step budget"): two
+# hazards that move every step (the police car, a bat) and three jets, won at
+# billing 6 by tools/solve (tests/keys/stress-b6.keys).  The Oric plays it as
+# the model does; few steps run long (the screen wraps, as in film 1); the
+# runner and flyer are drawn within 12 px of the game's place but at a wrap;
+# the screen matches the reference every 50th step.
+STAP = os.path.join(B, "stress", "stuntbob.tap")
+sk = os.path.join(KEYS, "stress-b6.keys")
+scene_ref.ONLY = "scene_stress"
+sref = subprocess.run([REF, sk, "1200", "stress"], capture_output=True, check=True).stdout.decode().splitlines()
+r = emu.run(STAP, frames=1200, keys=sk, out=os.path.join(OUT, "stress"))
+emu.write_png(os.path.join(OUT, "f6a-stress.png"), r.rgb, 2)
+sl = [parse(l) for l in sref]
+sclear = [q for q in sl if q["ev"] & 0x10]
+sb = steady_busy(r)
+check("stress-b6.keys: billing 6, both stress scenes cleared on the first take; the Oric's trace = the model's",
+      len(sclear) >= 2 and not any(q["ev"] & 0x80 for q in sl) and r.trace.decode().splitlines() == sref[:1199])
+check("stress scene: under 2% of riding steps over 20,000 cycles", sum(x > STEP for x in sb) * 50 < len(sb),
+      f"{sum(x > STEP for x in sb)} of {len(sb)}, worst {max(sb)}")
+ssy = emu.symbols(STAP)
+srecs = scene_ref.load_scene("scene_stress")["tracks"]
+sslots = [t * NSLOT + j for t, recs in enumerate(srecs) for j, rec in enumerate(recs) if rec[0] in (2, 3, 6, 8)]
+lagw, sbad = [], []
+for n in range(40, 1200, 10):
+    r = emu.run(STAP, frames=n, keys=sk, out=os.path.join(OUT, "stress-n"))
+    if parse(r.trace.decode().splitlines()[-1])["mode"] != PLAY:
+        continue
+    pos = drawn_pos(r, STAP, "scene_stress")
+    hz = r.mem[ssy["_hz_px"]:ssy["_hz_px"] + 4 * NSLOT]
+    for i, (t, k, x, a) in enumerate(moving("scene_stress", 6)):
+        if k in (2, 8) and r.mem[ssy["_sp_on"] + 1 + i] and parse(r.trace.decode().splitlines()[-4])["mode"] == PLAY:
+            d = abs(pos[i] - hz[sslots[i]])
+            if 12 < d < 150:
+                lagw.append((n, k, d))
+    if n % 50 == 0:
+        want = with_hazards(with_rider(scene_ref.scene_bytes(6, "scene_stress"), r), r, STAP)
+        got = r.mem[0xA000:0xA000 + 8000]
+        if any(want[i] != got[i] for i in range(320, 8000)):
+            sbad.append(n)
+check("stress scene: the police car and the bat drawn within 12 px of the game's place (but at a wrap)", not lagw,
+      str(lagw[:6]))
+check("stress scene: screen = reference (scene, rider, runner, flyer, jets and their vents)", not sbad, str(sbad))
+scene_ref.ONLY = None
 
 print(f"\n{'ALL PASS' if not fails else f'{fails} FAILED'}")
 sys.exit(1 if fails else 0)

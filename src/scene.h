@@ -11,7 +11,8 @@
      GAP       left edge     width in px           lowest billing that shows it
      CEILING   left edge     art                   band line of its bottom edge
      RAMP      left edge     art                   -   (F5: fires a long jump)
-     JET       (F6)
+     JET       left edge     art                   phase, in 16ths of its period (F6a)
+     FLYER     start         art                   band line of its underside (F6a)
 
    F1 draws a scene; F3 makes the hazards move and collide (in src/model.c, from
    this same data, so the native model can use it too). */
@@ -28,6 +29,7 @@
 #define HZ_CEILING 5
 #define HZ_JET     6
 #define HZ_RAMP    7
+#define HZ_FLYER   8             /* a runner in the air: the rider passes under on the ground */
 
 #define SC_MAX 8                /* records per track (F5: room for every billing's hazards) */
 
@@ -62,6 +64,7 @@ struct scene {
 
 extern const struct scene scene_rhr1, scene_rhr2;
 extern const struct scene scene_test;     /* no hazards: harness only */
+extern const struct scene scene_stress;   /* F6a: two every-step movers, three jets: harness only */
 
 /* the scene at a place in the run (1 ..): a season is 12 scenes, 6 films of
    2; until F6 brings films 2-6, film 1's two scenes take turns.  Test builds

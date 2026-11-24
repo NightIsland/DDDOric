@@ -294,8 +294,37 @@ CRATE = """
 #..........#
 ############
 """
+# F6a: a bat (a flyer: underside at band line 24) and a gas flare (a jet, 16
+# lines when on)
+BAT = """
+#....##....#
+##..####..##
+############
+.##########.
+..#..##..#..
+.....##.....
+"""
+FLARE = """
+...##...
+..####..
+..####..
+.######.
+.##.###.
+.##..##.
+###..###
+##.##.##
+##.##.##
+#.####.#
+#.####.#
+##.##.##
+.##..##.
+.######.
+..####..
+...##...
+"""
 SCENERY = [("van", VAN), ("drums", DRUMS), ("police", POLICE), ("ball", BALL), ("girder", GIRDER),
-           ("buoy", BUOY), ("boat", BOAT), ("bridge", BRIDGE), ("slipway", SLIPWAY), ("crate", CRATE)]
+           ("buoy", BUOY), ("boat", BOAT), ("bridge", BRIDGE), ("slipway", SLIPWAY), ("crate", CRATE),
+           ("bat", BAT), ("flare", FLARE)]
 
 
 # ------------------------------------------------- the film frame (F4)

@@ -97,6 +97,7 @@ test:
 	$(MAKE) ORICUTRON=1 build/oricutron/$(NAME).tap
 	$(MAKE) B=build/b3 CDEFS=-DBILLING_START=3 build/b3/$(NAME).tap
 	$(MAKE) B=build/empty CDEFS=-DSCENE=scene_test build/empty/$(NAME).tap
+	$(MAKE) B=build/stress CDEFS=-DSCENE=scene_stress build/stress/$(NAME).tap
 	$(MAKE) build/emu/emu build/ref/ref
 	python3 tools/test_f0.py
 

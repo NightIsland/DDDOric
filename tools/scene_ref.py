@@ -13,7 +13,9 @@ sys.path.insert(0, os.path.join(ROOT, "tools"))
 import mkart  # noqa: E402
 
 COLOURS = dict(BLACK=0, RED=1, GREEN=2, YELLOW=3, BLUE=4, MAGENTA=5, CYAN=6, WHITE=7)
-KINDS = dict(HZ_NONE=0, HZ_BLOCK=1, HZ_RUNNER=2, HZ_DANGLER=3, HZ_GAP=4, HZ_CEILING=5, HZ_JET=6, HZ_RAMP=7)
+KINDS = dict(HZ_NONE=0, HZ_BLOCK=1, HZ_RUNNER=2, HZ_DANGLER=3, HZ_GAP=4, HZ_CEILING=5, HZ_JET=6, HZ_RAMP=7, HZ_FLYER=8)
+VENT, VENT_HOT = 0x5E, 0x1E                  # a jet's grate on the road's second line; XORed below while it warns
+ONLY = None                                 # set: every scene is this one (a -DSCENE= build)
 ART = {f"ART_{n.upper()}": i for i, (n, _) in enumerate(mkart.SCENERY)}
 TITLE, BAND, RIDER_TOP, ROAD = 8, 48, 28, 44
 DANGLE_TOP = 6                              # src/model.h
@@ -37,7 +39,7 @@ def load_scene(name="scene_rhr1", billing=None):
     body = body[:body.index("\n};")]
     head = body.split("{", 2)[1]                # "film", number, vehicle, ground, &pal,
     pname = re.search(r"&(pal_\w+)", head).group(1)
-    vehicle = 1 if "VH_JETSKI" in head else 0
+    vehicle = re.search(r"VH_(\w+)", head).group(1).lower()
     ground = 1 if "GROUND_WATER" in head else 0
     pal = src[src.index(pname + " = {"):src.index("};", src.index(pname + " = {"))]
     names = re.findall(r"\b(BLACK|RED|GREEN|YELLOW|BLUE|MAGENTA|CYAN|WHITE)\b", pal.split("{", 1)[1])
@@ -56,11 +58,13 @@ def load_scene(name="scene_rhr1", billing=None):
         tracks.append(recs)
     tracks += [[] for _ in range(4 - len(tracks))]
     return dict(title_paper=title_paper, title_ink=title_ink, paper=paper, ink=ink, tracks=tracks,
-                vehicle=["bike", "jetski"][vehicle], water=bool(ground))
+                vehicle=vehicle, water=bool(ground))
 
 
 def scene_at(run_scene):
     """src/scene.c scene_at: film 1's two scenes take turns (until F6)"""
+    if ONLY:
+        return ONLY
     return "scene_rhr1" if run_scene % 2 else "scene_rhr2"
 
 
@@ -112,6 +116,9 @@ def scene_bytes(billing=1, name="scene_rhr1"):
         for kind, x, a, b in recs:
             if kind in (1, 7):                  # blocks and slipways stand on the road
                 blit(a, x, y0 + ROAD - 1)
+            elif kind == 6:                     # a jet: its vent in the road (the jet moves)
+                w = mkart.scenery(mkart.SCENERY[a][0])[1]
+                mem[(y0 + ROAD + 1) * 40 + 2 + (x + w // 2) // 6] = VENT
             elif kind == 3:
                 rows, w, h = mkart.scenery(mkart.SCENERY[a][0])
                 for y in range(y0, y0 + DANGLE_TOP):
@@ -155,7 +162,8 @@ def sprite_bytes(name, x, top):
 
 def hazard_bytes(name="scene_rhr1", pos=None, billing=1):
     """{address: xor mask} of the scene's moving hazards where pos says:
-    pos[i] = x px of a runner, or the drop of a dangler, for the i-th moving
+    pos[i] = x px of a runner or flyer, the drop of a dangler, or a jet's state
+    (2: on), for the i-th moving
     hazard in scene order.  Runners sit on the road; a dangler's rope runs
     from its band's top line down to the ball."""
     sc = load_scene(name, billing)
@@ -163,7 +171,7 @@ def hazard_bytes(name="scene_rhr1", pos=None, billing=1):
     for t, recs in enumerate(sc["tracks"]):
         y0 = TITLE + t * BAND
         for kind, x, a, b in recs:
-            if kind not in (2, 3):
+            if kind not in (2, 3, 6, 8):
                 continue
             art = mkart.SCENERY[a][0]
             rows, w, h = mkart.scenery(art)
@@ -171,6 +179,10 @@ def hazard_bytes(name="scene_rhr1", pos=None, billing=1):
             i += 1
             if kind == 2:
                 pic = sprite_bytes(art, p, y0 + ROAD - h)
+            elif kind == 8:                     # a flyer: b is its underside's band line
+                pic = sprite_bytes(art, p, y0 + b + 1 - h)
+            elif kind == 6:                     # a jet: drawn while on (pos 2)
+                pic = sprite_bytes(art, x, y0 + ROAD - h) if p == 2 else {}
             else:
                 top = y0 + DANGLE_TOP + p
                 pic = sprite_bytes(art, x, top)

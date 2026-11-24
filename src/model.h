@@ -115,7 +115,11 @@ extern struct model m;
 
 /* hazards, per slot track * SC_MAX + i: where to draw them */
 extern uint8_t hz_px[NHAZ];     /* x in pixels (runners move) */
-extern uint8_t hz_drop[NHAZ];   /* danglers: lines below the top position, 0 .. DANGLE_MAX */
+extern uint8_t hz_drop[NHAZ];   /* danglers: lines below the top position, 0 .. DANGLE_MAX;
+                                   jets: JET_OFF, JET_WARNING or JET_ON */
+#define JET_OFF     0
+#define JET_WARNING 1
+#define JET_ON      2
 #define DANGLE_MAX 25           /* M1: the line runs 1 .. 26 lines */
 #define DANGLE_TOP 6            /* band line of a dangler's top when up */
 

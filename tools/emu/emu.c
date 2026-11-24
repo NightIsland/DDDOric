@@ -20,6 +20,8 @@
    Harness debug port (RAM that is never displayed, harmless on real hardware):
      $BFE0 write: append byte to trace.txt   $BFE1 write: MARK (frame start)
      $BFE2 write: HALT (exit code = value)   $BFE3 write: BUSY (frame work done)
+     $BFE4 write: a trace byte (F6a): each 21 make one line of trace.txt, in
+                  the native model's hex format (src/trace.c)
 
    Usage: emu (--tap F | --bin F@ADDR) [--start ADDR] [--clock mark|video]
               [--frames N] [--keys F] [--max-cycles N] [--irqvec ADDR]
@@ -231,6 +233,17 @@ static void wr(uint16_t ad, uint8_t v)
     mem[ad] = v;
     if (f_wlog && ad >= 0xA000 && ad < 0xBF40)
         fprintf(f_wlog, "%u %u %llu\n", ad, v, (unsigned long long)cycles);
+    if (ad == 0xBFE4) {                               /* F6a: binary trace bytes */
+        static uint8_t tb[21]; static unsigned tn;
+        tb[tn++] = v;
+        if (tn == 21) {
+            tn = 0;
+            fprintf(f_trace, "%02x%02x %c %02x%02x %02x%02x %02x %02x %02x %02x %02x %02x %02x %02x %02x%02x %02x %02x %02x %02x\n",
+                    tb[0], tb[1], '0' + tb[2], tb[3], tb[4], tb[5], tb[6], tb[7], tb[8], tb[9], tb[10], tb[11],
+                    tb[12], tb[13], tb[14], tb[15], tb[16], tb[17], tb[18], tb[19], tb[20]);
+        }
+        return;
+    }
     if (ad >= 0xBFE0 && ad <= 0xBFE3) {
         switch (ad) {
         case 0xBFE0: fputc(v, f_trace);
@@ -591,6 +604,9 @@ static FILE *outf(const char *dir, const char *name, const char *mode)
     return f;
 }
 
+static int prof;
+static uint32_t prof_cyc[65536];
+
 int main(int argc, char **argv)
 {
     const char *tap = 0, *bin = 0, *keys = 0, *out = 0;
@@ -618,6 +634,7 @@ int main(int argc, char **argv)
         }
         else if (!strcmp(o, "--tcycles")) tcyc = 1;
         else if (!strcmp(o, "--wlog")) wlog = 1;
+        else if (!strcmp(o, "--prof")) prof = 1;     /* cycles spent at each PC: prof.bin */
         else if (!strcmp(o, "--junk")) {    /* RAM as a booted machine leaves it: not zero */
             unsigned x = (unsigned)strtoul(v, 0, 0) | 1;
             for (long a = 0; a < 0xC000; a++) { x ^= x << 13; x ^= x >> 17; x ^= x << 5; mem[a] = (uint8_t)x; }
@@ -666,6 +683,7 @@ int main(int argc, char **argv)
         if (flat && pc == pc0) { for (unsigned k = 0; k < 16; k++) fprintf(stderr, "%04X ", hist[(hn + k) & 15]); fprintf(stderr, "\n"); }
         if (flat && pc == pc0) { stop = 1; snprintf(stop_msg, sizeof stop_msg, "trap $%04X", pc); }
         cycles += c;
+        if (prof) prof_cyc[pc0] += c;
         via_tick(c);
         if (in_irq && op0 == 0x40) {
             in_irq = 0;
@@ -710,6 +728,7 @@ int main(int argc, char **argv)
     fclose(f_trace); fclose(f_ay); fclose(f_marks); fclose(f_irq);
     if (f_tcyc) fclose(f_tcyc);
     if (f_wlog) fclose(f_wlog);
+    if (prof) { f = outf(out, "prof.bin", "wb"); fwrite(prof_cyc, sizeof prof_cyc[0], 65536, f); fclose(f); }
     printf("stop=%s cycles=%llu frames=%ld marks=%ld pc=$%04X autorun=$%02X hires=%d irqs=%lu\n",
            stop == 2 ? "ERROR" : "ok", (unsigned long long)cycles, frame, nmarks, pc, autorun, ula_hires, nirq);
     if (stop == 2) fprintf(stderr, "emu: %s\n", stop_msg);

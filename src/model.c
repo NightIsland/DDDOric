@@ -22,6 +22,12 @@ static const uint8_t art_w[] = { SCENERY_W_DATA }, art_h[] = { SCENERY_H_DATA };
 static const uint8_t run_mul[BILLINGS + 1] = { 4, 4, 5, 5, 6, 6, 7 };
 static const uint8_t dangle_half[BILLINGS + 1] = { 6, 6, 5, 5, 4, 4, 3 };
 static uint8_t dangle_reload;       /* this billing's dangle_half */
+/* Jets (DESIGN "The two new behaviours"): off, a warning, then on, over a
+   period of 150 steps at billing 1 (50 of them on, 25 warning before),
+   shortening with the billing as the danglers' steps do. */
+static const uint8_t jet_period[BILLINGS + 1] = { 150, 150, 125, 125, 100, 100, 75 };
+#define JET_WARN 25
+static uint8_t jet_p, jet_on;       /* this billing's period and steps on */
 #define RIDER_TOP_LINE 28           /* band line of the rider's top row on the road */
 #define ROAD_TOP_LINE  44           /* band line of the road: hazards stand on it */
 
@@ -50,6 +56,17 @@ static uint8_t nmov, mov[MAXMOV];
 static uint8_t pxt[PXT_N];
 
 /* the moving hazards back to their places (the others never move) */
+static uint8_t jet_phase[NHAZ];      /* jets: start, in steps into the period */
+
+static uint8_t jet_state(uint8_t t)
+{
+    if (t >= (uint8_t)(jet_p - jet_on))
+        return JET_ON;
+    if (t >= (uint8_t)(jet_p - jet_on - JET_WARN))
+        return JET_WARNING;
+    return JET_OFF;
+}
+
 static void hazards_start(void)
 {
     uint8_t i, j;
@@ -61,6 +78,10 @@ static void hazards_start(void)
         hz_t[i] = dangle_reload;
         if (hk[i] == HZ_DANGLER)
             htop[i] = DANGLE_TOP;
+        if (hk[i] == HZ_JET) {
+            hz_t[i] = jet_phase[i];
+            hz_drop[i] = jet_state(hz_t[i]);
+        }
     }
 }
 
@@ -69,7 +90,11 @@ static void hazards_step(void)
     uint8_t i, j, f, n, sum = 0;
     for (j = 0; j < nmov; ++j) {
         i = mov[j];
-        if (hk[i] == HZ_RUNNER) {           /* drives on, and wraps at the edges */
+        if (hk[i] == HZ_JET) {              /* round its period: off, warning, on */
+            if (++hz_t[i] == jet_p)
+                hz_t[i] = 0;
+            hz_drop[i] = jet_state(hz_t[i]);
+        } else if (hk[i] == HZ_RUNNER || hk[i] == HZ_FLYER) {   /* drives on, and wraps */
             /* the fraction counts up driving right and down driving left,
                a px for each carry or borrow (as F3 had it in 1/256 px) */
             f = hz_frac[i] - (hz_sp[i] & 0x7F);
@@ -134,7 +159,7 @@ static uint8_t crashed(void)
     rt = RIDER_TOP_LINE - m.height;
     for (slot = m.track * SC_MAX, n = SC_MAX; n; --n, ++slot) {
         k = hk[slot];
-        if (!k || k == HZ_RAMP)
+        if (!k || k == HZ_RAMP || (k == HZ_JET && hz_drop[slot] != JET_ON))
             continue;
         x0 = hz_px[slot];
         if (k == HZ_GAP) {
@@ -227,6 +252,8 @@ static void scene_load(void)
     h = &m.scene->h[0][0];                  /* the bands' hazards, all in a row */
     hit_vh = hit_rider + m.scene->vehicle * (3 * RIDER_W);
     dangle_reload = dangle_half[m.billing];
+    jet_p = jet_period[m.billing];
+    jet_on = jet_p / 3;
     nmov = 0;
     for (i = 0; i < NHAZ; ++i, ++h) {
         hk[i] = h->kind;
@@ -243,6 +270,19 @@ static void scene_load(void)
             htop[i] = ROAD_TOP_LINE - hh[i];   /* blocks and runners stand on the road */
         }
         switch (h->kind) {
+        case HZ_FLYER:                      /* at the billing's runner speed, leftwards */
+            htop[i] = h->b + 1 - hh[i];
+            hz_sp[i] = (uint8_t)(((uint16_t)RUN_STD * run_mul[m.billing]) >> 2);
+            hz_right[i] = 0;
+            hz_max[i] = PLAY_W - hw[i];
+            if (nmov < MAXMOV)
+                mov[nmov++] = i;
+            break;
+        case HZ_JET:
+            jet_phase[i] = (uint8_t)(((uint16_t)(h->b & 15) * jet_p) >> 4);
+            if (nmov < MAXMOV)
+                mov[nmov++] = i;
+            break;
         case HZ_RUNNER:
             sp = h->b & 0x7F;
             if (!sp)
@@ -264,7 +304,7 @@ static void scene_load(void)
         case HZ_BLOCK:
         case HZ_RAMP:
             break;
-        default:                            /* jets: F6 */
+        default:
             hk[i] = HZ_NONE;
         }
     }

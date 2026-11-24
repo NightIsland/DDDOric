@@ -176,29 +176,3 @@ ay_write:
         sta     VIA_PCR
         rts
 
-; Trace output for the harness (src/trace.c): a byte as two hex digits, and
-; the same with a space, straight to the debug port $BFE0 from tables.
-        .export         _hex2, _hex2sp
-
-_hex2:  tax
-        lda     hexhi,x
-        sta     $BFE0
-        lda     hexlo,x
-        sta     $BFE0
-        rts
-
-_hex2sp:
-        jsr     _hex2
-        lda     #' '
-        sta     $BFE0
-        rts
-
-        .segment        "RODATA"
-hexhi:
-        .repeat 256, I
-        .byte   .strat("0123456789abcdef", I >> 4)
-        .endrep
-hexlo:
-        .repeat 256, I
-        .byte   .strat("0123456789abcdef", I & 15)
-        .endrep

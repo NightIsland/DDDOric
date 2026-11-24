@@ -54,6 +54,7 @@ static int W = 1, GRID = 5, nostop;      /* SOLVE_NOSTOP=1: never use the stop *
    scene's over them (scene_load), so they are put back after every check */
 static struct {
     uint8_t hk[NHAZ], hw[NHAZ], hh[NHAZ], sp[NHAZ], right[NHAZ], max[NHAZ], x0[NHAZ], nmov, mov[MAXMOV], dr;
+    uint8_t jph[NHAZ], jp, jo;
     const uint16_t *hcol[NHAZ], *hit;
     const struct scene *scene;
 } tab;
@@ -63,6 +64,7 @@ static void tab_save(void)
     memcpy(tab.sp, hz_sp, NHAZ); memcpy(tab.right, hz_right, NHAZ); memcpy(tab.max, hz_max, NHAZ);
     memcpy(tab.x0, hz_x0, NHAZ); tab.nmov = nmov; memcpy(tab.mov, mov, MAXMOV); tab.dr = dangle_reload;
     memcpy(tab.hcol, hcol, sizeof hcol); tab.hit = hit_vh;
+    memcpy(tab.jph, jet_phase, NHAZ); tab.jp = jet_p; tab.jo = jet_on;
 }
 static void tab_load(void)
 {
@@ -70,6 +72,7 @@ static void tab_load(void)
     memcpy(hz_sp, tab.sp, NHAZ); memcpy(hz_right, tab.right, NHAZ); memcpy(hz_max, tab.max, NHAZ);
     memcpy(hz_x0, tab.x0, NHAZ); nmov = tab.nmov; memcpy(mov, tab.mov, MAXMOV); dangle_reload = tab.dr;
     memcpy(hcol, tab.hcol, sizeof hcol); hit_vh = tab.hit;
+    memcpy(jet_phase, tab.jph, NHAZ); jet_p = tab.jp; jet_on = tab.jo;
 }
 
 /* from state s (hazards hz): wait d steps then jump, for d = 0 .. W - 1,
@@ -312,6 +315,8 @@ int main(int argc, char **argv)
     if (argc > 4)
         W = atoi(argv[4]);
     nostop = getenv("SOLVE_NOSTOP") && *getenv("SOLVE_NOSTOP");
+    if (getenv("SOLVE_SCENE") && !strcmp(getenv("SOLVE_SCENE"), "stress"))
+        scene_only = &scene_stress;     /* F6a's stress scene, every scene */
     hset = malloc(sizeof(uint32_t) << HBITS);
     hval = malloc(sizeof(int) << HBITS);
     cur = malloc(sizeof *cur * (size_t)beam * 6);
