@@ -23,6 +23,9 @@ void snd_crash(void);                            /* crash */
 void snd_fee(void);                              /* fee paid */
 void snd_clack(void);                            /* the clapper arm shuts */
 void __fastcall__ snd_squawk(uint8_t note);      /* "CUT!": note 0, then 1 */
+void __fastcall__ snd_voice(uint8_t vehicle);    /* F6g: the engine's voice, VH_* */
+void __fastcall__ snd_sting(uint8_t film);       /* F6g: a film's sting 0-5, 255 stops */
+extern uint8_t snd_speed;                        /* F6g: the speed, for the voices */
 uint8_t keys_ascii(void);       /* F4: the code of a key held (src/model.h K_*), 0 = none */
 
 /* harness debug port (docs/ORIC-LESSONS.md section 6): RAM never displayed */

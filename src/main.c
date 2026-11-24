@@ -28,11 +28,30 @@ static void scene_show(void)
     hazards_draw();
 }
 
+/* F6g: the engine's pitch for each vehicle (art.h VH_* order), x 1/8 of the
+   motorbike's: the mine cart and the ghost train lower, the hover bike and
+   the snowmobile higher */
+static const uint8_t eng_mul[] = { 8, 8, 8, 14, 11, 16, 6, 7, 9, 8, 6 };
+
+/* F6g: the film's sting on the clapper card of a scene's first take */
+static void sting(void)
+{
+    uint8_t i;
+
+    if (!m.sound || m.take_no != 1)
+        return;
+    for (i = 0; i < 6; ++i)
+        if (films[i] == m.scene->film)
+            snd_sting(i);
+}
+
 static void mode_show(uint8_t was)
 {
+    if (was == M_CARD)
+        snd_sting(255);                     /* the card's tune stops with it */
     switch (m.mode) {
     case M_TITLE: frame_title(); break;
-    case M_CARD:  frame_card(m.scene); break;
+    case M_CARD:  frame_card(m.scene); sting(); break;
     case M_PLAY:  if (was == M_CARD) scene_show(); break;
     case M_PRINT: frame_print(); break;
     case M_FIRED: frame_fired(); break;
@@ -48,6 +67,7 @@ void main(void)
 {
     uint8_t in, key, x, frame, shown = M_TITLE, paused = 0;
     uint16_t engine = 1, period;
+    uint8_t voice = 0;
 
     screen_init();
     frame_init();
@@ -134,10 +154,16 @@ void main(void)
                 snd_land();
         }
         /* engine: ticking over at 50 Hz standing, rising to 320 Hz at top
-           speed (period = 62,500 / f); only while riding, sound on */
+           speed (period = 62,500 / f), the motorbike's; only while riding,
+           sound on */
         period = 0;
+        snd_speed = m.speed;
+        if (m.scene->vehicle != voice) {    /* F6g: each vehicle's own voice */
+            voice = m.scene->vehicle;
+            snd_voice(voice);
+        }
         if (m.mode == M_PLAY && !m.paused && m.sound)
-            period = 1250 - 4 * m.speed;
+            period = (uint16_t)((1250 - 4 * m.speed) * eng_mul[voice]) >> 3;
         if (period != engine) {
             engine = period;
             snd_engine(period);

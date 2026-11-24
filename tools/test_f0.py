@@ -614,6 +614,7 @@ for b in range(1, 7):
 # F6b: the Western's two scenes on the Oric, mid-ride at billing 6 (the
 # horse on the dusty street, the mine cart on the rails) = the reference
 # F6c: and the horror's (the hearse-trike on the cobbles, the ghost train)
+voice_runs = {}
 for fr, what in ((1700, "Dust at Dawn scene 1 (horse, dirt street)"), (2200, "Dust at Dawn scene 2 (mine cart, rails)"),
                  (2800, "Night of the Hearse scene 1 (hearse-trike, cobbles)"),
                  (3400, "Night of the Hearse scene 2 (ghost-train car)"),
@@ -625,11 +626,39 @@ for fr, what in ((1700, "Dust at Dawn scene 1 (horse, dirt street)"), (2200, "Du
                  (7250, "Cold Front scene 2 (snowmobile, Avalanche Pass)")):
     r = emu.run(TAP, frames=fr, keys=os.path.join(KEYS, "win-b6.keys"), out=os.path.join(OUT, f"f6-{fr}"))
     emu.write_png(os.path.join(OUT, f"f6-{fr}.png"), r.rgb, 2)
+    voice_runs[fr] = [(reg, v) for c, reg, v in r.ay if c >= r.marks[fr - 41]]
     want = reference(r)
     got = r.mem[0xA000:0xA000 + 8000]
     bad = [i for i in range(320, 8000) if want[i] != got[i]]
     check(f"win-b6.keys at step {fr}: {what} = scene + rider + moving hazards", not bad,
           f"{scene_of(r)[0]}: {len(bad)} wrong bytes" + (f", first line {bad[0] // 40} cell {bad[0] % 40}" if bad else ""))
+# F6g: each vehicle's engine voice (src/sound.s voices): its volume pattern,
+# a vibrato on the period for the ghost train, the hover bike and the carpet,
+# the skis on noise B; the period x eng_mul / 8 (src/main.c)
+VOICES = {1700: ("horse", {11, 4, 0, 9, 3}, 0, 8), 2200: ("mine cart", {12, 7}, 0, 14),
+          2800: ("hearse-trike", {11, 6, 8, 10}, 0, 11), 3400: ("ghost train", {9, 8}, 1, 16),
+          4100: ("hover bike", {9}, 1, 6), 4750: ("hover bike", {9}, 1, 6),
+          5250: ("dragon", {10, 0, 13}, 0, 7), 5900: ("magic carpet", {7}, 1, 9),
+          6600: ("skis", set(), 2, 8), 7250: ("snowmobile", {12, 5}, 0, 6)}
+vbad = []
+for fr, (name, vols, kind, mul) in VOICES.items():
+    w = voice_runs[fr]
+    got = {v for reg, v in w if reg == 8}
+    lo = [v for reg, v in w if reg == 0]
+    hi = [v for reg, v in w if reg == 1]
+    pers = {a | b << 8 for a, b in zip(lo, hi)}
+    swish = [v for reg, v in w if reg == 9 and v]
+    # (a steady volume is written once, before the window; the period moves
+    # with the speed too, so a vibrato shows as many periods)
+    ok = got <= vols if kind != 2 else (got <= {0} and set(swish) & {5, 6, 7})
+    if kind == 1:
+        ok = ok and len(pers) >= 3
+    if pers:
+        ok = ok and (min(pers) + 16) * 8 // mul >= 249 and max(pers) * 8 // mul <= 1270
+    if not ok:
+        vbad.append(f"{fr} {name}: volumes {sorted(got)}, periods {sorted(pers)[:6]}, noise {sorted(set(swish))}")
+check("F6g engine voices: each vehicle's volume pattern, vibrato (ghost train, hover bike, carpet), "
+      "the skis' swish on noise, the pitch scaled per vehicle", not vbad, "; ".join(vbad))
 # hazards in the game: the police car drives left 1 px a step (122/128) and
 # wraps; the ball bobs 1 line every 3 steps, 0..25 below its top
 syms = emu.symbols(TAP)
@@ -717,6 +746,15 @@ snap_t = r.marks[1 + CARD_SNAP - 1]
 clack = [v for c, reg, v in r.ay if reg == 6 and snap_t <= c < snap_t + 120000]
 check("clapper card: 1 starts it; with no key it lasts 1.8 s (90 steps), the arm shuts at 1.1 s with a "
       "noise clack", play_at == 1 + 90 and clack == [2], f"play at step {play_at}, noise at the snap {clack}")
+# F6g: the film's sting on the card (src/sound.s s_action): A and C from the
+# semitone table, then silence on both when play starts
+c0, c1 = 0, r.marks[play_at - 1]
+sa = [v for c, reg, v in r.ay if reg == 0 and c0 <= c < c1 and v]   # (snd_init's 0s first)
+sc = [v for c, reg, v in r.ay if reg == 4 and c0 <= c < c1 and v]
+end = [(reg, v) for c, reg, v in r.ay if c >= c1 and reg in (8, 10)]
+check("F6g sting: the action film's card plays its figure on A and C (E4+B4 twice, G4+D5, A4+E5), "
+      "then stops for play", sa == [190, 190, 159, 142] and sc == [127, 127, 106, 95] and (8, 0) in end
+      and (10, 0) in end, f"A {sa}, C {sc}")
 r = emu.run(TAP, frames=1 + CARD_SNAP + 4, keys=ck, out=os.path.join(OUT, "f4-card-action"))
 emu.write_png(os.path.join(OUT, "f4-card.png"), r.rgb, 2)
 check("clapper card: film, scene 1, take 1, \"ACTION!\" after the snap",

@@ -46,7 +46,7 @@ takes the next number.
 | F3 | Whole scene: four tracks, wrapping, block, runner, dangler, gap and ceiling block, crashes, fees, the one stop | F2 | whole step ≤ 16,000 cycles | merged (BUILD 11, PR #10); budget missed: average 16,100 riding flat out, worst 19,750 (see Results) |
 | F4 | Film frame: clapper card, takes, "Cut!", scene cleared, "You're fired", title screen, billing select, top five | F3 | riding steps stay under 20,000 cycles | merged (BUILD 13, PR #12; police lamps BUILD 14-15, PR #13) |
 | F5 | Film 1 (*Rush Hour Rumble*) complete at all six billings, tuned to M1's numbers; Bob judges the feel against the original | F4, M1 | | BUILD 20, PR #14 merged |
-| F6 | Films 2–6, jets and ramps, per-vehicle handling, music (no key redefinition: Bob, 24 Nov 2026) | F5 | memory ≤ 37 KB | F6a, F6b (Western) at BUILD 21, F6c (Horror) at BUILD 22, F6d (Sci-fi) at BUILD 23, F6e-f (Fantasy, Spy: the whole season) at BUILD 24; F6g music next |
+| F6 | Films 2–6, jets and ramps, per-vehicle handling, music (no key redefinition: Bob, 24 Nov 2026) | F5 | memory ≤ 37 KB | F6a, F6b (Western) at BUILD 21, F6c (Horror) at BUILD 22, F6d (Sci-fi) at BUILD 23, F6e-f (Fantasy, Spy: the whole season) at BUILD 24; F6g stings and engine voices at BUILD 25 (general music later: Bob, 24 Nov 2026) |
 | X1 | Optional: level codes from a seed, with a solver run over thousands of seeds in the harness | F5 | ≤ 2 KB | not started |
 
 M1 and F0 can run in parallel. F5 is the prototype milestone (plan step 3); F6 and X1 are polish
@@ -123,7 +123,8 @@ Briefs written by the architect when the previous feature is merged, from DESIGN
 ### F6: Films 2 to 6 (BUILD 21 onward, 24 Nov 2026)
 
 Built in DESIGN "Films 2 to 6" order: F6a shared parts, then one film a build (F6b Western, F6c
-Horror, F6d Sci-fi, F6e Fantasy, F6f Spy), then F6g music.
+Horror, F6d Sci-fi, F6e Fantasy, F6f Spy), then F6g stings and engine voices (Bob put them
+before general music, 24 Nov 2026).
 
 - **F6a, art shifted at scene start** (DESIGN "Memory"): vehicles are stored unshifted
   (`veh_art`, 128 bytes each) and shifted into `veh_buf` when the scene's vehicle changes; the
@@ -195,6 +196,19 @@ Horror, F6d Sci-fi, F6e Fantasy, F6f Spy), then F6g music.
   hidden a track); the rider's torn-frame rate is taken over the whole win runs (36,000 drawing
   steps, 0.5%), since a short sample catches more or fewer clusters as startup timing moves the
   step's phase. Billing 6 over budget on 1-3 steps of 400-830 per new scene. 1,561 bytes free.
+
+- **F6g, stings and engine voices** (BUILD 25; 132 checks pass, two new: the action sting's notes on the card, and every vehicle's voice mid-ride). Each film's clapper card plays a short sting on
+  tones A and C on a scene's first take (`snd_sting`: action figure, whistled Western, falling
+  horror chords, sci-fi arpeggio, fantasy fanfare, spy bass riff), from a semitone table with a
+  falling envelope; it stops when play starts. Each vehicle has its own engine voice
+  (`snd_voice`): an 8-step volume pattern on A (the motorbike's 10/7 buzz as before, a clip-clop
+  quicker with speed for the horse, a sleeper click for the cart, an uneven rattle for the
+  hearse-trike, a puff now and then for the dragon), a vibrato on the period for the ghost train,
+  the hover bike and the carpet, and a swish on noise B for the skis (only while no effect has
+  B). The pitch is the motorbike's times `eng_mul[vehicle] / 8` (`src/main.c`). About 700 bytes
+  left below `$9800` (the size line says 522: the page-aligned table leaves 190 unused below it)
+  for general music later. The voice only writes a new volume, and the vibrato moves every 8
+  ticks: writing both every 10 ms took enough IRQ time to starve a hover-scene draw.
 
 ### F5: Rush Hour Rumble at all six billings (BUILD 16, 23 Nov 2026)
 
