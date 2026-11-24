@@ -73,10 +73,9 @@ the text rows underneath. Nothing scrolls; only the rider, moving hazards and ef
 
 ## Controls
 
-Three game keys, all redefinable from the title screen, with defaults that match the original's
-layout: one hand on Space, the other with a finger on Shift and one ready on Return. No joystick.
+Three game keys, fixed to match the original's layout (Bob dropped key redefinition, 24 Nov 2026): one hand on Space, the other with a finger on Shift and one ready on Return. No joystick.
 
-| Action | Default key | Behaviour |
+| Action | Key | Behaviour |
 | --- | --- | --- |
 | Jump | Space | Starts a jump from the ground; held, it jumps again 3 steps after each landing, as in the original |
 | Accelerate | Either Shift | Held: speed builds, on the ground or in the air; released: the bike holds its current speed |
@@ -85,8 +84,6 @@ layout: one hand on Space, the other with a finger on Shift and one ready on Ret
 | Quit | Esc | Back to the title screen (asks Y/N) |
 | Sound | S (title screen) | Sound on or off |
 
-- **Redefining keys.** "K" on the title screen asks for each game key in turn. It refuses a key
-  already taken and the non-game keys above.
 - **Ghosting.** The Oric keyboard has no diodes, so holding three keys in an L can fake a fourth.
   Three game keys alone are safe, but a ghost could trigger Pause, so the game reads Pause and Quit
   only while no game key is held.
@@ -135,8 +132,8 @@ when.
 ## Obstacles and vehicles
 
 Every hazard is one of eight behaviours; each film dresses them in its own art. Block, runner,
-dangler, gap, ceiling block and flyer are the original's kinds; jet and ramp are new. (The flyer is
-proposed for films 2–6, see "Films 2 to 6" and open question 3.)
+dangler, gap, ceiling block and flyer are the original's kinds; jet and ramp are new. (Bob agreed
+the flyer for films 2–6, 24 Nov 2026.)
 
 | Behaviour | How it acts | How to pass it | New? |
 | --- | --- | --- | --- |
@@ -158,7 +155,7 @@ numbers: acceleration, top speed and jump time. As in the original (M1), where t
 handle exactly like the bike, every vehicle uses the standard handling (+0.0111 px per step, top
 2.78 px per step, jump 84 steps). The one exception is our own sci-fi hover bike, which floats.
 
-Proposed for films 2–6: a vehicle per scene (open question 4). Every vehicle fits the rider's
+Films 2–6 have a vehicle per scene (Bob, 24 Nov 2026). Every vehicle fits the rider's
 12 × 16 box, so drawing and crash tests cost the same for all of them.
 
 | Film | Scene 1 vehicle | Scene 2 vehicle | Handling |
@@ -211,14 +208,16 @@ by a scripted run in the test harness before it ships.
 
 ## Films 2 to 6
 
-Proposed 23 Nov 2026 for F6, not yet agreed with Bob: the questions are at the end of this file.
-This section goes into the Claude Doc once Bob agrees it.
+Agreed with Bob 24 Nov 2026, with all the recommendations at the end of this file. **Bob's goal:
+every scene distinct, and harder both as the billing rises and as the season goes on.** The
+guidelines below are starting points, not rules: F6 breaks any of them when that makes a better
+challenge. Only the machine's limits are hard: the step budget and memory.
 Positions are starting points in pixels from the left of the 228-pixel play width; `tools/solve`
 proves each scene at every billing and moves things where it must, as it did for film 1. Heights are
 band lines, 0 at the top of a band to 47 at the bottom: the rider stands on lines 28–43, the road is
 44–47, and at the top of a jump his head reaches line 8.
 
-### Rules every new scene follows
+### Guidelines (break them for a better scene)
 
 - **One idea a track.** Track 1 warms up, track 4 is the scene's hardest, and each track has one
   named idea (a "beat"): a pair to hop, a lane to time, "under, then over", a long ramp jump.
@@ -230,11 +229,11 @@ band lines, 0 at the top of a band to 47 at the bottom: the rider stands on line
   (just above the rider's head) and its top no higher than line 12.
 - **Gaps.** "Missing floor" gaps are tagged billing 3 to 6 as in film 1. From film 3 on, each film
   also has one themed gap (open grave, crater, moat, crevasse) at every billing, as the original's
-  gaps start on its fifth screen (open question 2). Every gap gets a run-up before it and a landing
+  gaps start on its fifth screen (Bob). Every gap gets a run-up before it and a landing
   zone after it.
-- **Billings add hazards, not only gaps.** Any record can carry the lowest billing that shows it,
-  so billing 4 up can add one extra dangler, jet or flyer inside the step rules below (open
-  question 5). The kind byte has room: kind in the low 4 bits, lowest billing in the high 4.
+- **Billings add and move hazards, not only gaps** (Bob). Every record gets a fifth byte with the
+  lowest and highest billing that show it (3 bits each), so a higher billing can add a hazard, or
+  swap one for the same hazard somewhere nastier. One layout still serves all six billings.
 - **One new idea per film.** The season gets harder in order:
 
 | Scenes | Film | New in the season |
@@ -245,6 +244,35 @@ band lines, 0 at the top of a band to 47 at the bottom: the rider stands on line
 | 7–8 | *Moonbase Panic* | Floaty handling; a ramp jump that carries across the wrap |
 | 9–10 | *Dragon's Keep* | The fast runner (1.5 times the billing's runner speed); jets in pairs |
 | 11–12 | *Cold Front* | Everything together; a ramp jump under high ceilings |
+
+### Each billing harder, each scene distinct
+
+Every scene climbs the same ladder from its one layout, so billing 2 of a scene is never just
+billing 1 again:
+
+| Billing | What changes in every scene |
+| --- | --- |
+| 1 Extra | The base layout at the original's speeds |
+| 2 Stand-in | Movers faster (as built); jets and danglers set out of step with the easy route |
+| 3 Double | Small missing-floor gaps; one hazard moved to tighten a pair |
+| 4 Stunt Man | More gaps; one extra dangler, jet or flyer |
+| 5 Stunt Coordinator | Gaps in front of most hazards; the warm-up track gets a second idea |
+| 6 Legend | Wide breaks, the fastest movers, and at least one track that needs the stop |
+
+And each scene has one thing no other scene has:
+
+| Scene | Its signature |
+| --- | --- |
+| 2-1 Main Street | Jump arcs timed around the saloon balcony |
+| 2-2 Runaway Mine | The beam squeeze: low ceilings with a block between |
+| 3-1 Graveyard Lane | Two every-step movers: the ghoul's lane and the bat overhead |
+| 3-2 Tunnel of Terror | Trapdoor timing: pop-up ghouls half a period apart |
+| 4-1 Crater Plains | Floaty jumps over a crater and under a gantry |
+| 4-2 Reactor Corridor | The launch pad's jump across the wrap, caught by the conduit if too fast |
+| 5-1 Castle Approach | The fast knight, and a moat right after the portcullis |
+| 5-2 Moat by Moonlight | The drawbridge ramp over a pair of fire-breathing heads |
+| 6-1 The Glacier | Under the icicles, straight over a crevasse |
+| 6-2 Avalanche Pass | The kicker's jump threaded between the ski-lift chairs |
 
 ### Step budget
 
@@ -552,14 +580,14 @@ vehicle takes about 60,000 cycles, under the card's 300,000).
 
 | Item | Estimate |
 | --- | --- |
-| 10 scene layouts and palettes (palettes stored as runs of lines) | 1.2 KB |
+| 10 scene layouts and palettes (palettes stored as runs of lines; 5-byte records) | 1.5 KB |
 | 9 vehicles, unshifted (4 frames × 32 bytes) with crash masks | 1.8 KB |
 | One vehicle buffer, 1,152 bytes, in place of today's 2,304 bytes of pre-shifted bike and jet-ski | −0.9 KB |
 | About 45 hazard pictures with crash masks | 2.5 KB |
 | Moving hazards unshifted, plus a buffer for a scene's four movers, in place of today's 1,008 bytes | 1.3 KB |
 | Code: jet, flyer, ground styles, billing tags, shifting at scene start, engine voices | 1.5 KB |
-| F6 music and stings; key redefinition | 2.5 KB |
-| **Needed** | **9.9 KB** |
+| F6 music and stings | 2.0 KB |
+| **Needed** | **9.7 KB** |
 
 | Where it comes from | Estimate |
 | --- | --- |
@@ -581,7 +609,7 @@ That is about even, so the fallbacks stand ready, in this order: the music cut t
    jets proves the step rules before any film is laid out.
 2. **F6b to F6f, one film per build** in season order (Western, horror, sci-fi, fantasy, spy), each
    proved at all six billings with `tools/solve`, each a build for Bob.
-3. **F6g:** music, stings and key redefinition.
+3. **F6g:** music and stings.
 
 ## Presentation
 
@@ -589,7 +617,7 @@ The film set frames every moment between attempts, and each piece lasts two seco
 retakes stay quick. Any game key skips a card.
 
 1. **Title screen.** "STUNT MAN BOB" on a marquee with chasing lights, Bob posing by his bike, and the
-   menu: 1 Start, L Billing, K Keys, S Sound. The top five fees of the session scroll below it.
+   menu: 1 Start, L Billing, S Sound. The top five fees of the session scroll below it.
 2. **Clapperboard card.** Before each scene, a full-width clapper shows the film, scene and take
    ("COLD FRONT / SCENE 2 / TAKE 1"). The clapper arm snaps shut with a clack, then "ACTION!" flashes
    and play starts.
@@ -609,7 +637,7 @@ As built in F4 (BUILD 12): the card also shows the billing, the fee so far and t
 track; "CUT!" pops up 0.4 s after the crash (the crash picture shows first); "THAT'S A PRINT!" lists
 the scene's track fees (all its takes), the bonus, a lost take coming back and the run's fee; Esc's
 question is on the status line, and Y ends the run without a top-five entry. The top five is shown
-whole, not scrolling, and starts with five film-crew fees to beat. K (keys) comes with F6.
+whole, not scrolling, and starts with five film-crew fees to beat. There is no key redefinition (Bob, 24 Nov 2026).
 
 Art rules: everything is drawn fresh at Oric resolution in the film's banded palette. The rider is
 about 12 × 16 pixels with two riding frames, a jump frame and a crash frame per vehicle.
@@ -714,31 +742,26 @@ The build order is in `docs/PLAN.md`.
 | Genres | Action, Western, horror, sci-fi, fantasy, snowbound spy (on skis); the action film's scene 2 is a jet-ski chase |
 | Handling | Standard for every vehicle, as in the original; only the hover bike floats |
 | Hazards | Ceiling blocks are an original kind; jets and ramps are new, in scene 2 |
-| Keys | Space jump, either Shift accelerate, Return stop; redefinable; no joystick |
+| Keys | Space jump, either Shift accelerate, Return stop; fixed, no redefinition (Bob, 24 Nov 2026); no joystick |
 | Takes and fees | 3 takes, one lost take back after every third scene cleared (as the original); fees in pounds, paid per track finished and again on a retake (as the original) |
 | Oricutron builds | Noise played an octave lower to match real hardware |
 | Level codes | Optional extra after film 1 |
 | Measuring | Time the BBC original frame by frame to set speeds, arc and handling |
 | After M1 | Bob agreed to follow the original on the stop, sea and snow handling, the held jump and the take refund. Levels: our billings already work like its skill levels (a start point in one continuous run); a billing stays one 12-scene season. Fees: per track, as in the original (Bob's decision). |
 
-## Open questions on films 2 to 6
+## Decisions on films 2 to 6
 
-Each has a recommendation; F6 follows the recommendations unless Bob decides otherwise.
+Bob accepted every recommendation on 24 Nov 2026 and added two notes: drop key redefinition, and
+make each scene distinct and harder with the billing and the season, breaking any guideline that
+gets in the way of a fun challenge.
 
-1. **How long is a season?** The built game (F4, F5) runs 12 scenes a billing, six billings, with
-   fees up to £720 a track, as DESIGN's decisions say. A project note says "one 36-screen run", the
-   original's length. *Recommendation:* keep the built 12-scene seasons; 36 different screens
-   would need three times the layouts and memory we have.
-2. **Gaps at billing 1?** Bob asked for missing floors on harder levels, and film 1 has gaps only
-   from billing 3. The original's gaps start on its fifth screen, inside the first level.
-   *Recommendation:* from film 3 (scene 5, as in the original) one themed gap per film at every
-   billing (open grave, crater, moat, crevasse), with the "missing floor" gaps still from billing 3.
-3. **Add the flyer?** The original has hazards that fly across at head height from screen 4.
-   *Recommendation:* yes, from film 3 (bat, drone, wyvern, autogyro), within the step rules.
-4. **A vehicle per scene, or per film?** *Recommendation:* per scene (nine new vehicles), as
-   stored unshifted each costs about 200 bytes; one per film is the memory fallback. The fantasy
-   film's chariot becomes a dragon hatchling, because a horse and chariot won't fit the 12-pixel
-   rider box.
-5. **Should higher billings add hazards as well as gaps?** Today billings change only gaps and
-   speeds. *Recommendation:* yes: from billing 4 a scene may add one dangler, jet or flyer (tagged
-   like the gaps), so a higher billing feels like a new screen, as the original's later screens do.
+1. **Seasons** stay 12 scenes a billing, six billings, as built.
+2. **Gaps:** from film 3, one themed gap per film at every billing (open grave, crater, moat,
+   crevasse); missing-floor gaps still from billing 3.
+3. **Flyers** join from film 3 (bat, drone, wyvern, autogyro).
+4. **Vehicles:** one per scene, nine new; the fantasy film's chariot becomes a dragon hatchling.
+5. **Billings** add and move hazards as well as gaps (see "Each billing harder, each scene
+   distinct").
+6. **Keys:** no redefinition; Space, either Shift and Return are fixed.
+7. **Guidelines, not rules:** the layout guidelines in "Films 2 to 6" can be broken for a better
+   scene; the step budget and memory are the only hard limits.
