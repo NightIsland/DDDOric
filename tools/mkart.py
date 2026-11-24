@@ -406,8 +406,75 @@ GHOST_CRASH = """
 ###.........
 """
 GHOST_FRAMES = [("ride_a", GHOST_RIDE_A), ("ride_b", GHOST_RIDE_B), ("jump", GHOST_JUMP), ("crash", GHOST_CRASH)]
+# ------------------------------------------------- Moonbase Panic (F6d)
+# Bob in a space helmet on the hover bike (both scenes): no wheels, a fin
+# behind, the thrust under it flickering every 4 px; it floats (src/physics.h
+# JUMP_FLOAT); on the crash Bob tumbles off and the bike noses down.
+HOVER_TOP = """
+......###...
+.....#####..
+.....#..##..
+.....#####..
+......###...
+.....####...
+#...#####...
+##..######..
+###########.
+############
+.##########.
+..########..
+"""
+HOVER_RIDE_A = HOVER_TOP.strip("\n") + """
+...#.#.#....
+....#.#.#...
+............
+............
+"""
+HOVER_RIDE_B = HOVER_TOP.strip("\n") + """
+....#.#.#...
+...#.#.#....
+............
+............
+"""
+HOVER_JUMP = """
+......###...
+.....#####..
+.....#..##..
+.....#####.#
+......###.#.
+.....######.
+#...#####...
+##..######..
+###########.
+############
+.##########.
+..########..
+...##.##....
+....#..#....
+............
+............
+"""
+HOVER_CRASH = """
+.......###..
+......#####.
+..#...#..##.
+...#..#####.
+....#.####..
+.....####...
+......##....
+.....#..#...
+....#....#..
+............
+#...........
+##..........
+####........
+######......
+#########...
+.##########.
+"""
+HOVER_FRAMES = [("ride_a", HOVER_RIDE_A), ("ride_b", HOVER_RIDE_B), ("jump", HOVER_JUMP), ("crash", HOVER_CRASH)]
 VEHICLES = [("bike", RIDER_FRAMES), ("jetski", JET_FRAMES), ("horse", HORSE_FRAMES), ("cart", CART_FRAMES),
-            ("hearse", HEARSE_FRAMES), ("ghost", GHOST_FRAMES)]
+            ("hearse", HEARSE_FRAMES), ("ghost", GHOST_FRAMES), ("hover", HOVER_FRAMES)]
 
 # ---------------------------------------------------- Rush Hour Rumble, scene 1
 # Solid shapes, wheels and windows cut out (Bob, BUILD 4: "less wireframe").
@@ -837,6 +904,135 @@ HUMP = """
 ################
 ################
 """
+# Moonbase Panic, scene 1, Crater Plains (F6d): a bright surface, black sky
+CANISTER = """
+..######..
+.########.
+##########
+#.#.#.#.##
+##########
+###....###
+###.##.###
+###....###
+##########
+#.#.#.#.##
+##########
+.########.
+"""
+MAST = """
+..##..
+.####.
+######
+..##..
+.#..#.
+..##..
+.#..#.
+..##..
+.#..#.
+..##..
+.#..#.
+..##..
+.#..#.
+.####.
+######
+######
+"""
+ROBOT = """
+....##......
+...####.....
+..######....
+..#.##.#....
+..######....
+....##......
+.########...
+#.######.#..
+#.######.#..
+..######....
+...#..#.....
+...#..#.....
+..##..##....
+.###..###...
+"""
+DRONE = """
+#####..#####
+..########..
+.##########.
+############
+.#.#.##.#.#.
+....#..#....
+"""
+CLAW = """
+.....##.....
+..########..
+.##########.
+##...##...##
+##........##
+.#........#.
+.##......##.
+..#......#..
+..##....##..
+...#....#...
+"""
+GANTRY = """
+####################################
+#.#..#.#..#.#..#.#..#.#..#.#..#.#..#
+##.##.##.##.##.##.##.##.##.##.##.###
+####################################
+"""
+# scene 2, Reactor Corridor: blue, with yellow warning stripes
+LASER = """
+.##.
+####
+.##.
+.##.
+.##.
+.##.
+.##.
+.##.
+.##.
+.##.
+.##.
+.##.
+.##.
+.##.
+####
+####
+"""
+BLASTDOOR = """
+####################
+#..#..#..#..#..#..##
+##..#..#..#..#..#..#
+#..#..#..#..#..#..##
+####################
+##.##############.##
+"""
+CONDUIT = """
+############################################################
+#..#..#..#..#..#..#..#..#..#..#..#..#..#..#..#..#..#..#..#.#
+############################################################
+"""
+CRUSHER = """
+############
+############
+#.#.#.#.#.##
+############
+.##########.
+..########..
+....####....
+....####....
+....####....
+.##########.
+############
+############
+"""
+LAUNCHPAD = """
+.............###
+..........######
+.......#########
+....############
+.###############
+################
+"""
 SCENERY = [("van", VAN), ("drums", DRUMS), ("police", POLICE), ("ball", BALL), ("girder", GIRDER),
            ("buoy", BUOY), ("boat", BOAT), ("bridge", BRIDGE), ("slipway", SLIPWAY), ("crate", CRATE),
            ("bat", BAT), ("flare", FLARE),
@@ -844,7 +1040,10 @@ SCENERY = [("van", VAN), ("drums", DRUMS), ("police", POLICE), ("ball", BALL), (
            ("ore", ORE), ("rock", ROCK), ("orecart", ORECART), ("beam", BEAM), ("buckled", BUCKLED),
            ("bucket", BUCKET),
            ("grave", GRAVE), ("angel", ANGEL), ("ghoul", GHOUL), ("lychgate", LYCHGATE), ("spider", SPIDER),
-           ("coffin", COFFIN), ("popghoul", POPGHOUL), ("arch", ARCH), ("skeleton", SKELETON), ("hump", HUMP)]
+           ("coffin", COFFIN), ("popghoul", POPGHOUL), ("arch", ARCH), ("skeleton", SKELETON), ("hump", HUMP),
+           ("canister", CANISTER), ("mast", MAST), ("robot", ROBOT), ("drone", DRONE), ("claw", CLAW),
+           ("gantry", GANTRY), ("laser", LASER), ("blastdoor", BLASTDOOR), ("conduit", CONDUIT),
+           ("crusher", CRUSHER), ("launchpad", LAUNCHPAD)]
 
 
 # ------------------------------------------------- the film frame (F4)

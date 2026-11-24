@@ -46,7 +46,7 @@ takes the next number.
 | F3 | Whole scene: four tracks, wrapping, block, runner, dangler, gap and ceiling block, crashes, fees, the one stop | F2 | whole step ≤ 16,000 cycles | merged (BUILD 11, PR #10); budget missed: average 16,100 riding flat out, worst 19,750 (see Results) |
 | F4 | Film frame: clapper card, takes, "Cut!", scene cleared, "You're fired", title screen, billing select, top five | F3 | riding steps stay under 20,000 cycles | merged (BUILD 13, PR #12; police lamps BUILD 14-15, PR #13) |
 | F5 | Film 1 (*Rush Hour Rumble*) complete at all six billings, tuned to M1's numbers; Bob judges the feel against the original | F4, M1 | | BUILD 20, PR #14 merged |
-| F6 | Films 2–6, jets and ramps, per-vehicle handling, music (no key redefinition: Bob, 24 Nov 2026) | F5 | memory ≤ 37 KB | F6a, F6b (Western) at BUILD 21, F6c (Horror) at BUILD 22 |
+| F6 | Films 2–6, jets and ramps, per-vehicle handling, music (no key redefinition: Bob, 24 Nov 2026) | F5 | memory ≤ 37 KB | F6a, F6b (Western) at BUILD 21, F6c (Horror) at BUILD 22, F6d (Sci-fi) at BUILD 23 |
 | X1 | Optional: level codes from a seed, with a solver run over thousands of seeds in the harness | F5 | ≤ 2 KB | not started |
 
 M1 and F0 can run in parallel. F5 is the prototype milestone (plan step 3); F6 and X1 are polish
@@ -158,6 +158,21 @@ Horror, F6d Sci-fi, F6e Fantasy, F6f Spy), then F6g music.
   budget on 26 of 545 steps; one skeleton became a coffin (4 of 550). The win runs prove films
   1-3 (6 scenes). The crash replay in the tests now models runners' own speeds, flyers and jets.
   Memory: 1,221 bytes free below `$9800`, so films 4-6 need DESIGN "Memory"'s fallbacks.
+
+- **Memory for films 4-6** (DESIGN "Memory"): the pause and quit popups save what they cover in
+  the vehicle's shift buffer and shift the vehicle afresh when they go (the quit popup is now 30
+  lines, `POP_SAVE`); palettes are runs of one byte (`R(n, colour)`, count << 3 | colour); each
+  film's name is stored once (`films[]` in `src/scene.c`). 1,221 bytes free became 3,090.
+- **F6d, Moonbase Panic** (BUILD 23), both scenes on the hover bike, whose jump floats: the same
+  arc on a slower clock (`JUMP_FLOAT` 215/256 of a step a step), 100 steps in the air, 150 off a
+  ramp. Scene 1, Crater Plains (canisters, masts, a patrol robot, a drone under the gantry, a
+  cargo claw, craters at every billing); scene 2, Reactor Corridor (crates, laser gates, a blast
+  door, a conduit, crusher pistons, the launch pad's float over two gates across the wrap). Two
+  fixes found by the tests: a dangler over 13 px wide (the crusher, 14) drew at 94 cycles a line,
+  off the beam's pace, so it is 12 wide; with a second claw at billings 4-6 the patrol robot's
+  draw was starved and left a ghost, so that claw became a canister. Worst steps at billing 6:
+  3 of 730 and 6 of 470 over budget. The win runs prove films 1-4 (8 scenes); 125 checks pass.
+  1,552 bytes free below `$9800`.
 
 ### F5: Rush Hour Rumble at all six billings (BUILD 16, 23 Nov 2026)
 

@@ -1,4 +1,4 @@
-# solve 4 6: billing 4 from the title, 6 scene(s), each on its first take
+# solve 4 8: billing 4 from the title, 8 scene(s), each on its first take
 1 L
 3 L
 5 L
@@ -21,6 +21,14 @@
 2608-2802 accel
 2903-2907 accel
 2923-3012 accel
+3079-3108 accel
+3114-3218 accel
+3429-3458 accel
+3564-3583 accel
+3589-3648 accel
+3653-3682 accel
+3688-3862 accel
+3973-4108 accel
 8 jump
 47 jump
 132 jump
@@ -58,6 +66,20 @@
 2809 jump
 2928 jump
 3013 jump
+3066 jump
+3068 jump
+3114 jump
+3220 jump
+3323 jump
+3460 jump
+3595 jump
+3650 jump
+3652 jump
+3758 jump
+3870 jump
+3973 jump
+4077 jump
 309 stop
 2089 stop
-# 3064 steps
+3078 stop
+# 4108 steps

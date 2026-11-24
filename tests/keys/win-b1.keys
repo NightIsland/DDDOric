@@ -1,4 +1,4 @@
-# solve 1 6: billing 1 from the title, 6 scene(s), each on its first take
+# solve 1 8: billing 1 from the title, 8 scene(s), each on its first take
 1 1
 3-292 accel
 439-593 accel
@@ -21,6 +21,13 @@
 2719-2733 accel
 2749-2763 accel
 2769-2900 accel
+2905-2919 accel
+2925-2934 accel
+2940-3049 accel
+3390-3394 accel
+3460-3527 accel
+3552-3611 accel
+3617-3806 accel
 2 jump
 115 jump
 208 jump
@@ -51,5 +58,16 @@
 2422 jump
 2632 jump
 2779 jump
+2902 jump
+2904 jump
+2944 jump
+3065 jump
+3167 jump
+3269 jump
+3465 jump
+3529 jump
+3531 jump
+3653 jump
+3810 jump
 2718 stop
-# 2900 steps
+# 3987 steps

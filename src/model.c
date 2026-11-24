@@ -206,6 +206,17 @@ static uint8_t on_ramp(void)
     return 0;
 }
 
+/* the jump's clock: a step every step, but for the hover bike (F6d) */
+static uint8_t jump_tick(void)
+{
+    uint8_t f;
+    if (m.scene->vehicle != VH_HOVER)
+        return 1;
+    f = m.jump_frac;
+    m.jump_frac = f + JUMP_FLOAT;
+    return f >= 256 - JUMP_FLOAT;           /* a carry: the clock ticks */
+}
+
 void model_scene_start(void)
 {
     hazards_start();
@@ -215,6 +226,7 @@ void model_scene_start(void)
     m.speed = SPEED_START;
     m.jump_t = 0;
     m.jump_long = 0;
+    m.jump_frac = 0;
     m.height = 0;
     m.road_t = 255;
     m.stop_left = 1;
@@ -519,9 +531,10 @@ void model_step(uint8_t in, uint8_t key)
         } else if (m.road_t != 255) {
             ++m.road_t;
         }
-    } else if (++m.jump_t >= JUMP_STEPS && (!m.jump_long || m.jump_t >= JUMP_LONG)) {
+    } else if (jump_tick() && ++m.jump_t >= JUMP_STEPS && (!m.jump_long || m.jump_t >= JUMP_LONG)) {
         m.jump_t = 0;
         m.jump_long = 0;
+        m.jump_frac = 0;
         m.road_t = 1;                       /* the landing step is on the road */
         m.events |= EV_LAND;
     }

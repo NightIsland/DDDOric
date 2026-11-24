@@ -59,6 +59,8 @@ typedef uint8_t palette_t;
 #define GROUND_DIRT  2           /* a dusty street; a gap: a dry wash */
 #define GROUND_RAILS 3           /* rails on sleepers; a gap: broken track */
 #define GROUND_COBBLES 4         /* a cobbled lane; a gap: an open grave */
+#define GROUND_MOON  5           /* a bright surface; a gap: a crater */
+#define GROUND_STRIPES 6         /* a floor of warning stripes; a gap: a pit */
 
 #define GR_KERB 1                /* line 0 starts at cell 1 (the road's kerb) */
 #define GR_FILL 2                /* a gap sets the pixels */
@@ -77,7 +79,8 @@ struct scene {
     struct hazard h[4][SC_MAX];
 };
 
-extern const struct scene scene_rhr1, scene_rhr2, scene_dd1, scene_dd2, scene_nh1, scene_nh2;
+extern const struct scene scene_rhr1, scene_rhr2, scene_dd1, scene_dd2, scene_nh1, scene_nh2,
+    scene_mp1, scene_mp2;
 extern const char * const films[6];      /* the films' names, in season order */
 extern const struct scene scene_test;     /* no hazards: harness only */
 extern const struct scene scene_stress;   /* F6a: two every-step movers, three jets: harness only */

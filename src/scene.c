@@ -335,11 +335,99 @@ const struct scene scene_nh2 = {
     },
 };
 
+/* Moonbase Panic (F6d), both scenes on the hover bike: its jump floats (100
+   steps, 150 off a ramp; src/physics.h JUMP_FLOAT), so it carries further.
+   Crater Plains: a black sky, the surface and everything on it cyan, the
+   ground white. */
+static const uint8_t pal_moon[] = {
+    BLACK, CYAN,
+    /* paper */
+        R(31, BLACK), R(17, BLACK),
+    /* ink */
+        R(4, WHITE), R(31, CYAN), R(9, CYAN), R(4, WHITE),
+};
+
+/* Scene 1.  Its signature: two every-step movers again (the patrol robot
+   and the drone under the gantry), craters at every billing, and the float:
+   jumps that last longer, so the drone is over you for longer too.  Billing
+   3 sends the robot sooner, 4 sets a canister by the crater, 5 plants a mast in the
+   robot's lane; more craters from 3. */
+const struct scene scene_mp1 = {
+    film_mp, 1, VH_HOVER, GROUND_MOON, pal_moon,
+    {
+        {   { HZ_BLOCK, 70, ART_CANISTER, 0, 0 },
+            { HZ_BLOCK, 170, ART_MAST, 0, 0 },
+            { HZ_GAP, 120, 14, 3, 0 },
+            { HZ_GAP, 200, 14, 4, 0 },
+            { HZ_GAP, 30, 16, 6, 0 } },
+        /* the robot's lane */
+        {   { HZ_RUNNER, 160, ART_ROBOT, 0, BILLS(0, 2) },
+            { HZ_RUNNER, 100, ART_ROBOT, 0, BILLS(3, 0) },
+            { HZ_BLOCK, 40, ART_MAST, 0, BILLS(5, 0) },
+            { HZ_GAP, 190, 14, 3, 0 },
+            { HZ_GAP, 140, 12, 6, 0 } },
+        {   { HZ_GAP, 60, 24, 1, 0 },
+            { HZ_DANGLER, 160, ART_CLAW, 0, 0 },
+            { HZ_BLOCK, 115, ART_CANISTER, 0, BILLS(4, 0) },
+            { HZ_GAP, 200, 14, 3, 0 },
+            { HZ_GAP, 130, 14, 6, BILLS(0, 3) } },
+        /* the drone's lane, under the gantry */
+        {   { HZ_CEILING, 40, ART_GANTRY, 10, 0 },
+            { HZ_BLOCK, 140, ART_MAST, 0, 0 },
+            { HZ_FLYER, 200, ART_DRONE, 23, 0 },
+            { HZ_GAP, 100, 14, 3, 0 },
+            { HZ_GAP, 190, 14, 4, 0 },
+            { HZ_GAP, 20, 14, 6, 0 } },
+    },
+};
+
+/* The reactor corridor: blue walls, white figures, a floor of yellow
+   warning stripes. */
+static const uint8_t pal_reactor[] = {
+    BLACK, CYAN,
+    /* paper */
+        R(31, BLUE), R(13, BLUE), R(4, BLACK),
+    /* ink */
+        R(31, WHITE), R(13, WHITE), R(4, YELLOW),
+};
+
+/* Scene 2.  Its signature: the launch pad's long float over two laser
+   gates, across the wrap into track 4, under a conduit that catches a
+   launch taken too fast.  Billing 3 adds a crate before the first gate, 4
+   a crate by the blast door, 5 a crate in the warm-up; gaps (pits) from 3. */
+const struct scene scene_mp2 = {
+    film_mp, 2, VH_HOVER, GROUND_STRIPES, pal_reactor,
+    {
+        {   { HZ_BLOCK, 80, ART_CRATE, 0, 0 },
+            { HZ_JET, 160, ART_LASER, 0, 0 },
+            { HZ_BLOCK, 125, ART_CRATE, 0, BILLS(3, 0) },
+            { HZ_BLOCK, 30, ART_CRATE, 0, BILLS(5, 0) },
+            { HZ_GAP, 110, 12, 3, BILLS(0, 2) },
+            { HZ_GAP, 200, 16, 4, 0 } },
+        {   { HZ_CEILING, 30, ART_BLASTDOOR, 24, 0 },
+            { HZ_DANGLER, 130, ART_CRUSHER, 0, 0 },
+            { HZ_BLOCK, 200, ART_CRATE, 0, 0 },
+            { HZ_BLOCK, 80, ART_CRATE, 0, BILLS(4, 0) },
+            { HZ_GAP, 170, 14, 3, 0 },
+            { HZ_GAP, 100, 12, 6, 0 } },
+        {   { HZ_RAMP, 40, ART_LAUNCHPAD, 0, 0 },
+            { HZ_JET, 110, ART_LASER, 4, 0 },
+            { HZ_JET, 170, ART_LASER, 12, 0 },
+            { HZ_GAP, 140, 12, 4, 0 },
+            { HZ_GAP, 200, 14, 6, 0 } },
+        {   { HZ_CEILING, 90, ART_CONDUIT, 9, 0 },
+            { HZ_DANGLER, 190, ART_CRUSHER, 0, 0 },
+            { HZ_GAP, 40, 14, 3, 0 },
+            { HZ_GAP, 160, 14, 5, 0 },
+            { HZ_GAP, 70, 12, 6, 0 } },
+    },
+};
+
 /* The season: 12 scenes, 6 films of 2 (DESIGN "Films, scenes and
    progression").  Films not built yet repeat the built ones. */
 static const struct scene * const season[SEASON] = {
     &scene_rhr1, &scene_rhr2, &scene_dd1, &scene_dd2, &scene_nh1, &scene_nh2,
-    &scene_rhr1, &scene_rhr2, &scene_dd1, &scene_dd2, &scene_nh1, &scene_nh2,
+    &scene_mp1, &scene_mp2, &scene_rhr1, &scene_rhr2, &scene_dd1, &scene_dd2,
 };
 
 /* (GR_KERB only where line 44's paper is black: the kerb's byte takes the
@@ -355,6 +443,10 @@ const struct ground grounds[] = {
           { 0x4C, 0x40, 0x4C, 0x40 }, { 0x7F, 0x7F, 0x7F, 0x7F } }, 0 },
     {   { { 0x7F, 0x7F, 0x7F, 0x7F }, { 0x44, 0x50, 0x42, 0x48 },     /* cobbles */
           { 0x40, 0x40, 0x40, 0x40 }, { 0x52, 0x49, 0x44, 0x51 } }, 0 },
+    {   { { 0x7F, 0x7F, 0x7F, 0x7F }, { 0x7B, 0x6F, 0x7E, 0x5F },     /* moon */
+          { 0x55, 0x6A, 0x55, 0x6A }, { 0x44, 0x40, 0x50, 0x41 } }, 0 },
+    {   { { 0x7F, 0x7F, 0x7F, 0x7F }, { 0x78, 0x78, 0x78, 0x78 },     /* stripes */
+          { 0x5C, 0x5C, 0x5C, 0x5C }, { 0x4E, 0x4E, 0x4E, 0x4E } }, 0 },
 };
 
 const struct scene *scene_only;

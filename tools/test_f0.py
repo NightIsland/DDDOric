@@ -456,9 +456,9 @@ rhr = {os.path.basename(p): ref_trace(p, n) for p, n in scripts}
 rhr["clear.keys"] = ref_trace(os.path.join(KEYS, "clear.keys"), 452)
 rhr["takeback.keys"] = ref_trace(os.path.join(KEYS, "takeback.keys"), 2000)
 WIN_W = [8, 8, 6, 6, 5, 4]                   # tools/solve/wins.sh
-WIN_SCENES = 6                              # tools/solve/wins.sh SCENES: films built x 2
+WIN_SCENES = 8                              # tools/solve/wins.sh SCENES: films built x 2
 for b in range(1, 7):
-    rhr[f"win-b{b}.keys"] = ref_trace(os.path.join(KEYS, f"win-b{b}.keys"), 3800)
+    rhr[f"win-b{b}.keys"] = ref_trace(os.path.join(KEYS, f"win-b{b}.keys"), 5100)
 errs = sum((f3_rules(t) for t in rhr.values()), [])
 evs = [parse(l) for t in rhr.values() for l in t]
 check("F3 rules: crash = dead stop, a take lost, 1.5 s pause, then the clapper card for the retake from the "
@@ -590,7 +590,7 @@ check("takeback.keys: a crash, then three scenes cleared: the lost take comes ba
 # F5: film 1 proved beatable at every billing (DESIGN "Billings"): each
 # win-bN.keys (searched by tools/solve, every jump with a window of WIN_W
 # steps to press it in) starts billing N from the title and clears every
-# built scene (F6c: films 1 to 3) on its first take;
+# built scene (F6d: films 1 to 4) on its first take;
 # the Oric plays it the same
 wins = []
 for b in range(1, 7):
@@ -607,7 +607,9 @@ for b in range(1, 7):
 # F6c: and the horror's (the hearse-trike on the cobbles, the ghost train)
 for fr, what in ((1700, "Dust at Dawn scene 1 (horse, dirt street)"), (2200, "Dust at Dawn scene 2 (mine cart, rails)"),
                  (2800, "Night of the Hearse scene 1 (hearse-trike, cobbles)"),
-                 (3400, "Night of the Hearse scene 2 (ghost-train car)")):
+                 (3400, "Night of the Hearse scene 2 (ghost-train car)"),
+                 (4100, "Moonbase Panic scene 1 (hover bike, craters)"),
+                 (4750, "Moonbase Panic scene 2 (hover bike, reactor corridor)")):
     r = emu.run(TAP, frames=fr, keys=os.path.join(KEYS, "win-b6.keys"), out=os.path.join(OUT, f"f6-{fr}"))
     emu.write_png(os.path.join(OUT, f"f6-{fr}.png"), r.rgb, 2)
     want = reference(r)
@@ -904,7 +906,7 @@ check("rider: under 1% torn frames over all the scripts", all_torn * 100 < all_d
 # clusters fall; BUILD 13: the three short scripts alone read 1.3%, so the
 # long season run is in the sample too)
 # F5: the win runs too, each stopped 30 steps before it clears its last scene
-# (F6b-c: the ghost train last, after the harbour, the Western and the graveyard)
+# (F6b-d: the reactor corridor last, after the harbour, the Western, the horror and the craters)
 sc_torn = sc_draw = 0
 runs = [(os.path.join(KEYS, "clear.keys"), 430), (os.path.join(KEYS, "takeback.keys"), 1950), (rnd, RND_N),
         (os.path.join(KEYS, "season.keys"), 7700)]

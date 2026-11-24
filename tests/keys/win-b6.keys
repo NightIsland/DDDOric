@@ -1,4 +1,4 @@
-# solve 6 6: billing 6 from the title, 6 scene(s), each on its first take
+# solve 6 8: billing 6 from the title, 8 scene(s), each on its first take
 1 L
 3 L
 5 L
@@ -38,6 +38,13 @@
 3521-3525 accel
 3531-3535 accel
 3556-3730 accel
+3762-3791 accel
+3827-3941 accel
+4257-4301 accel
+4312-4321 accel
+4337-4507 accel
+4522-4736 accel
+4952-5004 accel
 12 jump
 111 jump
 224 jump
@@ -83,10 +90,27 @@
 3557 jump
 3642 jump
 3731 jump
+3739 jump
+3741 jump
+3840 jump
+3943 jump
+4051 jump
+4154 jump
+4343 jump
+4451 jump
+4509 jump
+4511 jump
+4524 jump
+4635 jump
+4744 jump
+4849 jump
+4968 jump
 312 stop
 1118 stop
 1458 stop
 2323 stop
 2694 stop
 3410 stop
-# 3737 steps
+4206 stop
+4532 stop
+# 5004 steps

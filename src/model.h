@@ -108,6 +108,7 @@ struct model {
     uint8_t  name_slot;     /* M_NAME: the top-five line being named */
     uint8_t  name_len;      /*   initials typed */
     uint8_t  jump_long;     /* 1: this jump came off a slipway (JUMP_LONG steps) */
+    uint8_t  jump_frac;     /* F6d, the hover bike: the jump's clock, 1/256 step */
     const struct scene *scene;  /* the scene being played (scene_at(run_scene)) */
 };
 
