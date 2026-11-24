@@ -29,11 +29,19 @@
 #define HZ_JET     6
 #define HZ_RAMP    7
 
-#define SC_MAX 6                /* records per track (F5: room for every billing's gaps) */
+#define SC_MAX 8                /* records per track (F5: room for every billing's hazards) */
+
+/* bills: the billings that show the record (Bob, BUILD 17: billings add and
+   move hazards, not only gaps): low nibble the lowest, high nibble the
+   highest, 0 = no limit, so BILLS(3, 0) is billing 3 up, BILLS(0, 2) billings
+   1-2.  A gap's b is its lowest billing as well. */
+#define BILLS(lo, hi) ((lo) | (hi) << 4)
 
 struct hazard {
-    uint8_t kind, x, a, b;
+    uint8_t kind, x, a, b, bills;
 };
+
+uint8_t hz_shown(const struct hazard *h, uint8_t billing);
 
 struct palette {
     uint8_t title_paper, title_ink;

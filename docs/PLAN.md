@@ -45,7 +45,7 @@ takes the next number.
 | F2 | One track: rider physics (DESIGN "Physics"), keys (Space, either Shift, Return), 50 Hz step, engine sound | F0, F1 | logic ≤ 4,000 cycles a step | merged (BUILD 8, PR #8) |
 | F3 | Whole scene: four tracks, wrapping, block, runner, dangler, gap and ceiling block, crashes, fees, the one stop | F2 | whole step ≤ 16,000 cycles | merged (BUILD 11, PR #10); budget missed: average 16,100 riding flat out, worst 19,750 (see Results) |
 | F4 | Film frame: clapper card, takes, "Cut!", scene cleared, "You're fired", title screen, billing select, top five | F3 | riding steps stay under 20,000 cycles | merged (BUILD 13, PR #12; police lamps BUILD 14-15, PR #13) |
-| F5 | Film 1 (*Rush Hour Rumble*) complete at all six billings, tuned to M1's numbers; Bob judges the feel against the original | F4, M1 | | BUILD 16, PR open |
+| F5 | Film 1 (*Rush Hour Rumble*) complete at all six billings, tuned to M1's numbers; Bob judges the feel against the original | F4, M1 | | BUILD 17, PR #14 open |
 | F6 | Films 2–6, jets and ramps, per-vehicle handling, music (no key redefinition: Bob, 24 Nov 2026) | F5 | memory ≤ 37 KB | not started |
 | X1 | Optional: level codes from a seed, with a solver run over thousands of seeds in the harness | F5 | ≤ 2 KB | not started |
 
@@ -152,6 +152,26 @@ Briefs written by the architect when the previous feature is merged, from DESIGN
 - Worst step 19,580 cycles over 9,930 scripted steps. 5,988 bytes free below `$9800` (the
   jet-ski's four frames and the harbour art took 2.8 KB; F6's other vehicles will need the
   3-pre-shift fallback from DESIGN "Memory").
+
+- **BUILD 17 (Bob on BUILD 16: "it felt like you were only adding gaps"; initials accepted on the
+  third letter):**
+  - Billings now add and move hazards too, with DESIGN's billing tags brought forward from F6a:
+    every record has a fifth byte, the lowest and highest billing that show it (`BILLS(lo, hi)`,
+    `hz_shown` in `src/scene.c`; `SC_MAX` 8). Street: from billing 3 the police car starts at 90
+    instead of 170 (it meets you on the track's first half), from 4 a second wrecking ball hangs
+    just past the girder on track 3, from 5 the warm-up track gets a low girder after its drums,
+    and 6 has a 30 px break before the ball. Harbour: from billing 3 the patrol boat starts at 80,
+    from 4 a crate swings on the crane's hook between the footbridge and the buoy (new art), and from
+    5 a second footbridge hangs over track 1. Gaps that would sit under a new ceiling stop at
+    billing 4.
+  - Every billing is still proved with the same windows (8, 8, 6, 6, 5, 4 steps); `make wins`
+    re-searched all the runs. The solver also takes `SOLVE_NOSTOP=1`: billing 6 can still be
+    cleared without the stop, so DESIGN's "a track that needs the stop" is not there yet.
+  - Initials: three letters no longer end the entry; Del takes one back and Return finishes it.
+  - While the jet-ski rides the slipway (its slow draw), the patrol boat's draw can wait several
+    steps and then jump, leaving its old picture for one step as designed; the test reference now
+    draws that ghost too.
+  - 5,066 bytes free.
 
 ### F4: Film frame (BUILD 12, 23 Nov 2026)
 

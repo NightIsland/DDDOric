@@ -20,7 +20,18 @@ DANGLE_TOP = 6                              # src/model.h
 FRAMES = [n for n, _ in mkart.RIDER_FRAMES]
 
 
-def load_scene(name="scene_rhr1"):
+def shown(rec, billing):
+    """src/scene.c hz_shown: the record's billings (5th byte: lowest | highest << 4, 0 = no
+    limit), and a gap's lowest billing in b"""
+    kind, x, a, b, bills = (tuple(rec) + (0,))[:5]
+    lo, hi = bills & 15, bills >> 4
+    if kind == 4 and billing < b:
+        return False
+    return billing >= lo and (not hi or billing <= hi)
+
+
+def load_scene(name="scene_rhr1", billing=None):
+    """the scene's data; with a billing, only the records it shows, as (kind, x, a, b)"""
     src = open(os.path.join(ROOT, "src", "scene.c")).read()
     body = src[src.index(name + " = {"):]
     body = body[:body.index("\n};")]
@@ -36,9 +47,12 @@ def load_scene(name="scene_rhr1"):
     for tb in re.findall(r"\{((?:\s*\{[^{}]*\},?)+)\s*\}", body)[:4]:
         recs = []
         for rec in re.findall(r"\{([^{}]*)\}", tb):
+            rec = re.sub(r"BILLS\((\d+),\s*(\d+)\)", lambda m_: str(int(m_.group(1)) | int(m_.group(2)) << 4), rec)
             f = [v.strip() for v in rec.split(",")]
             val = lambda v: int(v) if v.isdigit() else {**KINDS, **ART}[v]  # noqa: E731
-            recs.append(tuple(val(v) for v in f))
+            r_ = tuple(val(v) for v in f)
+            if billing is None or shown(r_, billing):
+                recs.append(r_[:4])
         tracks.append(recs)
     tracks += [[] for _ in range(4 - len(tracks))]
     return dict(title_paper=title_paper, title_ink=title_ink, paper=paper, ink=ink, tracks=tracks,
@@ -54,7 +68,7 @@ def scene_bytes(billing=1, name="scene_rhr1"):
     """{address: byte} for HIRES lines 0-199 (title text left blank): the
     scene as set up, without its moving hazards (police car, wrecking ball:
     hazard_bytes) but with the top of a dangler's rope"""
-    sc = load_scene(name)
+    sc = load_scene(name, billing)
     mem = bytearray([0x40] * 8000)
 
     def setpx(x, y):
@@ -108,7 +122,7 @@ def scene_bytes(billing=1, name="scene_rhr1"):
                 for y in range(y0, y0 + b + 1):
                     setpx(x + 1, y)
                     setpx(x + w - 2, y)
-            elif kind == 4 and billing >= b:   # the road missing; on water, rocks
+            elif kind == 4:                     # the road missing; on water, rocks
                 for y in range(y0 + ROAD, y0 + ROAD + 4):
                     for px in range(x, x + a):
                         (setpx if sc["water"] else clrpx)(px, y)
@@ -139,12 +153,12 @@ def sprite_bytes(name, x, top):
     return out
 
 
-def hazard_bytes(name="scene_rhr1", pos=None):
+def hazard_bytes(name="scene_rhr1", pos=None, billing=1):
     """{address: xor mask} of the scene's moving hazards where pos says:
     pos[i] = x px of a runner, or the drop of a dangler, for the i-th moving
     hazard in scene order.  Runners sit on the road; a dangler's rope runs
     from its band's top line down to the ball."""
-    sc = load_scene(name)
+    sc = load_scene(name, billing)
     out, i = {}, 0
     for t, recs in enumerate(sc["tracks"]):
         y0 = TITLE + t * BAND

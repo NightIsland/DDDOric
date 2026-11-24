@@ -24,7 +24,7 @@ static void scene_show(void)
     play_reset();
     scene_draw(m.scene, m.billing);
     rider_draw(m.track, 0, 0, FR_RIDE_A);
-    hazards_list(m.scene);
+    hazards_list(m.scene, m.billing);
     hazards_draw();
 }
 

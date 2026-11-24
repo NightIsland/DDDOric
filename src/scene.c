@@ -37,33 +37,41 @@ static const struct palette pal_city = {
         WHITE, WHITE, WHITE, WHITE, YELLOW, WHITE, WHITE, BLACK },
 };
 
+/* Each billing harder (Bob, BUILD 17: not only gaps): billing 2 speeds the
+   movers up; 3 adds small gaps and moves the police car to meet you sooner;
+   4 adds more gaps and a second wrecking ball under the girder's exit; 5
+   puts gaps in front of the hazards and gives the warm-up track a girder; 6
+   breaks the road wide. */
 const struct scene scene_rhr1 = {
     "RUSH HOUR RUMBLE", 1, VH_BIKE, GROUND_ROAD, &pal_city,
     {
-        {   { HZ_BLOCK, 110, ART_DRUMS, 0 },
-            { HZ_GAP, 180, 12, 3 },
-            { HZ_GAP, 50, 14, 4 },
-            { HZ_GAP, 94, 14, 5 },
-            { HZ_GAP, 150, 26, 6 } },
+        {   { HZ_BLOCK, 110, ART_DRUMS, 0, 0 },
+            { HZ_CEILING, 172, ART_GIRDER, 22, BILLS(5, 0) },
+            { HZ_GAP, 180, 12, 3, BILLS(0, 4) },
+            { HZ_GAP, 50, 14, 4, 0 },
+            { HZ_GAP, 94, 14, 5, 0 },
+            { HZ_GAP, 140, 22, 6, 0 } },
         /* the police car has a lane of its own (Bob) */
-        {   { HZ_RUNNER, 170, ART_POLICE, 0 },
-            { HZ_GAP, 70, 14, 3 },
-            { HZ_GAP, 130, 18, 5 },
-            { HZ_GAP, 30, 20, 6 },
-            { HZ_GAP, 186, 22, 6 },
-            { HZ_GAP, 110, 16, 4 } },
-        {   { HZ_CEILING, 50, ART_GIRDER, 22 },
-            { HZ_BLOCK, 140, ART_DRUMS, 0 },
-            { HZ_GAP, 186, 18, 3 },
-            { HZ_GAP, 100, 16, 4 },
-            { HZ_GAP, 18, 20, 6 },
-            { HZ_GAP, 166, 14, 5 } },
-        {   { HZ_BLOCK, 20, ART_VAN, 0 },
-            { HZ_GAP, 100, 24, 3 },
-            { HZ_DANGLER, 200, ART_BALL, 0 },
-            { HZ_GAP, 165, 14, 5 },
-            { HZ_GAP, 60, 20, 6 },
-            { HZ_GAP, 140, 12, 6 } },
+        {   { HZ_RUNNER, 170, ART_POLICE, 0, BILLS(0, 2) },
+            { HZ_RUNNER, 90, ART_POLICE, 0, BILLS(3, 0) },
+            { HZ_GAP, 70, 14, 3, 0 },
+            { HZ_GAP, 130, 18, 5, 0 },
+            { HZ_GAP, 30, 20, 6, 0 },
+            { HZ_GAP, 186, 22, 6, 0 },
+            { HZ_GAP, 110, 16, 4, 0 } },
+        {   { HZ_CEILING, 50, ART_GIRDER, 22, 0 },
+            { HZ_BLOCK, 140, ART_DRUMS, 0, 0 },
+            { HZ_DANGLER, 92, ART_BALL, 0, BILLS(4, 0) },
+            { HZ_GAP, 186, 18, 3, 0 },
+            { HZ_GAP, 116, 14, 4, 0 },
+            { HZ_GAP, 18, 20, 6, 0 },
+            { HZ_GAP, 166, 14, 5, 0 } },
+        {   { HZ_BLOCK, 20, ART_VAN, 0, 0 },
+            { HZ_GAP, 100, 24, 3, 0 },
+            { HZ_DANGLER, 200, ART_BALL, 0, 0 },
+            { HZ_GAP, 165, 14, 5, 0 },
+            { HZ_GAP, 60, 20, 6, 0 },
+            { HZ_GAP, 136, 30, 6, 0 } },
     },
 };
 
@@ -72,7 +80,7 @@ const struct scene scene_rhr1 = {
    -DSCENE=scene_test; tools/ref/ref.c takes "test"). */
 const struct scene scene_test = {
     "TEST TRACK", 1, VH_BIKE, GROUND_ROAD, &pal_city,
-    {   { { HZ_NONE, 0, 0, 0 } } },
+    {   { { HZ_NONE, 0, 0, 0, 0 } } },
 };
 
 /* Night harbour: black sky over the channel, the rider in white; the water
@@ -94,37 +102,51 @@ static const struct palette pal_harbour = {
         WHITE, WHITE, WHITE, WHITE, CYAN, CYAN, CYAN, CYAN },
 };
 
+/* The harbour: billing 3 moves the patrol boat up the channel, 4 swings a
+   crate on the crane's hook between the footbridge and the buoy, 5 hangs a
+   second footbridge over the warm-up track. */
 const struct scene scene_rhr2 = {
     "RUSH HOUR RUMBLE", 2, VH_JETSKI, GROUND_WATER, &pal_harbour,
     {
-        {   { HZ_BLOCK, 100, ART_BUOY, 0 },
-            { HZ_BLOCK, 190, ART_BUOY, 0 },
-            { HZ_GAP, 150, 14, 3 },
-            { HZ_GAP, 60, 16, 4 },
-            { HZ_GAP, 84, 14, 5 },
-            { HZ_GAP, 160, 28, 6 } },
-        {   { HZ_RAMP, 40, ART_SLIPWAY, 0 },
-            { HZ_RUNNER, 160, ART_BOAT, 0 },
-            { HZ_GAP, 110, 18, 4 },
-            { HZ_GAP, 20, 16, 5 },
-            { HZ_GAP, 180, 30, 6 },
-            { HZ_GAP, 70, 20, 5 } },
-        {   { HZ_CEILING, 60, ART_BRIDGE, 24 },
-            { HZ_BLOCK, 150, ART_BUOY, 0 },
-            { HZ_GAP, 200, 18, 3 },
-            { HZ_GAP, 120, 18, 5 },
-            { HZ_GAP, 20, 24, 6 },
-            { HZ_GAP, 98, 14, 5 } },
-        {   { HZ_BLOCK, 30, ART_BUOY, 0 },
-            { HZ_RAMP, 110, ART_SLIPWAY, 0 },
-            { HZ_GAP, 80, 16, 3 },
-            { HZ_GAP, 180, 20, 4 },
-            { HZ_GAP, 150, 18, 5 },
-            { HZ_GAP, 54, 22, 6 } },
+        {   { HZ_BLOCK, 100, ART_BUOY, 0, 0 },
+            { HZ_BLOCK, 190, ART_BUOY, 0, 0 },
+            { HZ_CEILING, 140, ART_BRIDGE, 24, BILLS(5, 0) },
+            { HZ_GAP, 150, 14, 3, BILLS(0, 4) },
+            { HZ_GAP, 60, 16, 4, 0 },
+            { HZ_GAP, 84, 14, 5, 0 },
+            { HZ_GAP, 174, 14, 6, 0 } },
+        {   { HZ_RAMP, 40, ART_SLIPWAY, 0, 0 },
+            { HZ_RUNNER, 160, ART_BOAT, 0, BILLS(0, 2) },
+            { HZ_RUNNER, 80, ART_BOAT, 0, BILLS(3, 0) },
+            { HZ_GAP, 110, 18, 4, 0 },
+            { HZ_GAP, 20, 16, 5, 0 },
+            { HZ_GAP, 180, 30, 6, 0 },
+            { HZ_GAP, 70, 20, 5, 0 } },
+        {   { HZ_CEILING, 60, ART_BRIDGE, 24, 0 },
+            { HZ_BLOCK, 150, ART_BUOY, 0, 0 },
+            { HZ_DANGLER, 118, ART_CRATE, 0, BILLS(4, 0) },
+            { HZ_GAP, 200, 18, 3, 0 },
+            { HZ_GAP, 170, 14, 5, 0 },
+            { HZ_GAP, 20, 24, 6, 0 },
+            { HZ_GAP, 98, 14, 5, 0 } },
+        {   { HZ_BLOCK, 30, ART_BUOY, 0, 0 },
+            { HZ_RAMP, 110, ART_SLIPWAY, 0, 0 },
+            { HZ_GAP, 80, 16, 3, 0 },
+            { HZ_GAP, 180, 20, 4, 0 },
+            { HZ_GAP, 150, 18, 5, 0 },
+            { HZ_GAP, 54, 22, 6, 0 } },
     },
 };
 
 const struct scene *scene_only;
+
+uint8_t hz_shown(const struct hazard *h, uint8_t billing)
+{
+    uint8_t lo = h->bills & 15, hi = h->bills >> 4;
+    if (h->kind == HZ_GAP && billing < h->b)
+        return 0;
+    return billing >= lo && (!hi || billing <= hi);
+}
 
 const struct scene *scene_at(uint8_t run_scene)
 {

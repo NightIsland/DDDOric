@@ -48,7 +48,7 @@ static void hz_load(const struct hz *h)
 
 struct node { struct model m; int parent; uint8_t in; uint32_t key; long score; };
 
-static int W = 1, GRID = 5;
+static int W = 1, GRID = 5, nostop;      /* SOLVE_NOSTOP=1: never use the stop */
 
 /* the scene's fixed tables: a check that clears the scene loads the next
    scene's over them (scene_load), so they are put back after every check */
@@ -189,7 +189,7 @@ static int ride(int beam)
         for (i = 0; i < ncur && win < 0; ++i) {
             for (a = 0; a < 6; ++a) {
                 uint8_t in = acts[a];
-                if ((in & IN_STOP) && !cur[i].m.stop_left)
+                if ((in & IN_STOP) && (!cur[i].m.stop_left || nostop))
                     continue;
                 if ((in & IN_JUMP) && cur[i].m.jump_t)  /* Space only on the road */
                     continue;
@@ -311,6 +311,7 @@ int main(int argc, char **argv)
     int billing = atoi(argv[1]), nsc = atoi(argv[2]), beam = argc > 3 ? atoi(argv[3]) : 6000;
     if (argc > 4)
         W = atoi(argv[4]);
+    nostop = getenv("SOLVE_NOSTOP") && *getenv("SOLVE_NOSTOP");
     hset = malloc(sizeof(uint32_t) << HBITS);
     hval = malloc(sizeof(int) << HBITS);
     cur = malloc(sizeof *cur * (size_t)beam * 6);

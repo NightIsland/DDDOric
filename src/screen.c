@@ -173,6 +173,8 @@ void scene_draw(const struct scene *s, uint8_t billing)
         }
         y = TITLE_LINES + t * BAND_LINES;               /* band's line 0 */
         for (hz = s->h[t], j = 0; j < SC_MAX; ++j, ++hz) {
+            if (!hz_shown(hz, billing))                 /* not at this billing */
+                continue;
             switch (hz->kind) {
             case HZ_BLOCK:
             case HZ_RAMP:
@@ -188,15 +190,14 @@ void scene_draw(const struct scene *s, uint8_t billing)
                 vline(hz->x + scenery_w[hz->a] - 2, y, y + hz->b);
                 break;
             case HZ_GAP:                                /* the road cleared there; */
-                if (billing >= hz->b)                   /* on water, solid rocks   */
-                    for (i = 0; i < 4; ++i) {
-                        p = LINE(y + ROAD_LINE + i);
-                        for (mid = hz->x; mid != (uint8_t)(hz->x + hz->a); ++mid)
-                            if (s->ground == GROUND_WATER)
-                                p[xcell[mid]] |= 0x20 >> xshift[mid];
-                            else
-                                p[xcell[mid]] &= ~(0x20 >> xshift[mid]);
-                    }
+                for (i = 0; i < 4; ++i) {               /* on water, solid rocks   */
+                    p = LINE(y + ROAD_LINE + i);
+                    for (mid = hz->x; mid != (uint8_t)(hz->x + hz->a); ++mid)
+                        if (s->ground == GROUND_WATER)
+                            p[xcell[mid]] |= 0x20 >> xshift[mid];
+                        else
+                            p[xcell[mid]] &= ~(0x20 >> xshift[mid]);
+                }
                 break;
             }
         }
@@ -368,13 +369,15 @@ static uint8_t box_blank(uint8_t t, uint8_t top, uint8_t bot, uint8_t c0)
     return 1;
 }
 
-void hazards_list(const struct scene *sc)
+void hazards_list(const struct scene *sc, uint8_t billing)
 {
     const struct hazard *h = &sc->h[0][0];
     uint8_t i;
     uint8_t band, w;
     nmov = rr = nrect = 0;
     for (i = 0; i < NHAZ && nmov < MAXMOV; ++i, ++h) {
+        if (!hz_shown(h, billing))
+            continue;
         band = TITLE_LINES + (i / SC_MAX) * BAND_LINES;
         w = 0;
         if (h->kind == HZ_BLOCK || h->kind == HZ_CEILING || h->kind == HZ_DANGLER || h->kind == HZ_RAMP)
@@ -404,6 +407,8 @@ void hazards_list(const struct scene *sc)
             mv_rope[nmov] = h->x + scenery_w[h->a] / 2;
             mv_c[nmov] = xcell[h->x];
             mv_img[nmov] = spr_ball + shift_ofs[xshift[h->x]];
+            if (h->a == ART_CRATE)
+                mv_img[nmov] = spr_crate + shift_ofs[xshift[h->x]];
         }
         sp_on[SPR_MOV + nmov] = 0;
         sp_on[SPR_MOV + nmov + GHOST] = 0;

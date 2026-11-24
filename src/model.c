@@ -232,6 +232,10 @@ static void scene_load(void)
         hk[i] = h->kind;
         hz_px[i] = hz_x0[i] = h->x;
         hz_drop[i] = 0;
+        if (!hz_shown(h, m.billing)) {      /* not at this billing (gaps too) */
+            hk[i] = HZ_NONE;
+            continue;
+        }
         if (h->kind != HZ_GAP && h->kind != HZ_NONE) {
             hw[i] = art_w[h->a];
             hh[i] = art_h[h->a];
@@ -251,10 +255,8 @@ static void scene_load(void)
             if (nmov < MAXMOV)
                 mov[nmov++] = i;
             break;
-        case HZ_GAP:                        /* gaps show from the billing in b */
+        case HZ_GAP:
             hw[i] = h->a;
-            if (m.billing < h->b)
-                hk[i] = HZ_NONE;
             break;
         case HZ_CEILING:
             htop[i] = h->b + 1 - hh[i];     /* b: its bottom row's band line */
@@ -397,10 +399,9 @@ static uint8_t frame_step(uint8_t edge, uint8_t kd)
         return 0;
     case M_NAME:
         nm = best_name[m.name_slot];
-        if (kd >= 'A' && kd <= 'Z') {
+        if (kd >= 'A' && kd <= 'Z' && m.name_len < 3) {  /* Return ends it (Bob, BUILD 17) */
             nm[m.name_len] = kd;
-            if (++m.name_len == 3)
-                go(M_TITLE);
+            ++m.name_len;
         } else if (kd == K_DEL && m.name_len) {
             nm[--m.name_len] = '-';
         } else if (kd == K_RETURN) {

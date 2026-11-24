@@ -277,8 +277,23 @@ SLIPWAY = """
 ########################
 #.#.#.#.#.#.#.#.#.#.#.#.
 """
+# a crate on the harbour crane's hook (a dangler from billing 4, BUILD 17)
+CRATE = """
+.....##.....
+....#..#....
+.....##.....
+############
+#.#.#.#.#.#.
+############
+#..........#
+#.########.#
+#.#......#.#
+#.########.#
+#..........#
+############
+"""
 SCENERY = [("van", VAN), ("drums", DRUMS), ("police", POLICE), ("ball", BALL), ("girder", GIRDER),
-           ("buoy", BUOY), ("boat", BOAT), ("bridge", BRIDGE), ("slipway", SLIPWAY)]
+           ("buoy", BUOY), ("boat", BOAT), ("bridge", BRIDGE), ("slipway", SLIPWAY), ("crate", CRATE)]
 
 
 # ------------------------------------------------- the film frame (F4)
@@ -360,7 +375,7 @@ def shifted(rows, shift, ncols):
 # line first.  The police car keeps its own 12 lines (it only moves sideways,
 # so a shorter box saves time every step); the ball is padded to 16 ("top"
 # keeps its top at line 0).
-SPRITES = [("police", None, 5), ("ball", "top", 3), ("boat", None, 5)]
+SPRITES = [("police", None, 5), ("ball", "top", 3), ("boat", None, 5), ("crate", "top", 3)]
 
 
 def sprite(name):
