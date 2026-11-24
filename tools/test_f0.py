@@ -757,8 +757,9 @@ check("F6g sting: the action film's card plays its figure on A and C (E4+B4 twic
       and (10, 0) in end, f"A {sa}, C {sc}")
 r = emu.run(TAP, frames=1 + CARD_SNAP + 4, keys=ck, out=os.path.join(OUT, "f4-card-action"))
 emu.write_png(os.path.join(OUT, "f4-card.png"), r.rgb, 2)
-check("clapper card: film, scene 1, take 1, \"ACTION!\" after the snap",
+check("clapper card: film, scene 1, take 1, its fee a track, \"ACTION!\" after the snap",
       text_at(r, 5, 76, "FILM") and text_at(r, 5, 112, "SCENE") and text_at(r, 24, 112, "TAKE")
+      and text_at(r, 16, 172, "$10 ")   # scene 1 pays 10 pounds a track (fees in tens: BUILD 25 fix)
       and any(r.mem[0xA000 + y * 40 + c] != 0x40 for y in range(6, 20) for c in range(2, 40)))
 fl = os.path.join(KEYS, "flow.keys")
 ft = [parse(l) for l in ref_trace(fl, 1300)]

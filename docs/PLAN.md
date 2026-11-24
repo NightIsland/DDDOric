@@ -210,6 +210,14 @@ before general music, 24 Nov 2026).
   for general music later. The voice only writes a new volume, and the vibrato moves every 8
   ticks: writing both every 10 ms took enough IRQ time to starve a hover-scene draw.
 
+- **Debug scene picker** (BUILD 26, Bob: temporary, to reach the later films without hours of
+  practice): `make pick` builds `build/pick/stuntbob.tap`, an Oricutron build where P on the
+  title screen steps through the 12 scenes ("P: FILM 4 SCENE 2" replaces the strapline) and 1
+  starts there. Fees and the billing's change after scene 12 count from the scene picked. Only
+  `SCENE_PICK` builds have it; the real builds and the tests don't change. Remove it before
+  release. Also fixed: the card's "scene fee a track" was 10 times too much since fees moved to
+  £10s (scene 1 showed £100); a test now reads it.
+
 ### F5: Rush Hour Rumble at all six billings (BUILD 16, 23 Nov 2026)
 
 - **Scene 2, the harbour chase** (`src/scene.c` `scene_rhr2`), on the jet-ski: buoys (blocks), the

@@ -202,6 +202,10 @@ static void bulb_at(uint8_t n, uint8_t y, uint8_t c)
 #define MENU_DY 11
 #define TOP5_Y  149
 
+#ifdef SCENE_PICK
+static uint8_t shown_pick;
+#endif
+
 static void title_menu(void)
 {
     text(24, MENU_Y + MENU_DY, "           ");
@@ -211,6 +215,15 @@ static void title_menu(void)
         text(24, MENU_Y + 2 * MENU_DY, "ON ");
     shown_billing = m.billing;
     shown_sound = m.sound;
+#ifdef SCENE_PICK
+    {   /* debug build: "P  FILM 3 SCENE 2" in place of the strapline */
+        static char pk[] = "   P: FILM 1 SCENE 1   ";
+        pk[11] = '1' + (pick_scene >> 1);
+        pk[19] = '1' + (pick_scene & 1);
+        ctext(36, pk);
+        shown_pick = pick_scene;
+    }
+#endif
 }
 
 static void best_line(uint8_t i, uint8_t y)
@@ -271,7 +284,11 @@ void frame_title_step(void)
         shown_phase = ph;
         bulbs(ph);
     }
-    if (m.billing != shown_billing || m.sound != shown_sound)
+    if (m.billing != shown_billing || m.sound != shown_sound
+#ifdef SCENE_PICK
+        || pick_scene != shown_pick
+#endif
+        )
         title_menu();
 }
 
@@ -356,7 +373,7 @@ void frame_card(const struct scene *s)
     text(5, 160, "FEE SO FAR");
     text(16, 160, num(m.fee, 1));
     text(5, 172, "SCENE FEE");
-    text(16, 172, num(10 * m.run_scene, 1));
+    text(16, 172, num(m.run_scene, 1));     /* (fees in £10s)  */
     text(26, 172, "A TRACK");
     text(5, 184, "STUNTS BY BOB");
 }
