@@ -776,8 +776,10 @@ rn = emu.run(TAP, frames=114, keys=qk, out=os.path.join(OUT, "f4-ask-n"))
 want = reference(rn)
 got = rn.mem[0xA000:0xA000 + 8000]
 bad = [i for i in range(320, 8000) if want[i] != got[i]]
+# (F6c: the popup saves into the vehicle's buffer and shifts the vehicle afresh after:
+# the rider after N is drawn from it)
 check("quit.keys: \"QUIT?\" pops up over the scene; after N the scene is back as it was",
-      text_at(ra, 2 + (38 - 25) // 2, 109, "Y: THE TITLE   N: RIDE ON") and not bad, f"{len(bad)} wrong bytes")
+      text_at(ra, 2 + (38 - 25) // 2, 105, "Y: THE TITLE   N: RIDE ON") and not bad, f"{len(bad)} wrong bytes")
 pk = os.path.join(KEYS, "pause.keys")
 rp = emu.run(TAP, frames=85, keys=pk, out=os.path.join(OUT, "f4-pause"))
 emu.write_png(os.path.join(OUT, "f4-pause.png"), rp.rgb, 2)

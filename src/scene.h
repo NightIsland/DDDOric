@@ -45,10 +45,10 @@ struct hazard {
 
 uint8_t hz_shown(const struct hazard *h, uint8_t billing);
 
-struct palette {
-    uint8_t title_paper, title_ink;
-    uint8_t paper[48], ink[48];     /* per band line (DESIGN "Colour") */
-};
+/* A palette (DESIGN "Colour"): the title strip's paper and ink, then the
+   paper of band lines 0-47 and their ink, each as runs of one byte: the
+   line count << 3 | the colour (F6c: 98 bytes became about 25). */
+typedef uint8_t palette_t;
 
 /* Grounds (DESIGN "Ground styles", F6a): every ground handles the same; a
    ground is its four lines' bytes, cells 2-39 repeating every 4 cells, and
@@ -73,11 +73,12 @@ struct scene {
     uint8_t number;             /* scene of the film, 1 or 2 */
     uint8_t vehicle;            /* VH_* (art.h) */
     uint8_t ground;             /* GROUND_* */
-    const struct palette *pal;
+    const palette_t *pal;
     struct hazard h[4][SC_MAX];
 };
 
 extern const struct scene scene_rhr1, scene_rhr2, scene_dd1, scene_dd2, scene_nh1, scene_nh2;
+extern const char * const films[6];      /* the films' names, in season order */
 extern const struct scene scene_test;     /* no hazards: harness only */
 extern const struct scene scene_stress;   /* F6a: two every-step movers, three jets: harness only */
 

@@ -19,24 +19,30 @@
 #define MAGENTA 5
 #define CYAN 6
 #define WHITE 7
+#define R(n, c) ((n) << 3 | (c))     /* a palette run: n lines of colour c */
+
+/* the six films' names, each stored once (the scenes and the title screen) */
+static const char film_rhr[] = "RUSH HOUR RUMBLE";
+static const char film_dd[] = "DUST AT DAWN";
+static const char film_nh[] = "NIGHT OF THE HEARSE";
+static const char film_mp[] = "MOONBASE PANIC";
+static const char film_dk[] = "DRAGON'S KEEP";
+static const char film_cf[] = "COLD FRONT";
+const char * const films[6] = {
+    film_rhr, film_dd, film_nh,
+    film_mp, film_dk, film_cf
+};
 
 /* Night city: a blue sky fading through dithered lines to black where the
    rider runs; white ink from band line 4 down to the road, so the rider never
    changes colour in a jump (apex: band line 8, or 4 with F0's placeholder arc); a yellow kerb and white lane marks. */
-static const struct palette pal_city = {
+static const uint8_t pal_city[] = {
     RED, YELLOW,
-    {   BLUE, BLUE, BLUE, BLUE, BLUE, BLUE, BLACK, BLUE,                /* 0-7 */
-        BLUE, BLACK, BLACK, BLUE, BLACK, BLACK, BLACK, BLUE,            /* 8-15 */
-        BLACK, BLACK, BLACK, BLACK, BLACK, BLACK, BLACK, BLACK,         /* 16-23 */
-        BLACK, BLACK, BLACK, BLACK, BLACK, BLACK, BLACK, BLACK,         /* 24-31 */
-        BLACK, BLACK, BLACK, BLACK, BLACK, BLACK, BLACK, BLACK,         /* 32-39 */
-        BLACK, BLACK, BLACK, BLACK, BLACK, BLACK, BLACK, BLACK },       /* 40-47 */
-    {   CYAN, CYAN, CYAN, CYAN, WHITE, WHITE, WHITE, WHITE,
-        WHITE, WHITE, WHITE, WHITE, WHITE, WHITE, WHITE, WHITE,
-        WHITE, WHITE, WHITE, WHITE, WHITE, WHITE, WHITE, WHITE,
-        WHITE, WHITE, WHITE, WHITE, WHITE, WHITE, WHITE, WHITE,
-        WHITE, WHITE, WHITE, WHITE, WHITE, WHITE, WHITE, WHITE,
-        WHITE, WHITE, WHITE, WHITE, YELLOW, WHITE, WHITE, BLACK },
+    /* paper */
+        R(6, BLUE), R(1, BLACK), R(2, BLUE), R(2, BLACK), R(1, BLUE), R(3, BLACK), R(1, BLUE),
+        R(31, BLACK), R(1, BLACK),
+    /* ink */
+        R(4, CYAN), R(31, WHITE), R(9, WHITE), R(1, YELLOW), R(2, WHITE), R(1, BLACK),
 };
 
 /* Each billing harder (Bob, BUILD 17: not only gaps): billing 2 speeds the
@@ -45,7 +51,7 @@ static const struct palette pal_city = {
    puts gaps in front of the hazards and gives the warm-up track a girder; 6
    breaks the road wide. */
 const struct scene scene_rhr1 = {
-    "RUSH HOUR RUMBLE", 1, VH_BIKE, GROUND_ROAD, &pal_city,
+    film_rhr, 1, VH_BIKE, GROUND_ROAD, pal_city,
     {
         {   { HZ_BLOCK, 110, ART_DRUMS, 0, 0 },
             { HZ_CEILING, 172, ART_GIRDER, 22, BILLS(5, 0) },
@@ -82,7 +88,7 @@ const struct scene scene_rhr1 = {
    -DSCENE=scene_test; tools/ref/ref.c takes "test"). */
 #if !defined(__CC65__) || defined(SCENE)    /* (not in the game itself) */
 const struct scene scene_test = {
-    "TEST TRACK", 1, VH_BIKE, GROUND_ROAD, &pal_city,
+    "TEST TRACK", 1, VH_BIKE, GROUND_ROAD, pal_city,
     {   { { HZ_NONE, 0, 0, 0, 0 } } },
 };
 
@@ -90,7 +96,7 @@ const struct scene scene_test = {
    (the police car and a bat) and three jets, staggered, to prove the step
    rules before any film is laid out (make test builds it as build/stress). */
 const struct scene scene_stress = {
-    "STRESS TEST", 1, VH_BIKE, GROUND_ROAD, &pal_city,
+    "STRESS TEST", 1, VH_BIKE, GROUND_ROAD, pal_city,
     {
         {   { HZ_JET, 100, ART_FLARE, 0, 0 },
             { HZ_BLOCK, 180, ART_DRUMS, 0, 0 } },
@@ -106,27 +112,19 @@ const struct scene scene_stress = {
 /* Night harbour: black sky over the channel, the rider in white; the water
    from the surface line down is blue with cyan waves (and rocks, where a gap
    shows). */
-static const struct palette pal_harbour = {
+static const uint8_t pal_harbour[] = {
     BLUE, WHITE,
-    {   BLACK, BLACK, BLACK, BLACK, BLACK, BLACK, BLACK, BLACK,        /* 0-7 */
-        BLACK, BLACK, BLACK, BLACK, BLACK, BLACK, BLACK, BLACK,        /* 8-15 */
-        BLACK, BLACK, BLACK, BLACK, BLACK, BLACK, BLACK, BLACK,        /* 16-23 */
-        BLACK, BLACK, BLACK, BLACK, BLACK, BLACK, BLACK, BLACK,        /* 24-31 */
-        BLACK, BLACK, BLACK, BLACK, BLACK, BLACK, BLACK, BLACK,        /* 32-39 */
-        BLACK, BLACK, BLACK, BLACK, BLUE, BLUE, BLUE, BLUE },          /* 40-47 */
-    {   CYAN, CYAN, CYAN, CYAN, WHITE, WHITE, WHITE, WHITE,
-        WHITE, WHITE, WHITE, WHITE, WHITE, WHITE, WHITE, WHITE,
-        WHITE, WHITE, WHITE, WHITE, WHITE, WHITE, WHITE, WHITE,
-        WHITE, WHITE, WHITE, WHITE, WHITE, WHITE, WHITE, WHITE,
-        WHITE, WHITE, WHITE, WHITE, WHITE, WHITE, WHITE, WHITE,
-        WHITE, WHITE, WHITE, WHITE, CYAN, CYAN, CYAN, CYAN },
+    /* paper */
+        R(31, BLACK), R(13, BLACK), R(4, BLUE),
+    /* ink */
+        R(4, CYAN), R(31, WHITE), R(9, WHITE), R(4, CYAN),
 };
 
 /* The harbour: billing 3 moves the patrol boat up the channel, 4 swings a
    crate on the crane's hook between the footbridge and the buoy, 5 hangs a
    second footbridge over the warm-up track. */
 const struct scene scene_rhr2 = {
-    "RUSH HOUR RUMBLE", 2, VH_JETSKI, GROUND_WATER, &pal_harbour,
+    film_rhr, 2, VH_JETSKI, GROUND_WATER, pal_harbour,
     {
         {   { HZ_BLOCK, 100, ART_BUOY, 0, 0 },
             { HZ_BLOCK, 190, ART_BUOY, 0, 0 },
@@ -162,20 +160,13 @@ const struct scene scene_rhr2 = {
 
 /* Main Street at sunrise: a magenta sky dithered through red to yellow,
    everything in black silhouette against it; red dust with yellow specks. */
-static const struct palette pal_dawn = {
+static const uint8_t pal_dawn[] = {
     YELLOW, RED,
-    {   MAGENTA, MAGENTA, MAGENTA, MAGENTA, MAGENTA, MAGENTA, MAGENTA, MAGENTA,   /* 0-7 */
-        MAGENTA, MAGENTA, RED, MAGENTA, RED, MAGENTA, RED, RED,                   /* 8-15 */
-        RED, RED, YELLOW, RED, YELLOW, RED, YELLOW, YELLOW,                       /* 16-23 */
-        YELLOW, YELLOW, YELLOW, YELLOW, YELLOW, YELLOW, YELLOW, YELLOW,           /* 24-31 */
-        YELLOW, YELLOW, YELLOW, YELLOW, YELLOW, YELLOW, YELLOW, YELLOW,           /* 32-39 */
-        YELLOW, YELLOW, YELLOW, YELLOW, RED, RED, RED, RED },                     /* 40-47 */
-    {   YELLOW, YELLOW, YELLOW, YELLOW, BLACK, BLACK, BLACK, BLACK,
-        BLACK, BLACK, BLACK, BLACK, BLACK, BLACK, BLACK, BLACK,
-        BLACK, BLACK, BLACK, BLACK, BLACK, BLACK, BLACK, BLACK,
-        BLACK, BLACK, BLACK, BLACK, BLACK, BLACK, BLACK, BLACK,
-        BLACK, BLACK, BLACK, BLACK, BLACK, BLACK, BLACK, BLACK,
-        BLACK, BLACK, BLACK, BLACK, YELLOW, YELLOW, YELLOW, YELLOW },
+    /* paper */
+        R(10, MAGENTA), R(1, RED), R(1, MAGENTA), R(1, RED), R(1, MAGENTA), R(4, RED),
+        R(1, YELLOW), R(1, RED), R(1, YELLOW), R(1, RED), R(22, YELLOW), R(4, RED),
+    /* ink */
+        R(4, YELLOW), R(31, BLACK), R(9, BLACK), R(4, YELLOW),
 };
 
 /* Scene 1 on a horse.  Its signature: jump arcs timed around the saloon
@@ -183,7 +174,7 @@ static const struct palette pal_dawn = {
    3 rolls the tumbleweed in sooner, 4 hangs a second grain sack by the
    balcony, 5 puts a hitching rail in the warm-up; gaps (dry washes) from 3. */
 const struct scene scene_dd1 = {
-    "DUST AT DAWN", 1, VH_HORSE, GROUND_DIRT, &pal_dawn,
+    film_dd, 1, VH_HORSE, GROUND_DIRT, pal_dawn,
     {
         {   { HZ_BLOCK, 90, ART_TROUGH, 0, 0 },
             { HZ_BLOCK, 170, ART_HITCH, 0, 0 },
@@ -213,20 +204,12 @@ const struct scene scene_dd1 = {
 
 /* The mine by lamplight: black rock with red seams above, the cart in yellow,
    white rails on red sleepers. */
-static const struct palette pal_mine = {
+static const uint8_t pal_mine[] = {
     BLACK, YELLOW,
-    {   BLACK, BLACK, BLACK, BLACK, BLACK, BLACK, BLACK, BLACK,
-        BLACK, BLACK, BLACK, BLACK, BLACK, BLACK, BLACK, BLACK,
-        BLACK, BLACK, BLACK, BLACK, BLACK, BLACK, BLACK, BLACK,
-        BLACK, BLACK, BLACK, BLACK, BLACK, BLACK, BLACK, BLACK,
-        BLACK, BLACK, BLACK, BLACK, BLACK, BLACK, BLACK, BLACK,
-        BLACK, BLACK, BLACK, BLACK, BLACK, BLACK, BLACK, BLACK },
-    {   RED, RED, RED, RED, YELLOW, YELLOW, YELLOW, YELLOW,
-        YELLOW, YELLOW, YELLOW, YELLOW, YELLOW, YELLOW, YELLOW, YELLOW,
-        YELLOW, YELLOW, YELLOW, YELLOW, YELLOW, YELLOW, YELLOW, YELLOW,
-        YELLOW, YELLOW, YELLOW, YELLOW, YELLOW, YELLOW, YELLOW, YELLOW,
-        YELLOW, YELLOW, YELLOW, YELLOW, YELLOW, YELLOW, YELLOW, YELLOW,
-        YELLOW, YELLOW, YELLOW, YELLOW, WHITE, RED, RED, WHITE },
+    /* paper */
+        R(31, BLACK), R(17, BLACK),
+    /* ink */
+        R(4, RED), R(31, YELLOW), R(9, YELLOW), R(1, WHITE), R(2, RED), R(1, WHITE),
 };
 
 /* Scene 2 in a mine cart.  Its signature: the beam squeeze, low pit beams
@@ -235,7 +218,7 @@ static const struct palette pal_mine = {
    sooner, 4 hangs the rock bucket in the squeeze, 5 lights a second flare
    in the warm-up; gaps (broken track) from 3. */
 const struct scene scene_dd2 = {
-    "DUST AT DAWN", 2, VH_CART, GROUND_RAILS, &pal_mine,
+    film_dd, 2, VH_CART, GROUND_RAILS, pal_mine,
     {
         {   { HZ_CEILING, 60, ART_BEAM, 24, 0 },
             { HZ_BLOCK, 150, ART_ORE, 0, 0 },
@@ -267,20 +250,12 @@ const struct scene scene_dd2 = {
 
 /* Night of the Hearse (F6c).  The graveyard by moonlight: a deep blue sky
    going black, everything white, the cobbles white on black. */
-static const struct palette pal_grave = {
+static const uint8_t pal_grave[] = {
     BLACK, GREEN,
-    {   BLUE, BLUE, BLUE, BLUE, BLUE, BLUE, BLACK, BLUE,                         /* 0-7 */
-        BLUE, BLACK, BLUE, BLACK, BLACK, BLACK, BLACK, BLACK,                     /* 8-15 */
-        BLACK, BLACK, BLACK, BLACK, BLACK, BLACK, BLACK, BLACK,
-        BLACK, BLACK, BLACK, BLACK, BLACK, BLACK, BLACK, BLACK,
-        BLACK, BLACK, BLACK, BLACK, BLACK, BLACK, BLACK, BLACK,
-        BLACK, BLACK, BLACK, BLACK, BLACK, BLACK, BLACK, BLACK },
-    {   WHITE, WHITE, WHITE, WHITE, WHITE, WHITE, WHITE, WHITE,
-        WHITE, WHITE, WHITE, WHITE, WHITE, WHITE, WHITE, WHITE,
-        WHITE, WHITE, WHITE, WHITE, WHITE, WHITE, WHITE, WHITE,
-        WHITE, WHITE, WHITE, WHITE, WHITE, WHITE, WHITE, WHITE,
-        WHITE, WHITE, WHITE, WHITE, WHITE, WHITE, WHITE, WHITE,
-        WHITE, WHITE, WHITE, WHITE, WHITE, WHITE, WHITE, WHITE },
+    /* paper */
+        R(6, BLUE), R(1, BLACK), R(2, BLUE), R(1, BLACK), R(1, BLUE), R(31, BLACK), R(6, BLACK),
+    /* ink */
+        R(31, WHITE), R(17, WHITE),
 };
 
 /* Scene 1 on the hearse-trike.  Its signature: two every-step movers, the
@@ -289,7 +264,7 @@ static const struct palette pal_grave = {
    lowers a second spider by the lych-gate, 5 puts a gravestone in the
    warm-up; more graves from 3. */
 const struct scene scene_nh1 = {
-    "NIGHT OF THE HEARSE", 1, VH_HEARSE, GROUND_COBBLES, &pal_grave,
+    film_nh, 1, VH_HEARSE, GROUND_COBBLES, pal_grave,
     {
         {   { HZ_BLOCK, 80, ART_GRAVE, 0, 0 },
             { HZ_BLOCK, 150, ART_ANGEL, 0, 0 },
@@ -319,20 +294,12 @@ const struct scene scene_nh1 = {
 
 /* The ghost train, red-lit: black figures against red, the track white on
    black below. */
-static const struct palette pal_ghost = {
+static const uint8_t pal_ghost[] = {
     BLACK, RED,
-    {   BLACK, BLACK, BLACK, BLACK, RED, RED, RED, RED,
-        RED, RED, RED, RED, RED, RED, RED, RED,
-        RED, RED, RED, RED, RED, RED, RED, RED,
-        RED, RED, RED, RED, RED, RED, RED, RED,
-        RED, RED, RED, RED, RED, RED, RED, RED,
-        RED, RED, RED, RED, BLACK, BLACK, BLACK, BLACK },
-    {   RED, RED, RED, RED, BLACK, BLACK, BLACK, BLACK,
-        BLACK, BLACK, BLACK, BLACK, BLACK, BLACK, BLACK, BLACK,
-        BLACK, BLACK, BLACK, BLACK, BLACK, BLACK, BLACK, BLACK,
-        BLACK, BLACK, BLACK, BLACK, BLACK, BLACK, BLACK, BLACK,
-        BLACK, BLACK, BLACK, BLACK, BLACK, BLACK, BLACK, BLACK,
-        BLACK, BLACK, BLACK, BLACK, WHITE, RED, RED, WHITE },
+    /* paper */
+        R(4, BLACK), R(31, RED), R(9, RED), R(4, BLACK),
+    /* ink */
+        R(4, RED), R(31, BLACK), R(9, BLACK), R(1, WHITE), R(2, RED), R(1, WHITE),
 };
 
 /* Scene 2 in a ghost-train car.  Its signature: nothing moves every step,
@@ -341,7 +308,7 @@ static const struct palette pal_ghost = {
    a coffin between the trapdoors, 4 a third trapdoor under the arch, 5 a
    third coffin; gaps (broken track) from 3. */
 const struct scene scene_nh2 = {
-    "NIGHT OF THE HEARSE", 2, VH_GHOST, GROUND_RAILS, &pal_ghost,
+    film_nh, 2, VH_GHOST, GROUND_RAILS, pal_ghost,
     {
         {   { HZ_BLOCK, 90, ART_COFFIN, 0, 0 },
             { HZ_BLOCK, 170, ART_COFFIN, 0, 0 },

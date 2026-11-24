@@ -21,6 +21,11 @@
 
 void screen_init(void);
 void scene_draw(const struct scene *s, uint8_t billing);
+/* F6c: a popup saves what it covers in the vehicle's buffer (DESIGN
+   "Memory": pause shares the shift buffers), and re-shifts it after */
+extern uint8_t veh_buf[];
+void vehicle_shift(uint8_t v);
+void vehicle_reshift(void);
 void rider_draw(uint8_t track, uint8_t xpx, uint8_t height, uint8_t frame);
 void hazards_list(const struct scene *s, uint8_t billing);  /* after scene_draw */
 void hazards_draw(void);

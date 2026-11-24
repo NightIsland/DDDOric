@@ -43,10 +43,7 @@ extern uint8_t dbl_a[64], dbl_b[64];   /* 6 pixels -> 12, as two screen bytes */
 static const char * const billing_name[BILLINGS + 1] = {
     "", "EXTRA", "STAND-IN", "DOUBLE", "STUNT MAN", "COORDINATOR", "LEGEND"
 };
-static const char * const films[6] = {
-    "RUSH HOUR RUMBLE", "DUST AT DAWN", "NIGHT OF THE HEARSE",
-    "MOONBASE PANIC", "DRAGON'S KEEP", "COLD FRONT"
-};
+
 
 void frame_init(void)
 {
@@ -389,9 +386,12 @@ void frame_card_step(void)
    them.  A popup fills cells 2-39 of lines y0 .. y1: cell 2 sets its ink
    (showing the line's own paper), cell 3 its paper, cells 4-37 hold the
    text, and cells 38-39 put the line's own paper and ink back.  A popup
-   that goes away again (pause, the quit question) saves what it covers. */
-#define POP_SAVE 36                     /* lines a popup can save */
-static uint8_t pop_buf[POP_SAVE * 38], pop_y0, pop_n;
+   that goes away again (pause, the quit question) saves what it covers,
+   F6c: in the vehicle's shift buffer (30 lines x 38 = 1,140 of its 1,152
+   bytes), shifted afresh when the popup goes. */
+#define POP_SAVE 30                     /* lines a popup can save */
+#define pop_buf veh_buf
+static uint8_t pop_y0, pop_n;
 
 static void popup(uint8_t y0, uint8_t y1, uint8_t paper, uint8_t c, uint8_t save)
 {
@@ -433,6 +433,7 @@ void popup_restore(void)
     for (p = LINE(pop_y0); n; --n, p += 40, b += 38)
         memcpy(p + 2, b, 38);
     pop_n = 0;
+    vehicle_reshift();
 }
 
 /* "CUT!": the director's megaphone and the word, large */
@@ -456,10 +457,10 @@ void popup_pause(void)
 
 void popup_ask(void)
 {
-    popup(84, 119, RED, WHITE, 1);
+    popup(85, 114, RED, WHITE, 1);         /* (POP_SAVE lines) */
     pop_ink(89, 102, YELLOW);
     cbig(89, "QUIT?");
-    ctext(109, "Y: THE TITLE   N: RIDE ON");
+    ctext(105, "Y: THE TITLE   N: RIDE ON");
 }
 
 /* ------------------------------------------------- "THAT'S A PRINT!" */

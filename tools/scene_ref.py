@@ -47,13 +47,16 @@ def load_scene(name="scene_rhr1", billing=None):
     body = src[src.index(name + " = {"):]
     body = body[:body.index("\n};")]
     head = body.split("{", 2)[1]                # "film", number, vehicle, ground, &pal,
-    pname = re.search(r"&(pal_\w+)", head).group(1)
+    pname = re.search(r"\b(pal_\w+)", head).group(1)
     vehicle = re.search(r"VH_(\w+)", head).group(1).lower()
     ground = re.search(r"GROUND_(\w+)", head).group(1)
-    pal = src[src.index(pname + " = {"):src.index("};", src.index(pname + " = {"))]
-    names = re.findall(r"\b(BLACK|RED|GREEN|YELLOW|BLUE|MAGENTA|CYAN|WHITE)\b", pal.split("{", 1)[1])
-    cols = [COLOURS[n] for n in names]
-    title_paper, title_ink, paper, ink = cols[0], cols[1], cols[2:50], cols[50:98]
+    pal = src[src.index(pname + "[] = {"):src.index("};", src.index(pname + "[] = {"))]
+    pal = re.sub(r"/\*.*?\*/", "", pal.split("{", 1)[1], flags=re.S)
+    # F6c: the title's paper and ink, then runs R(n, colour), paper's then ink's
+    title_paper, title_ink = [COLOURS[n] for n in re.findall(r"\b([A-Z]+)\b", pal.split("R(")[0])]
+    cols = [c for n, c_ in re.findall(r"R\((\d+),\s*([A-Z]+)\)", pal) for c in [COLOURS[c_]] * int(n)]
+    assert len(cols) == 96, (pname, len(cols))
+    paper, ink = cols[:48], cols[48:]
     tracks = []
     for tb in re.findall(r"\{((?:\s*\{[^{}]*\},?)+)\s*\}", body)[:4]:
         recs = []

@@ -141,7 +141,8 @@ static void vline(uint8_t x, uint8_t y0, uint8_t y1)
 #define VENT     0x5E       /* a jet's grate, on the road's second line */
 #define VENT_HOT 0x1E       /* XORed into the line below it while the jet warns */
 
-static uint8_t veh_buf[RIDER_VEHICLE_BYTES], vh_shifted = 0xFF;
+uint8_t veh_buf[RIDER_VEHICLE_BYTES];       /* (F6c: and a popup's save, src/frame.c) */
+static uint8_t vh_shifted = 0xFF;
 static const uint8_t *vh_art = veh_buf;     /* the scene's vehicle's frames */
 #define MOVBUF 1024             /* the alternate character set's place, unused in */
 #define mov_buf ((uint8_t *)0x9C00)  /* HIRES (DESIGN "Memory") */
@@ -171,9 +172,26 @@ static uint8_t *art_shift(uint8_t *dst, const uint8_t *src, uint8_t nb, uint8_t 
     return dst;
 }
 
+/* the vehicle's frames, all 6 shifts, into veh_buf (at a scene's start,
+   and again after a popup used veh_buf for its save) */
+void vehicle_shift(uint8_t v)
+{
+    uint8_t i;
+    vh_shifted = v;
+    for (i = 0; i < 4; ++i)
+        art_shift(veh_buf + i * RIDER_FRAME_BYTES, veh_art + v * VEH_BYTES + i * VEH_FRAME_BYTES,
+                  2, 16, 3, 16, 0, 6);
+}
+
+void vehicle_reshift(void)
+{
+    vehicle_shift(vh_shifted);
+}
+
 void scene_draw(const struct scene *s, uint8_t billing)
 {
-    const struct palette *pal = s->pal;
+    const palette_t *pal = s->pal, *ink0, *pp, *ip;
+    uint8_t pn, pc, in, ic;
     const struct ground *gr = &grounds[s->ground];
     const uint8_t *gl;
     const struct hazard *hz;
@@ -181,14 +199,12 @@ void scene_draw(const struct scene *s, uint8_t billing)
     char num[2];
 
     memset(HIRES, 0x40, 200 * 40);          /* bit 6 set in every bitmap byte */
-    if (s->vehicle != vh_shifted) {         /* the vehicle's frames, all 6 shifts */
-        vh_shifted = s->vehicle;
-        for (i = 0; i < 4; ++i)
-            art_shift(veh_buf + i * RIDER_FRAME_BYTES, veh_art + s->vehicle * VEH_BYTES + i * VEH_FRAME_BYTES,
-                      2, 16, 3, 16, 0, 6);
-    }
+    if (s->vehicle != vh_shifted)
+        vehicle_shift(s->vehicle);
     for (y = 0; y < TITLE_LINES; ++y)
-        line_colours(y, pal->title_paper, pal->title_ink);
+        line_colours(y, pal[0], pal[1]);
+    for (ink0 = pal + 2, i = 0; i < BAND_LINES; i += *ink0++ >> 3)
+        ;                                   /* the ink's runs follow the paper's */
     title(2, s->film);
     title(31, "SCENE");
     num[0] = '0' + s->number;
@@ -197,8 +213,21 @@ void scene_draw(const struct scene *s, uint8_t billing)
 
     for (t = 0; t < 4; ++t) {
         y = TITLE_LINES + t * BAND_LINES;
+        pp = pal + 2;
+        ip = ink0;
+        pn = in = 0;
         for (i = 0; i < BAND_LINES; ++i, ++y) {
-            p = line_colours(y, pal->paper[i], pal->ink[i]);
+            if (!pn) {                                  /* the palette's next runs */
+                pc = *pp & 7;
+                pn = *pp++ >> 3;
+            }
+            if (!in) {
+                ic = *ip & 7;
+                in = *ip++ >> 3;
+            }
+            --pn;
+            --in;
+            p = line_colours(y, pc, ic);
             if (i >= ROAD_LINE) {                       /* the ground's line */
                 gl = gr->line[i - ROAD_LINE];
                 for (j = 2; j < 40; ++j)
