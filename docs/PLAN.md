@@ -46,7 +46,7 @@ takes the next number.
 | F3 | Whole scene: four tracks, wrapping, block, runner, dangler, gap and ceiling block, crashes, fees, the one stop | F2 | whole step ≤ 16,000 cycles | merged (BUILD 11, PR #10); budget missed: average 16,100 riding flat out, worst 19,750 (see Results) |
 | F4 | Film frame: clapper card, takes, "Cut!", scene cleared, "You're fired", title screen, billing select, top five | F3 | riding steps stay under 20,000 cycles | merged (BUILD 13, PR #12; police lamps BUILD 14-15, PR #13) |
 | F5 | Film 1 (*Rush Hour Rumble*) complete at all six billings, tuned to M1's numbers; Bob judges the feel against the original | F4, M1 | | BUILD 20, PR #14 merged |
-| F6 | Films 2–6, jets and ramps, per-vehicle handling, music (no key redefinition: Bob, 24 Nov 2026) | F5 | memory ≤ 37 KB | F6a, F6b (Western) at BUILD 21 |
+| F6 | Films 2–6, jets and ramps, per-vehicle handling, music (no key redefinition: Bob, 24 Nov 2026) | F5 | memory ≤ 37 KB | F6a, F6b (Western) at BUILD 21, F6c (Horror) at BUILD 22 |
 | X1 | Optional: level codes from a seed, with a solver run over thousands of seeds in the harness | F5 | ≤ 2 KB | not started |
 
 M1 and F0 can run in parallel. F5 is the prototype milestone (plan step 3); F6 and X1 are polish
@@ -148,6 +148,16 @@ Horror, F6d Sci-fi, F6e Fantasy, F6f Spy), then F6g music.
 - **Tests** (121 checks, all pass): the Western scenes' screens = reference mid-ride, the win runs
   to the end of the mine cart scene on the Oric (same trace, screen = reference, beam pace).
   Worst step in win-b6 22,918 cycles (8 of 2,400 over). 2,757 bytes free below `$9800`.
+
+- **F6c, Night of the Hearse** (BUILD 22): scene 1 on a hearse-trike down a cobbled graveyard
+  lane by moonlight (gravestones, a stone angel, a shuffling ghoul at 0.75 times the runner speed,
+  a bat, the lych-gate, spiders, open graves at every billing): the first scene with two
+  every-step movers, 5 of 595 steps over budget at billing 6. Scene 2 in a ghost-train car,
+  red-lit (coffins, pop-up ghouls on trapdoors, a crypt arch, dropping skeletons, a track hump).
+  A first try had six now-and-then movers at billing 5-6 (3 jets, 3 skeletons) and went over
+  budget on 26 of 545 steps; one skeleton became a coffin (4 of 550). The win runs prove films
+  1-3 (6 scenes). The crash replay in the tests now models runners' own speeds, flyers and jets.
+  Memory: 1,221 bytes free below `$9800`, so films 4-6 need DESIGN "Memory"'s fallbacks.
 
 ### F5: Rush Hour Rumble at all six billings (BUILD 16, 23 Nov 2026)
 

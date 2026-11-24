@@ -265,12 +265,114 @@ const struct scene scene_dd2 = {
     },
 };
 
+/* Night of the Hearse (F6c).  The graveyard by moonlight: a deep blue sky
+   going black, everything white, the cobbles white on black. */
+static const struct palette pal_grave = {
+    BLACK, GREEN,
+    {   BLUE, BLUE, BLUE, BLUE, BLUE, BLUE, BLACK, BLUE,                         /* 0-7 */
+        BLUE, BLACK, BLUE, BLACK, BLACK, BLACK, BLACK, BLACK,                     /* 8-15 */
+        BLACK, BLACK, BLACK, BLACK, BLACK, BLACK, BLACK, BLACK,
+        BLACK, BLACK, BLACK, BLACK, BLACK, BLACK, BLACK, BLACK,
+        BLACK, BLACK, BLACK, BLACK, BLACK, BLACK, BLACK, BLACK,
+        BLACK, BLACK, BLACK, BLACK, BLACK, BLACK, BLACK, BLACK },
+    {   WHITE, WHITE, WHITE, WHITE, WHITE, WHITE, WHITE, WHITE,
+        WHITE, WHITE, WHITE, WHITE, WHITE, WHITE, WHITE, WHITE,
+        WHITE, WHITE, WHITE, WHITE, WHITE, WHITE, WHITE, WHITE,
+        WHITE, WHITE, WHITE, WHITE, WHITE, WHITE, WHITE, WHITE,
+        WHITE, WHITE, WHITE, WHITE, WHITE, WHITE, WHITE, WHITE,
+        WHITE, WHITE, WHITE, WHITE, WHITE, WHITE, WHITE, WHITE },
+};
+
+/* Scene 1 on the hearse-trike.  Its signature: two every-step movers, the
+   slow shuffling ghoul and the bat (don't jump while it is over you), and
+   open graves at every billing.  Billing 3 wakes the ghoul to full speed, 4
+   lowers a second spider by the lych-gate, 5 puts a gravestone in the
+   warm-up; more graves from 3. */
+const struct scene scene_nh1 = {
+    "NIGHT OF THE HEARSE", 1, VH_HEARSE, GROUND_COBBLES, &pal_grave,
+    {
+        {   { HZ_BLOCK, 80, ART_GRAVE, 0, 0 },
+            { HZ_BLOCK, 150, ART_ANGEL, 0, 0 },
+            { HZ_BLOCK, 30, ART_GRAVE, 0, BILLS(5, 0) },
+            { HZ_GAP, 200, 14, 3, 0 },
+            { HZ_GAP, 115, 12, 4, 0 },
+            { HZ_GAP, 55, 14, 6, BILLS(0, 4) } },
+        /* the ghoul's lane: it shuffles at 0.75 times the runner speed */
+        {   { HZ_RUNNER, 160, ART_GHOUL, 0x80 | 92, BILLS(0, 2) },
+            { HZ_RUNNER, 120, ART_GHOUL, 0, BILLS(3, 0) },
+            { HZ_GAP, 60, 16, 1, 0 },
+            { HZ_GAP, 190, 14, 3, 0 },
+            { HZ_GAP, 100, 14, 5, 0 } },
+        {   { HZ_CEILING, 40, ART_LYCHGATE, 22, 0 },
+            { HZ_GAP, 130, 20, 1, 0 },
+            { HZ_DANGLER, 20, ART_SPIDER, 0, BILLS(4, 0) },
+            { HZ_BLOCK, 190, ART_GRAVE, 0, BILLS(3, 0) },
+            { HZ_GAP, 160, 14, 6, 0 } },
+        /* the bat's lane, with a spider */
+        {   { HZ_DANGLER, 110, ART_SPIDER, 0, 0 },
+            { HZ_FLYER, 200, ART_BAT, 24, 0 },
+            { HZ_GAP, 60, 14, 3, 0 },
+            { HZ_GAP, 170, 16, 4, 0 },
+            { HZ_GAP, 30, 14, 6, 0 } },
+    },
+};
+
+/* The ghost train, red-lit: black figures against red, the track white on
+   black below. */
+static const struct palette pal_ghost = {
+    BLACK, RED,
+    {   BLACK, BLACK, BLACK, BLACK, RED, RED, RED, RED,
+        RED, RED, RED, RED, RED, RED, RED, RED,
+        RED, RED, RED, RED, RED, RED, RED, RED,
+        RED, RED, RED, RED, RED, RED, RED, RED,
+        RED, RED, RED, RED, RED, RED, RED, RED,
+        RED, RED, RED, RED, BLACK, BLACK, BLACK, BLACK },
+    {   RED, RED, RED, RED, BLACK, BLACK, BLACK, BLACK,
+        BLACK, BLACK, BLACK, BLACK, BLACK, BLACK, BLACK, BLACK,
+        BLACK, BLACK, BLACK, BLACK, BLACK, BLACK, BLACK, BLACK,
+        BLACK, BLACK, BLACK, BLACK, BLACK, BLACK, BLACK, BLACK,
+        BLACK, BLACK, BLACK, BLACK, BLACK, BLACK, BLACK, BLACK,
+        BLACK, BLACK, BLACK, BLACK, WHITE, RED, RED, WHITE },
+};
+
+/* Scene 2 in a ghost-train car.  Its signature: nothing moves every step,
+   but everything springs: pop-up ghouls half a period apart, dropping
+   skeletons, and the track hump's long jump over a coffin.  Billing 3 adds
+   a coffin between the trapdoors, 4 a third trapdoor under the arch, 5 a
+   third coffin; gaps (broken track) from 3. */
+const struct scene scene_nh2 = {
+    "NIGHT OF THE HEARSE", 2, VH_GHOST, GROUND_RAILS, &pal_ghost,
+    {
+        {   { HZ_BLOCK, 90, ART_COFFIN, 0, 0 },
+            { HZ_BLOCK, 170, ART_COFFIN, 0, 0 },
+            { HZ_BLOCK, 130, ART_COFFIN, 0, BILLS(5, 0) },
+            { HZ_GAP, 50, 14, 3, 0 },
+            { HZ_GAP, 130, 14, 4, BILLS(0, 4) },
+            { HZ_GAP, 204, 16, 6, 0 } },
+        {   { HZ_JET, 70, ART_POPGHOUL, 0, 0 },
+            { HZ_JET, 160, ART_POPGHOUL, 8, 0 },
+            { HZ_BLOCK, 115, ART_COFFIN, 0, BILLS(3, 0) },
+            { HZ_GAP, 30, 14, 4, 0 },
+            { HZ_GAP, 200, 16, 5, 0 } },
+        {   { HZ_CEILING, 40, ART_ARCH, 22, 0 },
+            { HZ_DANGLER, 150, ART_SKELETON, 0, 0 },
+            { HZ_JET, 100, ART_POPGHOUL, 4, BILLS(4, 0) },
+            { HZ_GAP, 190, 14, 3, 0 },
+            { HZ_GAP, 125, 12, 6, 0 } },
+        {   { HZ_RAMP, 20, ART_HUMP, 0, 0 },
+            { HZ_BLOCK, 110, ART_COFFIN, 0, 0 },
+            { HZ_DANGLER, 190, ART_SKELETON, 0, 0 },
+            { HZ_GAP, 160, 14, 3, 0 },
+            { HZ_GAP, 70, 14, 5, 0 },
+            { HZ_GAP, 210, 12, 6, 0 } },
+    },
+};
+
 /* The season: 12 scenes, 6 films of 2 (DESIGN "Films, scenes and
    progression").  Films not built yet repeat the built ones. */
 static const struct scene * const season[SEASON] = {
-    &scene_rhr1, &scene_rhr2, &scene_dd1, &scene_dd2,
-    &scene_rhr1, &scene_rhr2, &scene_dd1, &scene_dd2,
-    &scene_rhr1, &scene_rhr2, &scene_dd1, &scene_dd2,
+    &scene_rhr1, &scene_rhr2, &scene_dd1, &scene_dd2, &scene_nh1, &scene_nh2,
+    &scene_rhr1, &scene_rhr2, &scene_dd1, &scene_dd2, &scene_nh1, &scene_nh2,
 };
 
 /* (GR_KERB only where line 44's paper is black: the kerb's byte takes the
@@ -284,6 +386,8 @@ const struct ground grounds[] = {
           { 0x40, 0x44, 0x40, 0x60 }, { 0x48, 0x40, 0x40, 0x42 } }, 0 },
     {   { { 0x7F, 0x7F, 0x7F, 0x7F }, { 0x4C, 0x40, 0x4C, 0x40 },     /* rails */
           { 0x4C, 0x40, 0x4C, 0x40 }, { 0x7F, 0x7F, 0x7F, 0x7F } }, 0 },
+    {   { { 0x7F, 0x7F, 0x7F, 0x7F }, { 0x44, 0x50, 0x42, 0x48 },     /* cobbles */
+          { 0x40, 0x40, 0x40, 0x40 }, { 0x52, 0x49, 0x44, 0x51 } }, 0 },
 };
 
 const struct scene *scene_only;

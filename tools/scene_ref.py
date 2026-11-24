@@ -22,6 +22,7 @@ GROUNDS = dict(
     WATER=([[0x4C] * 4, [0x73] * 4, [0x40] * 4, [0x40, 0x46, 0x40, 0x46]], False, True),
     DIRT=([[0x7F] * 4, [0x52, 0x40, 0x49, 0x40], [0x40, 0x44, 0x40, 0x60], [0x48, 0x40, 0x40, 0x42]], False, False),
     RAILS=([[0x7F] * 4, [0x4C, 0x40, 0x4C, 0x40], [0x4C, 0x40, 0x4C, 0x40], [0x7F] * 4], False, False),
+    COBBLES=([[0x7F] * 4, [0x44, 0x50, 0x42, 0x48], [0x40] * 4, [0x52, 0x49, 0x44, 0x51]], False, False),
 )
 ONLY = None                                 # set: every scene is this one (a -DSCENE= build)
 ART = {f"ART_{n.upper()}": i for i, (n, _) in enumerate(mkart.SCENERY)}
@@ -59,7 +60,13 @@ def load_scene(name="scene_rhr1", billing=None):
         for rec in re.findall(r"\{([^{}]*)\}", tb):
             rec = re.sub(r"BILLS\((\d+),\s*(\d+)\)", lambda m_: str(int(m_.group(1)) | int(m_.group(2)) << 4), rec)
             f = [v.strip() for v in rec.split(",")]
-            val = lambda v: int(v) if v.isdigit() else {**KINDS, **ART}[v]  # noqa: E731
+            def val(v):   # a number, a name, or a | of numbers (a runner's speed: 0x80 | 92)
+                if v in KINDS or v in ART:
+                    return {**KINDS, **ART}[v]
+                n = 0
+                for part in v.split("|"):
+                    n |= int(part.strip(), 0)
+                return n
             r_ = tuple(val(v) for v in f)
             if billing is None or shown(r_, billing):
                 recs.append(r_[:4])

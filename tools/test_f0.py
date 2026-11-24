@@ -456,9 +456,9 @@ rhr = {os.path.basename(p): ref_trace(p, n) for p, n in scripts}
 rhr["clear.keys"] = ref_trace(os.path.join(KEYS, "clear.keys"), 452)
 rhr["takeback.keys"] = ref_trace(os.path.join(KEYS, "takeback.keys"), 2000)
 WIN_W = [8, 8, 6, 6, 5, 4]                   # tools/solve/wins.sh
-WIN_SCENES = 4                              # tools/solve/wins.sh SCENES: films built x 2
+WIN_SCENES = 6                              # tools/solve/wins.sh SCENES: films built x 2
 for b in range(1, 7):
-    rhr[f"win-b{b}.keys"] = ref_trace(os.path.join(KEYS, f"win-b{b}.keys"), 2600)
+    rhr[f"win-b{b}.keys"] = ref_trace(os.path.join(KEYS, f"win-b{b}.keys"), 3800)
 errs = sum((f3_rules(t) for t in rhr.values()), [])
 evs = [parse(l) for t in rhr.values() for l in t]
 check("F3 rules: crash = dead stop, a take lost, 1.5 s pause, then the clapper card for the retake from the "
@@ -480,14 +480,16 @@ def pixels(rows, x0, y0):
 
 RUN_MUL = [4, 4, 5, 5, 6, 6, 7]             # runners' speed by billing, quarters (DESIGN "Billings")
 DANGLE_HALF = [6, 6, 5, 5, 4, 4, 3]         # danglers: half steps a line
+JET_PERIOD = [150, 150, 125, 125, 100, 100, 75]   # jets: steps a round, a third of it on (F6a)
 
 
 def touch_errors(lines):
     """every riding step: a crash exactly when a rider pixel meets a hazard
     pixel, or his wheels' middle is over a gap on the road; the hazards
     replayed independently from DESIGN (runners 0.95 px a step at billing 1,
-    x 1.25, 1.5, 1.75 up the billings, wrapping in 0..228-w; danglers 1 line
-    every 3, 2.5, 2, 1.5 steps, 0..25 and back)"""
+    or their own speed, x 1.25, 1.5, 1.75 up the billings, wrapping in
+    0..228-w; flyers the same up in the air; danglers 1 line every 3, 2.5,
+    2, 1.5 steps, 0..25 and back; jets on for the last third of their period)"""
     errs, prev, st, ctx = [], None, None, None
     seen = []
 
@@ -495,9 +497,18 @@ def touch_errors(lines):
         name, bill = run_scene(seen)
         sc = scene_ref.load_scene(name, bill)
         mv = moving(name, bill)
-        sp = (122 * RUN_MUL[bill]) >> 2
-        return dict(sc=sc, mv=mv, bill=bill, sp=sp, r=DANGLE_HALF[bill],
-                    h={i: [x, 0, 0, DANGLE_HALF[bill], 0] for i, (t, k, x, a) in enumerate(mv)})  # px, frac, drop, count, rising
+        # F6: a runner's own speed (b: 1/128 px a step, bit 7 leftwards; 0 =
+        # M1's 122 leftwards); flyers at the default; jets round their period
+        bs = {(t, k, x, a): b for t, recs in enumerate(sc["tracks"]) for k, x, a, b in recs}
+        jp = JET_PERIOD[bill]
+        h = {}
+        for i, (t, k, x, a) in enumerate(mv):
+            b = bs[(t, k, x, a)] if k == 2 else 0
+            sp = ((b & 0x7F or 122) * RUN_MUL[bill]) >> 2
+            h[i] = [x, 0, 0, DANGLE_HALF[bill], 0, sp, bool(b) and not b & 0x80]  # px, frac, drop, count, rising, speed, right
+            if k == 6:
+                h[i][3] = ((bs[(t, k, x, a)] & 15) * jp) >> 4
+        return dict(sc=sc, mv=mv, bill=bill, r=DANGLE_HALF[bill], jp=jp, jon=jp // 3, h=h)
     for l in lines:
         seen.append(l)
         s_ = parse(l)
@@ -507,13 +518,16 @@ def touch_errors(lines):
         if moved:
             for i, (t, k, x, a) in enumerate(st["mv"]):
                 h = st["h"][i]
-                if k == 2:                  # leftwards: the fraction borrows a px
+                if k in (2, 8):             # the fraction borrows (left) or carries (right) a px
                     mx = 228 - mkart.scenery(mkart.SCENERY[a][0])[1]
-                    f, n = h[1] - (st["sp"] & 0x7F), st["sp"] >> 7
-                    if f < 0:
-                        f, n = f + 128, n + 1
+                    sp = h[5]
+                    f, n = h[1] + (sp & 0x7F if h[6] else -(sp & 0x7F)), sp >> 7
+                    if f < 0 or f > 127:
+                        f, n = f % 128, n + 1
                     h[1] = f
-                    h[0] = (h[0] - n) % mx
+                    h[0] = (h[0] + (n if h[6] else -n)) % mx
+                elif k == 6:                # a jet: round its period
+                    h[3] = (h[3] + 1) % st["jp"]
                 else:
                     if h[3] > 2:
                         h[3] -= 2
@@ -535,11 +549,16 @@ def touch_errors(lines):
             bike = pixels(mkart.bits(dict(dict(mkart.VEHICLES)[st["sc"]["vehicle"]])[frame]), px_, 28 - s_["h"])
             hit = False
             for k, x, a, b in st["sc"]["tracks"][s_["track"]]:
-                if k in (1, 2, 3, 5):
+                if k in (1, 2, 3, 5, 6, 8):
                     rows, w, hh = mkart.scenery(mkart.SCENERY[a][0])
-                    if k == 2:
+                    if k == 6:              # a jet hits only when on
                         i = st["mv"].index((s_["track"], k, x, a))
-                        x, y = st["h"][i][0], 44 - hh
+                        if st["h"][i][3] < st["jp"] - st["jon"]:
+                            continue
+                        y = 44 - hh
+                    elif k in (2, 8):
+                        i = st["mv"].index((s_["track"], k, x, a))
+                        x, y = st["h"][i][0], (44 - hh if k == 2 else b + 1 - hh)
                     elif k == 3:
                         i = st["mv"].index((s_["track"], k, x, a))
                         y = 6 + st["h"][i][2]
@@ -571,7 +590,7 @@ check("takeback.keys: a crash, then three scenes cleared: the lost take comes ba
 # F5: film 1 proved beatable at every billing (DESIGN "Billings"): each
 # win-bN.keys (searched by tools/solve, every jump with a window of WIN_W
 # steps to press it in) starts billing N from the title and clears every
-# built scene (F6b: Rush Hour Rumble and Dust at Dawn) on its first take;
+# built scene (F6c: films 1 to 3) on its first take;
 # the Oric plays it the same
 wins = []
 for b in range(1, 7):
@@ -585,7 +604,10 @@ for b in range(1, 7):
           f"(every jump has {WIN_W[b - 1]} steps to press it in)", ok, wins[-1])
 # F6b: the Western's two scenes on the Oric, mid-ride at billing 6 (the
 # horse on the dusty street, the mine cart on the rails) = the reference
-for fr, what in ((1700, "Dust at Dawn scene 1 (horse, dirt street)"), (2200, "Dust at Dawn scene 2 (mine cart, rails)")):
+# F6c: and the horror's (the hearse-trike on the cobbles, the ghost train)
+for fr, what in ((1700, "Dust at Dawn scene 1 (horse, dirt street)"), (2200, "Dust at Dawn scene 2 (mine cart, rails)"),
+                 (2800, "Night of the Hearse scene 1 (hearse-trike, cobbles)"),
+                 (3400, "Night of the Hearse scene 2 (ghost-train car)")):
     r = emu.run(TAP, frames=fr, keys=os.path.join(KEYS, "win-b6.keys"), out=os.path.join(OUT, f"f6-{fr}"))
     emu.write_png(os.path.join(OUT, f"f6-{fr}.png"), r.rgb, 2)
     want = reference(r)
@@ -880,7 +902,7 @@ check("rider: under 1% torn frames over all the scripts", all_torn * 100 < all_d
 # clusters fall; BUILD 13: the three short scripts alone read 1.3%, so the
 # long season run is in the sample too)
 # F5: the win runs too, each stopped 30 steps before it clears its last scene
-# (F6b: the mine cart on the rails, after the harbour and the horse)
+# (F6b-c: the ghost train last, after the harbour, the Western and the graveyard)
 sc_torn = sc_draw = 0
 runs = [(os.path.join(KEYS, "clear.keys"), 430), (os.path.join(KEYS, "takeback.keys"), 1950), (rnd, RND_N),
         (os.path.join(KEYS, "season.keys"), 7700)]
