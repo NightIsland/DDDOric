@@ -46,7 +46,7 @@ takes the next number.
 | F3 | Whole scene: four tracks, wrapping, block, runner, dangler, gap and ceiling block, crashes, fees, the one stop | F2 | whole step ≤ 16,000 cycles | merged (BUILD 11, PR #10); budget missed: average 16,100 riding flat out, worst 19,750 (see Results) |
 | F4 | Film frame: clapper card, takes, "Cut!", scene cleared, "You're fired", title screen, billing select, top five | F3 | riding steps stay under 20,000 cycles | merged (BUILD 13, PR #12; police lamps BUILD 14-15, PR #13) |
 | F5 | Film 1 (*Rush Hour Rumble*) complete at all six billings, tuned to M1's numbers; Bob judges the feel against the original | F4, M1 | | BUILD 20, PR #14 merged |
-| F6 | Films 2–6, jets and ramps, per-vehicle handling, music (no key redefinition: Bob, 24 Nov 2026) | F5 | memory ≤ 37 KB | F6a, F6b (Western) at BUILD 21, F6c (Horror) at BUILD 22, F6d (Sci-fi) at BUILD 23, F6e-f (Fantasy, Spy: the whole season) at BUILD 24; F6g stings and engine voices at BUILD 25 (general music later: Bob, 24 Nov 2026) |
+| F6 | Films 2–6, jets and ramps, per-vehicle handling, music (no key redefinition: Bob, 24 Nov 2026) | F5 | memory ≤ 37 KB | F6a, F6b (Western) at BUILD 21, F6c (Horror) at BUILD 22, F6d (Sci-fi) at BUILD 23, F6e-f (Fantasy, Spy: the whole season) at BUILD 24; F6g stings and engine voices at BUILD 25 (general music left out: Bob, 24 Nov 2026); bug fixes to BUILD 27, PR #16 merged; release BUILD 28 |
 | X1 | Optional: level codes from a seed, with a solver run over thousands of seeds in the harness | F5 | ≤ 2 KB | not started |
 
 M1 and F0 can run in parallel. F5 is the prototype milestone (plan step 3); F6 and X1 are polish
@@ -210,13 +210,10 @@ before general music, 24 Nov 2026).
   for general music later. The voice only writes a new volume, and the vibrato moves every 8
   ticks: writing both every 10 ms took enough IRQ time to starve a hover-scene draw.
 
-- **Debug scene picker** (BUILD 26, Bob: temporary, to reach the later films without hours of
-  practice): `make pick` builds `build/pick/stuntbob.tap`, an Oricutron build where P on the
-  title screen steps through the 12 scenes ("P: FILM 4 SCENE 2" replaces the strapline) and 1
-  starts there. Fees and the billing's change after scene 12 count from the scene picked. Only
-  `SCENE_PICK` builds have it; the real builds and the tests don't change. Remove it before
-  release. Also fixed: the card's "scene fee a track" was 10 times too much since fees moved to
-  £10s (scene 1 showed £100); a test now reads it.
+- **Debug scene picker** (BUILD 26, removed for the release at BUILD 28): an Oricutron build
+  where P on the title screen picked the scene to start on, so Bob could reach the later films.
+  Also fixed: the card's "scene fee a track" was 10 times too much since fees moved to £10s
+  (scene 1 showed £100); a test now reads it.
 
 - **BUILD 27, Bob's bugs from the picker build:**
   - *Garbage screens and a crash after going back to the title* (seen on Moonbase Panic 2 and
@@ -235,6 +232,13 @@ before general music, 24 Nov 2026).
   - *Hooves, the dragon's feet and the skis sound in the air*: their voices stop while airborne.
   - *NIGHT OF THE HEARSE ran off the clapper*: the card's film name now puts one cell between
     words, from cell 3 when the name is longer than 16 letters.
+
+- **BUILD 28, the release** (Bob, 25 Nov 2026: "happy with this as the release version"): the
+  scene picker taken out. The release tap is plain `make` (`build/stuntbob.tap`). The only
+  difference from Bob's Oricutron test builds is the noise: `ORICUTRON=1` doubles every AY noise
+  period because Oricutron plays noise an octave high, so on a real Oric (or a correct emulator)
+  the release's noise is at its intended pitch. Tones are the same in both. General music was
+  left out (Bob, 24 Nov 2026).
 
 ### F5: Rush Hour Rumble at all six billings (BUILD 16, 23 Nov 2026)
 

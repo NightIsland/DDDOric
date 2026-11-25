@@ -273,19 +273,11 @@ uint8_t model_px(void)
 }
 
 /* billing b starts at the season's scene (b - 1) x 12 + 1 (DESIGN "Scoring") */
-#ifdef SCENE_PICK
-uint8_t pick_scene;                     /* debug build: the scene to start on, 0-11 */
-#endif
-
 static void run_start(void)
 {
     uint8_t b;
     m.scenes = 0;
     m.run_scene = 1;
-#ifdef SCENE_PICK
-    m.scenes = pick_scene;              /* (the billing still moves on after scene 12) */
-    m.run_scene += pick_scene;
-#endif
     for (b = m.billing; b > 1; --b)
         m.run_scene += SEASON;
     m.scene_fee = 0;
@@ -469,11 +461,6 @@ static uint8_t frame_step(uint8_t edge, uint8_t kd)
             model_billing(m.billing + 1);
         } else if (kd == 'S') {
             m.sound ^= 1;
-#ifdef SCENE_PICK
-        } else if (kd == 'P') {
-            if (++pick_scene == SEASON)
-                pick_scene = 0;
-#endif
         }
         return 0;
     case M_CARD:                            /* any game key skips a card */

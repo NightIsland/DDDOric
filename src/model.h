@@ -113,9 +113,6 @@ struct model {
 };
 
 extern struct model m;
-#ifdef SCENE_PICK
-extern uint8_t pick_scene;      /* debug build (make pick): P on the title picks the start scene */
-#endif
 
 /* hazards, per slot track * SC_MAX + i: where to draw them */
 extern uint8_t hz_px[NHAZ];     /* x in pixels (runners move) */
