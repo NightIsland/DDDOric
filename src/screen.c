@@ -133,19 +133,78 @@ static void vline(uint8_t x, uint8_t y0, uint8_t y1)
         LINE(y0)[c] |= b;
 }
 
-static const uint8_t *vh_art = rider_art;   /* the scene's vehicle's frames */
+/* F6a: pictures are stored unshifted and pre-shifted here when a scene is
+   drawn (DESIGN "Memory"): the scene's vehicle into veh_buf, its moving
+   hazards into mov_buf.  art_shift writes ns shifts from s0 of a picture of
+   nb bytes a row and h rows (top first): each shift ncols columns of hp
+   lines, bottom line first (src/draw.s), lines past h blank. */
+#define VENT     0x5E       /* a jet's grate, on the road's second line */
+#define VENT_HOT 0x1E       /* XORed into the line below it while the jet warns */
+
+uint8_t veh_buf[RIDER_VEHICLE_BYTES];       /* (F6c: and a popup's save, src/frame.c) */
+static uint8_t vh_shifted = 0xFF;
+static const uint8_t *vh_art = veh_buf;     /* the scene's vehicle's frames */
+#define MOVBUF 1024             /* the alternate character set's place, unused in */
+#define mov_buf ((uint8_t *)0x9C00)  /* HIRES (DESIGN "Memory") */
+static uint16_t mov_top;
+
+static uint8_t *art_shift(uint8_t *dst, const uint8_t *src, uint8_t nb, uint8_t h,
+                          uint8_t ncols, uint8_t hp, uint8_t s0, uint8_t ns)
+{
+    uint8_t s, c, l, v, rs, ls;
+    const uint8_t *row;
+    for (s = s0; ns; --ns, ++s) {
+        rs = s;
+        ls = 6 - s;
+        for (c = 0; c < ncols; ++c)
+            for (l = hp; l--; ) {
+                v = 0;
+                if (l < h) {
+                    row = src + l * nb;
+                    if (c < nb)
+                        v = row[c] >> rs;
+                    if (c && c <= nb)
+                        v |= (uint8_t)(row[c - 1] << ls) & 0x3F;
+                }
+                *dst++ = v;
+            }
+    }
+    return dst;
+}
+
+/* the vehicle's frames, all 6 shifts, into veh_buf (at a scene's start,
+   and again after a popup used veh_buf for its save) */
+void vehicle_shift(uint8_t v)
+{
+    uint8_t i;
+    vh_shifted = v;
+    for (i = 0; i < 4; ++i)
+        art_shift(veh_buf + i * RIDER_FRAME_BYTES, veh_art + v * VEH_BYTES + i * VEH_FRAME_BYTES,
+                  2, 16, 3, 16, 0, 6);
+}
+
+void vehicle_reshift(void)
+{
+    vehicle_shift(vh_shifted);
+}
 
 void scene_draw(const struct scene *s, uint8_t billing)
 {
-    const struct palette *pal = s->pal;
+    const palette_t *pal = s->pal, *ink0, *pp, *ip;
+    uint8_t pn, pc, in, ic;
+    const struct ground *gr = &grounds[s->ground];
+    const uint8_t *gl;
     const struct hazard *hz;
     uint8_t t, i, j, y, *p, mid;
     char num[2];
 
     memset(HIRES, 0x40, 200 * 40);          /* bit 6 set in every bitmap byte */
-    vh_art = rider_art + s->vehicle * RIDER_VEHICLE_BYTES;
+    if (s->vehicle != vh_shifted)
+        vehicle_shift(s->vehicle);
     for (y = 0; y < TITLE_LINES; ++y)
-        line_colours(y, pal->title_paper, pal->title_ink);
+        line_colours(y, pal[0], pal[1]);
+    for (ink0 = pal + 2, i = 0; i < BAND_LINES; i += *ink0++ >> 3)
+        ;                                   /* the ink's runs follow the paper's */
     title(2, s->film);
     title(31, "SCENE");
     num[0] = '0' + s->number;
@@ -154,21 +213,27 @@ void scene_draw(const struct scene *s, uint8_t billing)
 
     for (t = 0; t < 4; ++t) {
         y = TITLE_LINES + t * BAND_LINES;
+        pp = pal + 2;
+        ip = ink0;
+        pn = in = 0;
         for (i = 0; i < BAND_LINES; ++i, ++y) {
-            p = line_colours(y, pal->paper[i], pal->ink[i]);
-            if (s->ground == GROUND_WATER) {            /* waves: crests, troughs, ripples */
-                if (i == ROAD_LINE)
-                    memset(p + 2, 0x4C, 38);
-                else if (i == ROAD_LINE + 1)
-                    memset(p + 2, 0x73, 38);
-                else if (i == ROAD_LINE + 3)
-                    for (j = 3; j < 40; j += 2)
-                        p[j] = 0x46;
-            } else if (i == ROAD_LINE) {                /* kerb, from cell 1 */
-                memset(p + 1, 0x7F, 39);                /* (road paper is black) */
-            } else if (i == ROAD_LINE + 2) {
-                for (j = 2; j < 40; j += 4)             /* lane marks */
-                    p[j] = p[j + 1] = 0x7F;
+            if (!pn) {                                  /* the palette's next runs */
+                pc = *pp & 7;
+                pn = *pp++ >> 3;
+            }
+            if (!in) {
+                ic = *ip & 7;
+                in = *ip++ >> 3;
+            }
+            --pn;
+            --in;
+            p = line_colours(y, pc, ic);
+            if (i >= ROAD_LINE) {                       /* the ground's line */
+                gl = gr->line[i - ROAD_LINE];
+                for (j = 2; j < 40; ++j)
+                    p[j] = gl[(j - 2) & 3];
+                if (i == ROAD_LINE && (gr->flags & GR_KERB))
+                    p[1] = gl[0];                       /* the kerb from cell 1 */
             }
         }
         y = TITLE_LINES + t * BAND_LINES;               /* band's line 0 */
@@ -179,6 +244,9 @@ void scene_draw(const struct scene *s, uint8_t billing)
             case HZ_BLOCK:
             case HZ_RAMP:
                 blit(hz->a, hz->x, y + ROAD_LINE - 1);
+                break;
+            case HZ_JET:                                /* its vent in the road; the */
+                LINE(y + ROAD_LINE + 1)[xcell[hz->x + scenery_w[hz->a] / 2]] = VENT;   /* jet itself moves */
                 break;
             case HZ_DANGLER:                            /* the rope's top part; the */
                 mid = hz->x + scenery_w[hz->a] / 2;     /* rest and the weight move */
@@ -193,7 +261,7 @@ void scene_draw(const struct scene *s, uint8_t billing)
                 for (i = 0; i < 4; ++i) {               /* on water, solid rocks   */
                     p = LINE(y + ROAD_LINE + i);
                     for (mid = hz->x; mid != (uint8_t)(hz->x + hz->a); ++mid)
-                        if (s->ground == GROUND_WATER)
+                        if (gr->flags & GR_FILL)
                             p[xcell[mid]] |= 0x20 >> xshift[mid];
                         else
                             p[xcell[mid]] &= ~(0x20 >> xshift[mid]);
@@ -247,14 +315,9 @@ extern uint8_t r_fast;
 #define RT(t) (TITLE_LINES + (t) * BAND_LINES + RIDER_TOP)
 static const uint8_t rider_top[4] = { RT(0), RT(1), RT(2), RT(3) };
 static const uint8_t shift_ofs[6] = { 0, 48, 96, 144, 192, 240 };
-#define PO (SPR_POLICE_COLS * SPR_POLICE_H)
-static const uint16_t police_ofs[6] = { 0, PO, 2 * PO, 3 * PO, 4 * PO, 5 * PO };
 static const uint16_t frame_ofs[4] = {
     0, RIDER_FRAME_BYTES, 2 * RIDER_FRAME_BYTES, 3 * RIDER_FRAME_BYTES
 };
-#if SPR_BOAT_COLS != SPR_POLICE_COLS || SPR_BOAT_H != SPR_POLICE_H
-#error "runners share police_ofs: the boat must be the police car's size"
-#endif
 
 /* Bob's speed-up (BUILD 11): crashes come only on a real touch, so around the
    rider there is usually nothing but blank screen.  When the box that holds
@@ -301,20 +364,14 @@ extern uint8_t rp_b, rp_y, rp_c;
 #pragma zpsym ("rp_b")
 #pragma zpsym ("rp_y")
 #pragma zpsym ("rp_c")
-void __fastcall__ rope_or(uint8_t y1);
-void __fastcall__ rope_and(uint8_t y1);
+void __fastcall__ rope_xor(uint8_t y1);
 
-static void rope(uint8_t x, uint8_t y0, uint8_t y1, uint8_t on)
+static void rope(uint8_t x, uint8_t y0, uint8_t y1)
 {
     rp_y = y0;
     rp_c = xcell[x];
     rp_b = 0x20 >> xshift[x];
-    if (on) {
-        rope_or(y1);
-    } else {
-        rp_b = ~rp_b;
-        rope_and(y1);
-    }
+    rope_xor(y1);
 }
 
 /* The moving hazards of the scene, listed once by hazards_list (at most 4
@@ -322,7 +379,10 @@ static void rope(uint8_t x, uint8_t y0, uint8_t y1, uint8_t on)
 #define MAXMOV 6
 static uint8_t nmov, mv_slot[MAXMOV], mv_kind[MAXMOV], mv_band[MAXMOV], mv_rope[MAXMOV];
 static uint8_t mv_c[MAXMOV];
-static const uint8_t *mv_img[MAXMOV];
+const uint8_t *mv_img[MAXMOV];          /* (not static: the harness reads it) */
+static uint16_t mv_so[MAXMOV][6];       /* runners: each shift's offset in mv_img */
+static uint8_t mv_lamp[MAXMOV];         /* the police car and the patrol boat: lamps */
+uint8_t mv_hot[MAXMOV];                 /* jets: the vent glowing (a warning); the harness reads it */
 static uint8_t rr, mv_x[MAXMOV];       /* hazards_draw: first in line; drawn x */
 static uint8_t mv_t[MAXMOV];            /* track */
 static uint8_t mv_block[MAXMOV][40];    /* runners: cells their road box shares with scenery */
@@ -369,47 +429,70 @@ static uint8_t box_blank(uint8_t t, uint8_t top, uint8_t bot, uint8_t c0, uint8_
 void hazards_list(const struct scene *sc, uint8_t billing)
 {
     const struct hazard *h = &sc->h[0][0];
-    uint8_t i;
-    uint8_t band, w;
-    nmov = rr = nrect = 0;
+    uint8_t i, t, band, w, nc, hp, k, a, x, n, sn, nb;
+    uint8_t *dst;
+    uint16_t o;
+    nmov = rr = nrect = mov_top = 0;
     memset(sp_on + SPR_MOV, 0, NSPR - SPR_MOV);  /* (the last scene's too: a new screen) */
     for (i = 0; i < NHAZ && nmov < MAXMOV; ++i, ++h) {
         if (!hz_shown(h, billing))
             continue;
-        band = TITLE_LINES + (i / SC_MAX) * BAND_LINES;
-        w = 0;
-        if (h->kind == HZ_BLOCK || h->kind == HZ_CEILING || h->kind == HZ_DANGLER || h->kind == HZ_RAMP)
-            w = scenery_w[h->a];
-        if (h->kind == HZ_BLOCK || h->kind == HZ_RAMP)
-            rect_add(i / SC_MAX, h->x, h->x + w - 1, band + ROAD_LINE - scenery_h[h->a], band + ROAD_LINE);
-        else if (h->kind == HZ_CEILING)
-            rect_add(i / SC_MAX, h->x, h->x + w - 1, band, band + h->b + 1);
-        else if (h->kind == HZ_DANGLER)
-            rect_add(i / SC_MAX, h->x, h->x + w - 1, band, band + DANGLE_TOP + DANGLE_MAX + 16);
-        if (h->kind != HZ_RUNNER && h->kind != HZ_DANGLER)
+        k = h->kind;
+        if (k == HZ_GAP || k == HZ_NONE)            /* (an unused record shows) */
             continue;
-        mv_t[nmov] = i / SC_MAX;
-        mv_slot[nmov] = i;
-        mv_kind[nmov] = h->kind;
-        mv_band[nmov] = TITLE_LINES + (i / SC_MAX) * BAND_LINES;
-        if (h->kind == HZ_RUNNER) {
-            mv_img[nmov] = spr_police;              /* the police car or the patrol boat */
-            if (h->a == ART_BOAT)
-                mv_img[nmov] = spr_boat;
-            sp_w[SPR_MOV + nmov] = SPR_POLICE_COLS;
-            sp_h[SPR_MOV + nmov] = SPR_POLICE_H;              /* runners: their top line */
-            mv_band[nmov] += ROAD_LINE - SPR_POLICE_H;
-        } else {
-            sp_w[SPR_MOV + nmov] = SPR_BALL_COLS;       /* danglers: x is fixed */
-            sp_h[SPR_MOV + nmov] = 16;
-            mv_rope[nmov] = h->x + scenery_w[h->a] / 2;
-            mv_c[nmov] = xcell[h->x];
-            mv_img[nmov] = spr_ball + shift_ofs[xshift[h->x]];
-            if (h->a == ART_CRATE)
-                mv_img[nmov] = spr_crate + shift_ofs[xshift[h->x]];
+        t = i / SC_MAX;
+        band = TITLE_LINES + t * BAND_LINES;
+        a = h->a;
+        x = h->x;
+        w = scenery_w[a];
+        hp = scenery_h[a];
+        if (k == HZ_CEILING)
+            rect_add(t, x, x + w - 1, band, band + h->b + 1);
+        else if (k == HZ_DANGLER)
+            rect_add(t, x, x + w - 1, band, band + DANGLE_TOP + DANGLE_MAX + 16);
+        else if (k != HZ_RUNNER && k != HZ_FLYER)   /* blocks, ramps, jets */
+            rect_add(t, x, x + w - 1, band + ROAD_LINE - hp, band + ROAD_LINE);
+        if (k != HZ_RUNNER && k != HZ_DANGLER && k != HZ_JET && k != HZ_FLYER)
+            continue;
+        n = nmov;
+        sn = SPR_MOV + n;
+        mv_t[n] = t;
+        mv_slot[n] = i;
+        mv_hot[n] = 0;
+        nc = 3;                                 /* (tools/mkart.py sprite_cols) */
+        if (w > 13)
+            nc = 5;
+        sp_w[sn] = nc;
+        mv_lamp[n] = a == ART_POLICE || a == ART_BOAT;
+        dst = mov_buf + mov_top;
+        mv_img[n] = dst;
+        nb = (w + 5) / 6;
+        sp_h[sn] = hp;
+        if (k == HZ_DANGLER) {                  /* danglers: x is fixed, one shift, 16 lines */
+            sp_h[sn] = 16;                      /* (band: the band's top line) */
+            mv_rope[n] = x + w / 2;
+            mv_c[n] = xcell[x];
+            dst = art_shift(dst, scenery_art[a], nb, hp, nc, 16, xshift[x], 1);
+        } else if (k == HZ_JET) {               /* x is fixed: one shift, its own lines */
+            band += ROAD_LINE - hp;             /* standing on the road */
+            mv_c[n] = xcell[x];
+            mv_rope[n] = xcell[x + w / 2];      /* (jets: the vent's cell) */
+            dst = art_shift(dst, scenery_art[a], nb, hp, nc, hp, xshift[x], 1);
+        } else {                                /* runners and flyers: all 6 shifts */
+            band += ROAD_LINE - hp;
+            if (k == HZ_FLYER) {                /* (b: its underside's band line) */
+                band += h->b + 1 - ROAD_LINE;
+                k = HZ_RUNNER;                  /* (a flyer is drawn as a runner) */
+            }
+            for (x = 0, o = 0; x < 6; ++x, o += nc * hp)
+                mv_so[n][x] = o;
+            dst = art_shift(dst, scenery_art[a], nb, hp, nc, hp, 0, 6);
         }
-        sp_on[SPR_MOV + nmov] = 0;
-        sp_on[SPR_MOV + nmov + GHOST] = 0;
+        mv_kind[n] = k;
+        mv_band[n] = band;
+        mov_top = dst - mov_buf;
+        sp_on[sn] = 0;
+        sp_on[sn + GHOST] = 0;
         ++nmov;
     }
     /* each runner's box lines are fixed: which cells hold scenery there,
@@ -417,20 +500,23 @@ void hazards_list(const struct scene *sc, uint8_t billing)
     for (i = 0; i < nmov; ++i) {
         if (mv_kind[i] != HZ_RUNNER)
             continue;
-        memset(mv_block[i], 0, 40);
-        for (band = 0; band < nrect; ++band)
-            if (rc_t[band] == mv_t[i] && mv_band[i] < rc_y1[band]
-                && rc_y0[band] < (uint8_t)(mv_band[i] + SPR_POLICE_H))
-                for (w = rc_c0[band]; w <= rc_c1[band]; ++w)
-                    mv_block[i][w] = 1;
+        dst = mv_block[i];
+        memset(dst, 0, 40);
+        t = mv_t[i];
+        band = mv_band[i];
+        hp = band + sp_h[SPR_MOV + i];
+        for (k = 0; k < nrect; ++k)
+            if (rc_t[k] == t && band < rc_y1[k] && rc_y0[k] < hp)
+                for (w = rc_c0[k]; w <= rc_c1[k]; ++w)
+                    dst[w] = 1;
     }
 }
 
-/* Is runner i's box (cells c0 .. c0 + 5) blank but for its own picture? */
+/* Is runner i's box (cells c0 .. c0 + its columns) blank but for its own picture? */
 static uint8_t car_blank(uint8_t i, uint8_t c0)
 {
-    uint8_t c, j, sn, top = mv_band[i], bot = mv_band[i] + SPR_POLICE_H, self = SPR_MOV + i;
-    uint8_t c1 = c0 + 5, *bl = mv_block[i];
+    uint8_t c, j, sn, top = mv_band[i], bot = mv_band[i] + sp_h[SPR_MOV + i], self = SPR_MOV + i;
+    uint8_t c1 = c0 + sp_w[self], *bl = mv_block[i];
     for (c = c0; c <= c1; ++c)
         if (bl[c])
             return 0;
@@ -460,7 +546,7 @@ void lamps(uint8_t phase)
         b = 1;
     }
     for (i = 0; i < nmov; ++i)
-        if (mv_kind[i] == HZ_RUNNER) {
+        if (mv_lamp[i]) {
             y = mv_band[i];
             p = LINE(y);
             if (sp_on[SPR_RIDER] && (uint8_t)(y + 1 - sp_y[SPR_RIDER]) < RIDER_H + 1) {
@@ -484,9 +570,7 @@ void lamps(uint8_t phase)
 /* A car more than 9 px behind its place (its draws waited: on Legend's street
    the rider's slow draw can leave ~27 units a step for 30 steps) goes with
    less room, a fast draw risking the odd long step (BUILD 18). */
-#ifndef LAG_ROOM
 #define LAG_ROOM 26
-#endif
 
 void hazards_draw(void)
 {
@@ -495,13 +579,43 @@ void hazards_draw(void)
         if (i >= nmov)
             i = 0;
         sn = SPR_MOV + i;
-        if (sp_on[sn + GHOST]) {            /* the old picture of a far move */
-            if (step_left() < HZ_ROOM) {
+        if (sp_on[sn + GHOST]) {            /* the old picture of a far move: */
+            if (step_left() < LAG_ROOM) {   /* (the mover waits for it, so it may go with less room) */
                 if (next == 0xFF)
                     next = i;
                 continue;
             }
             spr_erase(sn + GHOST);
+            continue;
+        }
+        if (mv_kind[i] == HZ_JET) {         /* on: its picture; a warning: the vent glows */
+            y = hz_drop[mv_slot[i]];
+            x = y == JET_WARNING && (m.step & 4);
+            if (x != mv_hot[i]) {           /* (one byte: no room needed) */
+                mv_hot[i] = x;
+                LINE(mv_band[i] + sp_h[sn] + 2)[mv_rope[i]] ^= VENT_HOT;
+            }
+            y = y == JET_ON;
+            if (y == sp_on[sn])
+                continue;
+            if (step_left() < HZ_ROOM) {
+                if (next == 0xFF)
+                    next = i;
+                continue;
+            }
+            if (y) {
+                n_y = mv_band[i];
+                n_c = mv_c[i];
+                n_img = mv_img[i];
+                spr_move(sn);
+            } else {
+                spr_erase(sn);
+            }
+            continue;
+        }
+        if (step_left() < LAG_ROOM) {       /* no room for any draw: no sums either */
+            if (next == 0xFF)
+                next = i;
             continue;
         }
         if (mv_kind[i] == HZ_RUNNER) {
@@ -517,11 +631,15 @@ void hazards_draw(void)
             room = HZ_ROOM;
             if (sp_on[sn]) {
                 d = x - mv_x[i];
-                if (d > 6 && d < 40) {
+                /* (x > mv_x[i] tested too: a wrap from 227 to 0 also makes
+                   d 29, as 256 - 228 = 28; catching up across it ran the
+                   picture past cell 39 into the next lines' colour cells:
+                   Bob, BUILD 26) */
+                if (d > 6 && d < 40 && x > mv_x[i]) {
                     x = mv_x[i] + 6;
                     if (d > 9)
                         room = LAG_ROOM;
-                } else if (d < (uint8_t)-6 && d > (uint8_t)-40) {
+                } else if (d < (uint8_t)-6 && d > (uint8_t)-40 && x < mv_x[i]) {
                     x = mv_x[i] - 6;
                     if (d < (uint8_t)-9)
                         room = LAG_ROOM;
@@ -530,7 +648,7 @@ void hazards_draw(void)
             jump2 = (uint8_t)(x - mv_x[i] + 8) >= 17;
             n_y = mv_band[i];
             n_c = xcell[x];
-            n_img = mv_img[i] + police_ofs[xshift[x]];
+            n_img = mv_img[i] + mv_so[i][xshift[x]];
             y = oy = 0;
         } else {
             top = mv_band[i] + DANGLE_TOP;
@@ -559,7 +677,7 @@ void hazards_draw(void)
             top = sp_c[sn];                 /* (the box's left cell) */
             if (n_c < top)
                 top = n_c;
-            fast = top <= 34 && car_blank(i, top);
+            fast = top + sp_w[sn] <= 39 && car_blank(i, top);
         }
         if (!fast && mv_kind[i] == HZ_RUNNER && step_left() < HZ_ROOM) {
             if (next == 0xFF)
@@ -583,10 +701,10 @@ void hazards_draw(void)
             r_fast = 0;
         } else {                            /* (far only up: a retake) */
             if (y < oy)
-                rope(mv_rope[i], y, oy, 0);
+                rope(mv_rope[i], y, oy);
             spr_move(sn);
             if (y > oy)
-                rope(mv_rope[i], oy, y, 1);
+                rope(mv_rope[i], oy, y);
         }
     }
     rr = i;
@@ -610,6 +728,7 @@ static const char icons[4][4] = { "   ", "@  ", "@@ ", "@@@" };   /* takes left 
 
 /* v in 5 cells from p, left-aligned (no division: cc65's is slow) */
 static const uint16_t pow10[4] = { 10000, 1000, 100, 10 };
+/* money, kept in £10s (F6): its digits and a 0, padded to 6 */
 static void put_num(uint8_t *p, uint16_t v)
 {
     uint8_t i, d, started = 0, n = 0;
@@ -622,7 +741,9 @@ static void put_num(uint8_t *p, uint16_t v)
         }
     }
     p[n++] = '0' + (uint8_t)v;
-    while (n < 5)
+    if (started | v)
+        p[n++] = '0';
+    while (n < 6)
         p[n++] = ' ';
 }
 
@@ -673,7 +794,7 @@ void status_update(void)
     big = 0;
     if (m.mode == M_TITLE) {
         if (rows_on) {
-            memset(TEXTROW(0), ' ', 3 * 40);
+            memset(TEXTROW(0), ' ', 3 * 40 - 1);  /* (not MODE_CELL, the last) */
             rows_on = 0;
         }
         return;

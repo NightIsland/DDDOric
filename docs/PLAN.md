@@ -45,8 +45,8 @@ takes the next number.
 | F2 | One track: rider physics (DESIGN "Physics"), keys (Space, either Shift, Return), 50 Hz step, engine sound | F0, F1 | logic ≤ 4,000 cycles a step | merged (BUILD 8, PR #8) |
 | F3 | Whole scene: four tracks, wrapping, block, runner, dangler, gap and ceiling block, crashes, fees, the one stop | F2 | whole step ≤ 16,000 cycles | merged (BUILD 11, PR #10); budget missed: average 16,100 riding flat out, worst 19,750 (see Results) |
 | F4 | Film frame: clapper card, takes, "Cut!", scene cleared, "You're fired", title screen, billing select, top five | F3 | riding steps stay under 20,000 cycles | merged (BUILD 13, PR #12; police lamps BUILD 14-15, PR #13) |
-| F5 | Film 1 (*Rush Hour Rumble*) complete at all six billings, tuned to M1's numbers; Bob judges the feel against the original | F4, M1 | | BUILD 20, PR #14 open |
-| F6 | Films 2–6, jets and ramps, per-vehicle handling, music (no key redefinition: Bob, 24 Nov 2026) | F5 | memory ≤ 37 KB | not started |
+| F5 | Film 1 (*Rush Hour Rumble*) complete at all six billings, tuned to M1's numbers; Bob judges the feel against the original | F4, M1 | | BUILD 20, PR #14 merged |
+| F6 | Films 2–6, jets and ramps, per-vehicle handling, music (no key redefinition: Bob, 24 Nov 2026) | F5 | memory ≤ 37 KB | F6a, F6b (Western) at BUILD 21, F6c (Horror) at BUILD 22, F6d (Sci-fi) at BUILD 23, F6e-f (Fantasy, Spy: the whole season) at BUILD 24; F6g stings and engine voices at BUILD 25 (general music later: Bob, 24 Nov 2026) |
 | X1 | Optional: level codes from a seed, with a solver run over thousands of seeds in the harness | F5 | ≤ 2 KB | not started |
 
 M1 and F0 can run in parallel. F5 is the prototype milestone (plan step 3); F6 and X1 are polish
@@ -120,6 +120,122 @@ Briefs written by the architect when the previous feature is merged, from DESIGN
   removed; locking the step to the video frame would make it permanent on one track instead.
   Worst step 16,708 cycles (the C preparation); F1's assembly sprite brings it down.
 
+### F6: Films 2 to 6 (BUILD 21 onward, 24 Nov 2026)
+
+Built in DESIGN "Films 2 to 6" order: F6a shared parts, then one film a build (F6b Western, F6c
+Horror, F6d Sci-fi, F6e Fantasy, F6f Spy), then F6g stings and engine voices (Bob put them
+before general music, 24 Nov 2026).
+
+- **F6a, art shifted at scene start** (DESIGN "Memory"): vehicles are stored unshifted
+  (`veh_art`, 128 bytes each) and shifted into `veh_buf` when the scene's vehicle changes; the
+  moving hazards are shifted into `mov_buf` (the alternate character set at `$9C00`, 1 KB):
+  runners and flyers 6 shifts, danglers and jets one.
+- **Jets** (kind 6): a vent in the road, a period by billing (150 steps at billing 1 down to 75),
+  on a third of it, 25 steps of warning before (the vent glows, toggling every 4 steps); a jet
+  crashes only when on. **Flyers** (kind 8): a runner in the air, its underside at a band line.
+- **Grounds**: a scene names one of road, water, dirt street or rails (`grounds[]` in
+  `src/scene.c`); each is four lines repeating every 4 cells, and a gap either clears the road or
+  fills it.
+- **12-scene seasons**: `season[]` in `src/scene.c`; films not built yet repeat the built ones.
+- **Step budget proved** on `scene_stress` (two every-step movers, three jets, a flyer, billing 6):
+  9 of 1,178 riding steps over 20,000 cycles, mostly wrap steps; moving hazards drawn within
+  4 px of the game. The trace now goes out as 21 binary bytes a step (`$BFE4`), saving ~1,200
+  cycles a step and the hex tables.
+- **F6b, Dust at Dawn** (BUILD 21): scene 1 on horseback down a dusty street at dawn (troughs,
+  hitching rails, a rolling tumbleweed, a low balcony, a dangling sack); scene 2 on a mine cart
+  on rails underground (ore heaps, rocks, a runaway ore cart, beams, buckled rail, a swinging
+  bucket). `tests/keys/win-b1..6.keys` now clear films 1 and 2 (4 scenes) on the first take at
+  every billing; `make wins` re-searches them.
+- **Tests** (121 checks, all pass): the Western scenes' screens = reference mid-ride, the win runs
+  to the end of the mine cart scene on the Oric (same trace, screen = reference, beam pace).
+  Worst step in win-b6 22,918 cycles (8 of 2,400 over). 2,757 bytes free below `$9800`.
+
+- **F6c, Night of the Hearse** (BUILD 22): scene 1 on a hearse-trike down a cobbled graveyard
+  lane by moonlight (gravestones, a stone angel, a shuffling ghoul at 0.75 times the runner speed,
+  a bat, the lych-gate, spiders, open graves at every billing): the first scene with two
+  every-step movers, 5 of 595 steps over budget at billing 6. Scene 2 in a ghost-train car,
+  red-lit (coffins, pop-up ghouls on trapdoors, a crypt arch, dropping skeletons, a track hump).
+  A first try had six now-and-then movers at billing 5-6 (3 jets, 3 skeletons) and went over
+  budget on 26 of 545 steps; one skeleton became a coffin (4 of 550). The win runs prove films
+  1-3 (6 scenes). The crash replay in the tests now models runners' own speeds, flyers and jets.
+  Memory: 1,221 bytes free below `$9800`, so films 4-6 need DESIGN "Memory"'s fallbacks.
+
+- **Memory for films 4-6** (DESIGN "Memory"): the pause and quit popups save what they cover in
+  the vehicle's shift buffer and shift the vehicle afresh when they go (the quit popup is now 30
+  lines, `POP_SAVE`); palettes are runs of one byte (`R(n, colour)`, count << 3 | colour); each
+  film's name is stored once (`films[]` in `src/scene.c`). 1,221 bytes free became 3,090.
+- **F6d, Moonbase Panic** (BUILD 23), both scenes on the hover bike, whose jump floats: the same
+  arc on a slower clock (`JUMP_FLOAT` 215/256 of a step a step), 100 steps in the air, 150 off a
+  ramp. Scene 1, Crater Plains (canisters, masts, a patrol robot, a drone under the gantry, a
+  cargo claw, craters at every billing); scene 2, Reactor Corridor (crates, laser gates, a blast
+  door, a conduit, crusher pistons, the launch pad's float over two gates across the wrap). Two
+  fixes found by the tests: a dangler over 13 px wide (the crusher, 14) drew at 94 cycles a line,
+  off the beam's pace, so it is 12 wide; with a second claw at billings 4-6 the patrol robot's
+  draw was starved and left a ghost, so that claw became a canister. Worst steps at billing 6:
+  3 of 730 and 6 of 470 over budget. The win runs prove films 1-4 (8 scenes); 125 checks pass.
+  1,552 bytes free below `$9800`.
+
+- **More memory**: the crash masks are made from the pictures when a scene loads (`art_cols` in
+  `src/model.c`, `HIT_MAX` columns, a test checks every scene fits) instead of 2 KB stored;
+  `hazards_list` caches its record's fields. 1,552 bytes free became 3,354.
+- **F6e, Dragon's Keep, and F6f, Cold Front** (BUILD 24), so the season is whole: 12 scenes,
+  6 films. Castle Approach on a dragon hatchling (boulders, barrels, a charging knight at 1.5
+  times the runner speed, a portcullis, the moat at every billing); Moat by Moonlight on a magic
+  carpet (rocks, dragons' heads breathing fire, the drawbridge, a wyvern, the half-raised
+  drawbridge's long jump over two heads); The Glacier on skis (snowmen, pines, a rolling snowball,
+  an icicle overhang, an abseiling agent, crevasses at every billing, filled dark); Avalanche Pass
+  on a snowmobile (tank traps, an enemy snowmobile, an autogyro, steam vents, the kicker's jump
+  between ski-lift chairs). Grass and snow grounds. The portcullis is 12 wide and the enemy
+  snowmobile 12 (the 18 px autogyro and a 16 px snowmobile together starved a draw: a ghost at
+  billing 6); at billings 5-6 the pass's first vent becomes a tank trap.
+- **Fees in £10s** (`m.fee`, `best_fee[]`, shown with their 0): a season at billing 6 passed
+  65,535 pounds and wrapped round. Every fee is a multiple of 10, so the same 16 bits now hold
+  655,350.
+- **Tests** (130 checks, all pass): the win runs prove the whole season at all six billings; every
+  film's screens = reference mid-ride; `scene_ref` strips comments (one among the records had
+  hidden a track); the rider's torn-frame rate is taken over the whole win runs (36,000 drawing
+  steps, 0.5%), since a short sample catches more or fewer clusters as startup timing moves the
+  step's phase. Billing 6 over budget on 1-3 steps of 400-830 per new scene. 1,561 bytes free.
+
+- **F6g, stings and engine voices** (BUILD 25; 132 checks pass, two new: the action sting's notes on the card, and every vehicle's voice mid-ride). Each film's clapper card plays a short sting on
+  tones A and C on a scene's first take (`snd_sting`: action figure, whistled Western, falling
+  horror chords, sci-fi arpeggio, fantasy fanfare, spy bass riff), from a semitone table with a
+  falling envelope; it stops when play starts. Each vehicle has its own engine voice
+  (`snd_voice`): an 8-step volume pattern on A (the motorbike's 10/7 buzz as before, a clip-clop
+  quicker with speed for the horse, a sleeper click for the cart, an uneven rattle for the
+  hearse-trike, a puff now and then for the dragon), a vibrato on the period for the ghost train,
+  the hover bike and the carpet, and a swish on noise B for the skis (only while no effect has
+  B). The pitch is the motorbike's times `eng_mul[vehicle] / 8` (`src/main.c`). About 700 bytes
+  left below `$9800` (the size line says 522: the page-aligned table leaves 190 unused below it)
+  for general music later. The voice only writes a new volume, and the vibrato moves every 8
+  ticks: writing both every 10 ms took enough IRQ time to starve a hover-scene draw.
+
+- **Debug scene picker** (BUILD 26, Bob: temporary, to reach the later films without hours of
+  practice): `make pick` builds `build/pick/stuntbob.tap`, an Oricutron build where P on the
+  title screen steps through the 12 scenes ("P: FILM 4 SCENE 2" replaces the strapline) and 1
+  starts there. Fees and the billing's change after scene 12 count from the scene picked. Only
+  `SCENE_PICK` builds have it; the real builds and the tests don't change. Remove it before
+  release. Also fixed: the card's "scene fee a track" was 10 times too much since fees moved to
+  £10s (scene 1 showed £100); a test now reads it.
+
+- **BUILD 27, Bob's bugs from the picker build:**
+  - *Garbage screens and a crash after going back to the title* (seen on Moonbase Panic 2 and
+    Cold Front 2): the title's blank status rows (BUILD 19) cleared 120 bytes, the last being the
+    mode cell at `$BFDF`, so the Oric fell back to text mode and showed the HIRES memory as text.
+    It never showed on a first game. Now 119; a test reads the mode cell after quitting.
+  - *Dust at Dawn 1, the screen's colours lost when the tumbleweed wraps*: the runner catch-up
+    (BUILD 18) took a wrap from 227 to 0 as being 29 px behind (256 - 228 = 28) and drew the
+    picture past cell 39, over the next lines' colour cells. Catch-up now needs the real
+    direction; a test checks every line's colour cells on the billing-6 win run.
+  - *Night of the Hearse 1, bits of cord left*: a dangler's cord was set and cleared, so where a
+    bat crossed it the cord cut into the bat's picture and the bat's next move left bits behind.
+    The cord is now flipped (`rope_xor`); a test compares the screen at the moment it happened.
+  - *Dragon's Keep 1, gaps that looked like ground*: the grass was on black, so a gap was black on
+    black. The grass now sits on the sky (cyan), so a gap shows the sky through it.
+  - *Hooves, the dragon's feet and the skis sound in the air*: their voices stop while airborne.
+  - *NIGHT OF THE HEARSE ran off the clapper*: the card's film name now puts one cell between
+    words, from cell 3 when the name is longer than 16 letters.
+
 ### F5: Rush Hour Rumble at all six billings (BUILD 16, 23 Nov 2026)
 
 - **Scene 2, the harbour chase** (`src/scene.c` `scene_rhr2`), on the jet-ski: buoys (blocks), the
@@ -130,8 +246,8 @@ Briefs written by the architect when the previous feature is merged, from DESIGN
 - **The slipway** (DESIGN "Ramp"): riding onto it with the wheels' middle fires a jump 1.5 times as
   long (126 steps), same 20 px apex: the M1 arc with its entries held 4 and 5 steps in turn
   (`src/physics.h`). It is never a hazard.
-- **A run of scenes**: `scene_at(run_scene)` gives each place in the run its scene; until F6 brings
-  films 2-6, film 1's two scenes take turns through the season. The model loads each scene's
+- **A run of scenes**: `scene_at(run_scene)` gives each place in the run its scene (F6a: from the
+  12-scene `season[]` table). The model loads each scene's
   hazards when it starts (`scene_load`); test builds with `-DSCENE=` still ride one scene.
 - **Billings change speeds** (DESIGN "Billings": slow, normal, normal, fast, fast, fastest):
   runners x 1, 1.25, 1.25, 1.5, 1.5, 1.75 of M1's 0.95 px a step; danglers a line every 3, 2.5,
@@ -241,7 +357,7 @@ Briefs written by the architect when the previous feature is merged, from DESIGN
   the video, and with it where the clusters fall (23 of 3,335 drawing steps).
 - **Size:** program ends at `$6A9F`, 11,105 bytes free below `$9800` (F3: 20,800). The film
   frame is ~5 KB of cc65 code (`src/frame.c` 4.5 KB); F6's films and music may need it smaller.
-- **Not yet:** K (redefine keys) is F6 with the rest of the key work; the top five is shown
+- **Not yet:** the top five is shown
   whole rather than scrolling; jingles are F6.
 
 - **BUILD 13 (Bob on BUILD 12: "the clapperboard stripes on the top bar should point the other

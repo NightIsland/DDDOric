@@ -13,7 +13,22 @@ sys.path.insert(0, os.path.join(ROOT, "tools"))
 import mkart  # noqa: E402
 
 COLOURS = dict(BLACK=0, RED=1, GREEN=2, YELLOW=3, BLUE=4, MAGENTA=5, CYAN=6, WHITE=7)
-KINDS = dict(HZ_NONE=0, HZ_BLOCK=1, HZ_RUNNER=2, HZ_DANGLER=3, HZ_GAP=4, HZ_CEILING=5, HZ_JET=6, HZ_RAMP=7)
+KINDS = dict(HZ_NONE=0, HZ_BLOCK=1, HZ_RUNNER=2, HZ_DANGLER=3, HZ_GAP=4, HZ_CEILING=5, HZ_JET=6, HZ_RAMP=7, HZ_FLYER=8)
+VENT, VENT_HOT = 0x5E, 0x1E                  # a jet's grate on the road's second line; XORed below while it warns
+# grounds (DESIGN "Ground styles"): each line's bytes for cells 2-39, repeating
+# every 4; kerb: line 0 from cell 1; fill: a gap sets the pixels (else clears)
+GROUNDS = dict(
+    ROAD=([[0x7F] * 4, [0x40] * 4, [0x7F, 0x7F, 0x40, 0x40], [0x40] * 4], True, False),
+    WATER=([[0x4C] * 4, [0x73] * 4, [0x40] * 4, [0x40, 0x46, 0x40, 0x46]], False, True),
+    DIRT=([[0x7F] * 4, [0x52, 0x40, 0x49, 0x40], [0x40, 0x44, 0x40, 0x60], [0x48, 0x40, 0x40, 0x42]], False, False),
+    RAILS=([[0x7F] * 4, [0x4C, 0x40, 0x4C, 0x40], [0x4C, 0x40, 0x4C, 0x40], [0x7F] * 4], False, False),
+    MOON=([[0x7F] * 4, [0x7B, 0x6F, 0x7E, 0x5F], [0x55, 0x6A, 0x55, 0x6A], [0x44, 0x40, 0x50, 0x41]], False, False),
+    STRIPES=([[0x7F] * 4, [0x78] * 4, [0x5C] * 4, [0x4E] * 4], False, False),
+    GRASS=([[0x7F] * 4, [0x6D, 0x5B, 0x76, 0x6D], [0x52, 0x49, 0x64, 0x52], [0x40, 0x44, 0x40, 0x50]], False, False),
+    SNOW=([[0x7F] * 4, [0x40, 0x48, 0x40, 0x41], [0x44, 0x40, 0x50, 0x40], [0x40, 0x42, 0x40, 0x60]], False, True),
+    COBBLES=([[0x7F] * 4, [0x44, 0x50, 0x42, 0x48], [0x40] * 4, [0x52, 0x49, 0x44, 0x51]], False, False),
+)
+ONLY = None                                 # set: every scene is this one (a -DSCENE= build)
 ART = {f"ART_{n.upper()}": i for i, (n, _) in enumerate(mkart.SCENERY)}
 TITLE, BAND, RIDER_TOP, ROAD = 8, 48, 28, 44
 DANGLE_TOP = 6                              # src/model.h
@@ -33,35 +48,50 @@ def shown(rec, billing):
 def load_scene(name="scene_rhr1", billing=None):
     """the scene's data; with a billing, only the records it shows, as (kind, x, a, b)"""
     src = open(os.path.join(ROOT, "src", "scene.c")).read()
+    src = re.sub(r"/\*.*?\*/", "", src, flags=re.S)  # (a comment among the records hid a track)
     body = src[src.index(name + " = {"):]
     body = body[:body.index("\n};")]
     head = body.split("{", 2)[1]                # "film", number, vehicle, ground, &pal,
-    pname = re.search(r"&(pal_\w+)", head).group(1)
-    vehicle = 1 if "VH_JETSKI" in head else 0
-    ground = 1 if "GROUND_WATER" in head else 0
-    pal = src[src.index(pname + " = {"):src.index("};", src.index(pname + " = {"))]
-    names = re.findall(r"\b(BLACK|RED|GREEN|YELLOW|BLUE|MAGENTA|CYAN|WHITE)\b", pal.split("{", 1)[1])
-    cols = [COLOURS[n] for n in names]
-    title_paper, title_ink, paper, ink = cols[0], cols[1], cols[2:50], cols[50:98]
+    pname = re.search(r"\b(pal_\w+)", head).group(1)
+    vehicle = re.search(r"VH_(\w+)", head).group(1).lower()
+    ground = re.search(r"GROUND_(\w+)", head).group(1)
+    pal = src[src.index(pname + "[] = {"):src.index("};", src.index(pname + "[] = {"))]
+    pal = re.sub(r"/\*.*?\*/", "", pal.split("{", 1)[1], flags=re.S)
+    # F6c: the title's paper and ink, then runs R(n, colour), paper's then ink's
+    title_paper, title_ink = [COLOURS[n] for n in re.findall(r"\b([A-Z]+)\b", pal.split("R(")[0])]
+    cols = [c for n, c_ in re.findall(r"R\((\d+),\s*([A-Z]+)\)", pal) for c in [COLOURS[c_]] * int(n)]
+    assert len(cols) == 96, (pname, len(cols))
+    paper, ink = cols[:48], cols[48:]
     tracks = []
     for tb in re.findall(r"\{((?:\s*\{[^{}]*\},?)+)\s*\}", body)[:4]:
         recs = []
         for rec in re.findall(r"\{([^{}]*)\}", tb):
             rec = re.sub(r"BILLS\((\d+),\s*(\d+)\)", lambda m_: str(int(m_.group(1)) | int(m_.group(2)) << 4), rec)
             f = [v.strip() for v in rec.split(",")]
-            val = lambda v: int(v) if v.isdigit() else {**KINDS, **ART}[v]  # noqa: E731
+            def val(v):   # a number, a name, or a | of numbers (a runner's speed: 0x80 | 92)
+                if v in KINDS or v in ART:
+                    return {**KINDS, **ART}[v]
+                n = 0
+                for part in v.split("|"):
+                    n |= int(part.strip(), 0)
+                return n
             r_ = tuple(val(v) for v in f)
             if billing is None or shown(r_, billing):
                 recs.append(r_[:4])
         tracks.append(recs)
     tracks += [[] for _ in range(4 - len(tracks))]
     return dict(title_paper=title_paper, title_ink=title_ink, paper=paper, ink=ink, tracks=tracks,
-                vehicle=["bike", "jetski"][vehicle], water=bool(ground))
+                vehicle=vehicle, ground=ground, water=GROUNDS[ground][2])
 
 
 def scene_at(run_scene):
-    """src/scene.c scene_at: film 1's two scenes take turns (until F6)"""
-    return "scene_rhr1" if run_scene % 2 else "scene_rhr2"
+    """src/scene.c scene_at: the season's table of 12 scenes"""
+    if ONLY:
+        return ONLY
+    src = open(os.path.join(ROOT, "src", "scene.c")).read()
+    tab = src[src.index("season[SEASON] = {"):]
+    names = re.findall(r"&(scene_\w+)", tab[:tab.index("};")])
+    return names[(run_scene - 1) % len(names)]
 
 
 def scene_bytes(billing=1, name="scene_rhr1"):
@@ -93,25 +123,18 @@ def scene_bytes(billing=1, name="scene_rhr1"):
         y0 = TITLE + t * BAND
         for i in range(BAND):
             colours(y0 + i, sc["paper"][i], sc["ink"][i])
-            if sc["water"]:                 # waves: crests, troughs, ripples (DESIGN film 1 scene 2)
+            if i >= ROAD:                   # the ground's lines
+                lines, kerb, fill = GROUNDS[sc["ground"]]
                 for c in range(2, 40):
-                    if i == ROAD:
-                        mem[(y0 + i) * 40 + c] = 0x4C
-                    elif i == ROAD + 1:
-                        mem[(y0 + i) * 40 + c] = 0x73
-                    elif i == ROAD + 3 and c % 2:
-                        mem[(y0 + i) * 40 + c] = 0x46
-                continue
-            if i == ROAD:
-                for c in range(1, 40):
-                    mem[(y0 + i) * 40 + c] = 0x7F
-            if i == ROAD + 2:
-                for c in range(2, 40):
-                    if (c - 2) % 4 < 2:
-                        mem[(y0 + i) * 40 + c] = 0x7F
+                    mem[(y0 + i) * 40 + c] = lines[i - ROAD][(c - 2) % 4]
+                if i == ROAD and kerb:
+                    mem[(y0 + i) * 40 + 1] = lines[0][0]
         for kind, x, a, b in recs:
             if kind in (1, 7):                  # blocks and slipways stand on the road
                 blit(a, x, y0 + ROAD - 1)
+            elif kind == 6:                     # a jet: its vent in the road (the jet moves)
+                w = mkart.scenery(mkart.SCENERY[a][0])[1]
+                mem[(y0 + ROAD + 1) * 40 + 2 + (x + w // 2) // 6] = VENT
             elif kind == 3:
                 rows, w, h = mkart.scenery(mkart.SCENERY[a][0])
                 for y in range(y0, y0 + DANGLE_TOP):
@@ -155,7 +178,8 @@ def sprite_bytes(name, x, top):
 
 def hazard_bytes(name="scene_rhr1", pos=None, billing=1):
     """{address: xor mask} of the scene's moving hazards where pos says:
-    pos[i] = x px of a runner, or the drop of a dangler, for the i-th moving
+    pos[i] = x px of a runner or flyer, the drop of a dangler, or a jet's state
+    (2: on), for the i-th moving
     hazard in scene order.  Runners sit on the road; a dangler's rope runs
     from its band's top line down to the ball."""
     sc = load_scene(name, billing)
@@ -163,7 +187,7 @@ def hazard_bytes(name="scene_rhr1", pos=None, billing=1):
     for t, recs in enumerate(sc["tracks"]):
         y0 = TITLE + t * BAND
         for kind, x, a, b in recs:
-            if kind not in (2, 3):
+            if kind not in (2, 3, 6, 8):
                 continue
             art = mkart.SCENERY[a][0]
             rows, w, h = mkart.scenery(art)
@@ -171,6 +195,10 @@ def hazard_bytes(name="scene_rhr1", pos=None, billing=1):
             i += 1
             if kind == 2:
                 pic = sprite_bytes(art, p, y0 + ROAD - h)
+            elif kind == 8:                     # a flyer: b is its underside's band line
+                pic = sprite_bytes(art, p, y0 + b + 1 - h)
+            elif kind == 6:                     # a jet: drawn while on (pos 2)
+                pic = sprite_bytes(art, x, y0 + ROAD - h) if p == 2 else {}
             else:
                 top = y0 + DANGLE_TOP + p
                 pic = sprite_bytes(art, x, top)

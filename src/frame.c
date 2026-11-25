@@ -43,10 +43,7 @@ extern uint8_t dbl_a[64], dbl_b[64];   /* 6 pixels -> 12, as two screen bytes */
 static const char * const billing_name[BILLINGS + 1] = {
     "", "EXTRA", "STAND-IN", "DOUBLE", "STUNT MAN", "COORDINATOR", "LEGEND"
 };
-static const char * const films[6] = {
-    "RUSH HOUR RUMBLE", "DUST AT DAWN", "NIGHT OF THE HEARSE",
-    "MOONBASE PANIC", "DRAGON'S KEEP", "COLD FRONT"
-};
+
 
 void frame_init(void)
 {
@@ -145,9 +142,10 @@ static void pic2(uint8_t n, uint8_t col, uint8_t y)
 }
 
 /* "$1234" or "1234" */
-static char nbuf[8];
+static char nbuf[9];
 static const uint16_t pow10[4] = { 10000, 1000, 100, 10 };
 
+/* pound: money, kept in £10s (F6), shown with "$" (the pound sign) and its 0 */
 static char *num(uint16_t v, uint8_t pound)
 {
     uint8_t i, n = 0, d, started = 0;
@@ -162,6 +160,8 @@ static char *num(uint16_t v, uint8_t pound)
         }
     }
     nbuf[n++] = '0' + (uint8_t)v;
+    if (pound && started | v)
+        nbuf[n++] = '0';
     nbuf[n] = 0;
     return nbuf;
 }
@@ -202,6 +202,10 @@ static void bulb_at(uint8_t n, uint8_t y, uint8_t c)
 #define MENU_DY 11
 #define TOP5_Y  149
 
+#ifdef SCENE_PICK
+static uint8_t shown_pick;
+#endif
+
 static void title_menu(void)
 {
     text(24, MENU_Y + MENU_DY, "           ");
@@ -211,6 +215,15 @@ static void title_menu(void)
         text(24, MENU_Y + 2 * MENU_DY, "ON ");
     shown_billing = m.billing;
     shown_sound = m.sound;
+#ifdef SCENE_PICK
+    {   /* debug build: "P  FILM 3 SCENE 2" in place of the strapline */
+        static char pk[] = "   P: FILM 1 SCENE 1   ";
+        pk[11] = '1' + (pick_scene >> 1);
+        pk[19] = '1' + (pick_scene & 1);
+        ctext(36, pk);
+        shown_pick = pick_scene;
+    }
+#endif
 }
 
 static void best_line(uint8_t i, uint8_t y)
@@ -271,7 +284,11 @@ void frame_title_step(void)
         shown_phase = ph;
         bulbs(ph);
     }
-    if (m.billing != shown_billing || m.sound != shown_sound)
+    if (m.billing != shown_billing || m.sound != shown_sound
+#ifdef SCENE_PICK
+        || pick_scene != shown_pick
+#endif
+        )
         title_menu();
 }
 
@@ -326,6 +343,25 @@ static void arm(uint8_t rise, uint8_t old)
 
 static uint8_t shown_arm, shown_action;
 
+/* the film's name, large, with one-cell spaces between its words: NIGHT OF
+   THE HEARSE (35 cells) didn't fit the slate with two-cell ones (Bob, BUILD 27) */
+static void film_name(const char *f)
+{
+    static char ch[2];
+    uint8_t col = 5;
+    if (strlen(f) > 16)
+        col = 3;
+    for (; *f; ++f) {
+        if (*f == ' ') {
+            ++col;
+        } else {
+            ch[0] = *f;
+            big(col, 88, ch);
+            col += 2;
+        }
+    }
+}
+
 void frame_card(const struct scene *s)
 {
     uint8_t y, *p;
@@ -346,7 +382,7 @@ void frame_card(const struct scene *s)
         p[39] = 0x43;
     }
     text(5, 76, "FILM");
-    big(5, 88, s->film);
+    film_name(s->film);
     text(5, 112, "SCENE");
     text(24, 112, "TAKE");
     big(5, 122, num(s->number, 0));
@@ -356,7 +392,7 @@ void frame_card(const struct scene *s)
     text(5, 160, "FEE SO FAR");
     text(16, 160, num(m.fee, 1));
     text(5, 172, "SCENE FEE");
-    text(16, 172, num(10 * m.run_scene, 1));
+    text(16, 172, num(m.run_scene, 1));     /* (fees in £10s)  */
     text(26, 172, "A TRACK");
     text(5, 184, "STUNTS BY BOB");
 }
@@ -389,9 +425,12 @@ void frame_card_step(void)
    them.  A popup fills cells 2-39 of lines y0 .. y1: cell 2 sets its ink
    (showing the line's own paper), cell 3 its paper, cells 4-37 hold the
    text, and cells 38-39 put the line's own paper and ink back.  A popup
-   that goes away again (pause, the quit question) saves what it covers. */
-#define POP_SAVE 36                     /* lines a popup can save */
-static uint8_t pop_buf[POP_SAVE * 38], pop_y0, pop_n;
+   that goes away again (pause, the quit question) saves what it covers,
+   F6c: in the vehicle's shift buffer (30 lines x 38 = 1,140 of its 1,152
+   bytes), shifted afresh when the popup goes. */
+#define POP_SAVE 30                     /* lines a popup can save */
+#define pop_buf veh_buf
+static uint8_t pop_y0, pop_n;
 
 static void popup(uint8_t y0, uint8_t y1, uint8_t paper, uint8_t c, uint8_t save)
 {
@@ -433,6 +472,7 @@ void popup_restore(void)
     for (p = LINE(pop_y0); n; --n, p += 40, b += 38)
         memcpy(p + 2, b, 38);
     pop_n = 0;
+    vehicle_reshift();
 }
 
 /* "CUT!": the director's megaphone and the word, large */
@@ -456,10 +496,10 @@ void popup_pause(void)
 
 void popup_ask(void)
 {
-    popup(84, 119, RED, WHITE, 1);
+    popup(85, 114, RED, WHITE, 1);         /* (POP_SAVE lines) */
     pop_ink(89, 102, YELLOW);
     cbig(89, "QUIT?");
-    ctext(109, "Y: THE TITLE   N: RIDE ON");
+    ctext(105, "Y: THE TITLE   N: RIDE ON");
 }
 
 /* ------------------------------------------------- "THAT'S A PRINT!" */

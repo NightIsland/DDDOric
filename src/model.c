@@ -4,11 +4,21 @@
 #include "art.h"
 
 struct model m;
-uint16_t best_fee[NBEST] = { 250, 200, 150, 100, 50 };     /* the film crew's */
+uint16_t best_fee[NBEST] = { 25, 20, 15, 10, 5 };     /* the film crew's (in £10s) */
 char best_name[NBEST][3] = { {'D','I','R'}, {'C','A','M'}, {'S','F','X'}, {'M','U','A'}, {'G','A','F'} };
 
 uint8_t hz_px[NHAZ], hz_drop[NHAZ];
+#ifdef __CC65__                     /* the pictures: art.s on the Oric */
+#define art_w scenery_w
+#define art_h scenery_h
+#define SC_ART(a) (scenery_art[a])
+#else                               /* and the same bytes here for the host */
 static const uint8_t art_w[] = { SCENERY_W_DATA }, art_h[] = { SCENERY_H_DATA };
+const uint8_t veh_art[] = { VEH_ART_DATA };
+static const uint8_t sc_bytes[] = { SCENERY_ART_DATA };
+static const uint16_t sc_ofs[] = { SCENERY_ART_OFS };
+#define SC_ART(a) (sc_bytes + sc_ofs[a])
+#endif
 
 /* Runner speed: M1 measured 1 BBC byte per 3 steps = 0.95 px a step; a
    record's b holds it in 1/128 px a step (bit 7: drives left), 0 = M1's.
@@ -22,6 +32,12 @@ static const uint8_t art_w[] = { SCENERY_W_DATA }, art_h[] = { SCENERY_H_DATA };
 static const uint8_t run_mul[BILLINGS + 1] = { 4, 4, 5, 5, 6, 6, 7 };
 static const uint8_t dangle_half[BILLINGS + 1] = { 6, 6, 5, 5, 4, 4, 3 };
 static uint8_t dangle_reload;       /* this billing's dangle_half */
+/* Jets (DESIGN "The two new behaviours"): off, a warning, then on, over a
+   period of 150 steps at billing 1 (50 of them on, 25 warning before),
+   shortening with the billing as the danglers' steps do. */
+static const uint8_t jet_period[BILLINGS + 1] = { 150, 150, 125, 125, 100, 100, 75 };
+#define JET_WARN 25
+static uint8_t jet_p, jet_on;       /* this billing's period and steps on */
 #define RIDER_TOP_LINE 28           /* band line of the rider's top row on the road */
 #define ROAD_TOP_LINE  44           /* band line of the road: hazards stand on it */
 
@@ -50,6 +66,17 @@ static uint8_t nmov, mov[MAXMOV];
 static uint8_t pxt[PXT_N];
 
 /* the moving hazards back to their places (the others never move) */
+static uint8_t jet_phase[NHAZ];      /* jets: start, in steps into the period */
+
+static uint8_t jet_state(uint8_t t)
+{
+    if (t >= (uint8_t)(jet_p - jet_on))
+        return JET_ON;
+    if (t >= (uint8_t)(jet_p - jet_on - JET_WARN))
+        return JET_WARNING;
+    return JET_OFF;
+}
+
 static void hazards_start(void)
 {
     uint8_t i, j;
@@ -61,6 +88,10 @@ static void hazards_start(void)
         hz_t[i] = dangle_reload;
         if (hk[i] == HZ_DANGLER)
             htop[i] = DANGLE_TOP;
+        if (hk[i] == HZ_JET) {
+            hz_t[i] = jet_phase[i];
+            hz_drop[i] = jet_state(hz_t[i]);
+        }
     }
 }
 
@@ -69,7 +100,11 @@ static void hazards_step(void)
     uint8_t i, j, f, n, sum = 0;
     for (j = 0; j < nmov; ++j) {
         i = mov[j];
-        if (hk[i] == HZ_RUNNER) {           /* drives on, and wraps at the edges */
+        if (hk[i] == HZ_JET) {              /* round its period: off, warning, on */
+            if (++hz_t[i] == jet_p)
+                hz_t[i] = 0;
+            hz_drop[i] = jet_state(hz_t[i]);
+        } else if (hk[i] == HZ_RUNNER || hk[i] == HZ_FLYER) {   /* drives on, and wraps */
             /* the fraction counts up driving right and down driving left,
                a px for each carry or borrow (as F3 had it in 1/256 px) */
             f = hz_frac[i] - (hz_sp[i] & 0x7F);
@@ -115,10 +150,34 @@ static void hazards_step(void)
    row r) are compared column by column, the hazard's shifted by the
    difference in their top rows.  The rider's picture is the one main.c
    shows.  A gap: the wheels' middle over it, on the road. */
-static const uint16_t hit_rider[2 * 3 * RIDER_W] = { HIT_RIDER_DATA };  /* per vehicle: ride_a, ride_b, jump */
-static const uint16_t *hit_vh;      /* this scene's vehicle's */
-static const uint16_t hit_scenery[] = { HIT_SCENERY_DATA };
-static const uint8_t hit_ofs[] = { HIT_SCENERY_OFS };
+/* F6: the column masks are made from the pictures when a scene loads (2 KB
+   of stored masks for 7 vehicles and 44 pictures became these buffers):
+   the scene's vehicle's ride_a, ride_b and jump, and each picture the
+   scene shows, once. */
+#define HIT_MAX 160                 /* columns: the widest scene has 124 */
+static uint16_t hit_vh[3 * RIDER_W];
+static uint16_t hit_buf[HIT_MAX];
+static uint8_t hit_veh = 0xFF;      /* the vehicle in hit_vh */
+
+/* a picture's column masks: nb bytes a row (6 px each, bit 5 leftmost), w
+   px wide, h rows */
+static void art_cols(uint16_t *dst, const uint8_t *src, uint8_t nb, uint8_t w, uint8_t h)
+{
+    uint8_t x, b, v;
+    uint16_t bit = 1;
+    for (x = 0; x < w; ++x)
+        dst[x] = 0;
+    for (; h; --h, bit <<= 1, src += nb)
+        for (x = 0, b = 0, v = 0x20; x < w; ++x) {
+            if (src[b] & v)
+                dst[x] |= bit;
+            v >>= 1;
+            if (!v) {
+                v = 0x20;
+                ++b;
+            }
+        }
+}
 
 static uint8_t crashed(void)
 {
@@ -134,7 +193,7 @@ static uint8_t crashed(void)
     rt = RIDER_TOP_LINE - m.height;
     for (slot = m.track * SC_MAX, n = SC_MAX; n; --n, ++slot) {
         k = hk[slot];
-        if (!k || k == HZ_RAMP)
+        if (!k || k == HZ_RAMP || (k == HZ_JET && hz_drop[slot] != JET_ON))
             continue;
         x0 = hz_px[slot];
         if (k == HZ_GAP) {
@@ -181,6 +240,17 @@ static uint8_t on_ramp(void)
     return 0;
 }
 
+/* the jump's clock: a step every step, but for the hover bike (F6d) */
+static uint8_t jump_tick(void)
+{
+    uint8_t f;
+    if (m.scene->vehicle != VH_HOVER)
+        return 1;
+    f = m.jump_frac;
+    m.jump_frac = f + JUMP_FLOAT;
+    return f >= 256 - JUMP_FLOAT;           /* a carry: the clock ticks */
+}
+
 void model_scene_start(void)
 {
     hazards_start();
@@ -190,6 +260,7 @@ void model_scene_start(void)
     m.speed = SPEED_START;
     m.jump_t = 0;
     m.jump_long = 0;
+    m.jump_frac = 0;
     m.height = 0;
     m.road_t = 255;
     m.stop_left = 1;
@@ -202,11 +273,19 @@ uint8_t model_px(void)
 }
 
 /* billing b starts at the season's scene (b - 1) x 12 + 1 (DESIGN "Scoring") */
+#ifdef SCENE_PICK
+uint8_t pick_scene;                     /* debug build: the scene to start on, 0-11 */
+#endif
+
 static void run_start(void)
 {
     uint8_t b;
     m.scenes = 0;
     m.run_scene = 1;
+#ifdef SCENE_PICK
+    m.scenes = pick_scene;              /* (the billing still moves on after scene 12) */
+    m.run_scene += pick_scene;
+#endif
     for (b = m.billing; b > 1; --b)
         m.run_scene += SEASON;
     m.scene_fee = 0;
@@ -221,12 +300,22 @@ static void run_start(void)
    them, moving hazards at the billing's speed. */
 static void scene_load(void)
 {
-    uint8_t i, sp;
+    uint8_t i, j, sp, nseen, hit_top;
+    uint8_t seen_a[NHAZ];
+    uint16_t *seen_c[NHAZ];
     const struct hazard *h;
     m.scene = scene_at(m.run_scene);
     h = &m.scene->h[0][0];                  /* the bands' hazards, all in a row */
-    hit_vh = hit_rider + m.scene->vehicle * (3 * RIDER_W);
+    if (m.scene->vehicle != hit_veh) {
+        hit_veh = m.scene->vehicle;
+        for (i = 0; i < 3; ++i)
+            art_cols(hit_vh + i * RIDER_W, veh_art + hit_veh * VEH_BYTES + i * VEH_FRAME_BYTES, 2, RIDER_W, RIDER_H);
+    }
+    hit_top = 0;
+    nseen = 0;
     dangle_reload = dangle_half[m.billing];
+    jet_p = jet_period[m.billing];
+    jet_on = jet_p / 3;
     nmov = 0;
     for (i = 0; i < NHAZ; ++i, ++h) {
         hk[i] = h->kind;
@@ -239,10 +328,32 @@ static void scene_load(void)
         if (h->kind != HZ_GAP && h->kind != HZ_NONE) {
             hw[i] = art_w[h->a];
             hh[i] = art_h[h->a];
-            hcol[i] = hit_scenery + hit_ofs[h->a];
+            for (j = 0; j < nseen && seen_a[j] != h->a; ++j)
+                ;
+            if (j == nseen) {               /* a picture new to this scene */
+                seen_a[j] = h->a;
+                seen_c[j] = hit_buf + hit_top;
+                ++nseen;
+                art_cols(hit_buf + hit_top, SC_ART(h->a), (hw[i] + 5) / 6, hw[i], hh[i]);
+                hit_top += hw[i];
+            }
+            hcol[i] = seen_c[j];
             htop[i] = ROAD_TOP_LINE - hh[i];   /* blocks and runners stand on the road */
         }
         switch (h->kind) {
+        case HZ_FLYER:                      /* at the billing's runner speed, leftwards */
+            htop[i] = h->b + 1 - hh[i];
+            hz_sp[i] = (uint8_t)(((uint16_t)RUN_STD * run_mul[m.billing]) >> 2);
+            hz_right[i] = 0;
+            hz_max[i] = PLAY_W - hw[i];
+            if (nmov < MAXMOV)
+                mov[nmov++] = i;
+            break;
+        case HZ_JET:
+            jet_phase[i] = (uint8_t)(((uint16_t)(h->b & 15) * jet_p) >> 4);
+            if (nmov < MAXMOV)
+                mov[nmov++] = i;
+            break;
         case HZ_RUNNER:
             sp = h->b & 0x7F;
             if (!sp)
@@ -264,7 +375,7 @@ static void scene_load(void)
         case HZ_BLOCK:
         case HZ_RAMP:
             break;
-        default:                            /* jets: F6 */
+        default:
             hk[i] = HZ_NONE;
         }
     }
@@ -358,6 +469,11 @@ static uint8_t frame_step(uint8_t edge, uint8_t kd)
             model_billing(m.billing + 1);
         } else if (kd == 'S') {
             m.sound ^= 1;
+#ifdef SCENE_PICK
+        } else if (kd == 'P') {
+            if (++pick_scene == SEASON)
+                pick_scene = 0;
+#endif
         }
         return 0;
     case M_CARD:                            /* any game key skips a card */
@@ -479,9 +595,10 @@ void model_step(uint8_t in, uint8_t key)
         } else if (m.road_t != 255) {
             ++m.road_t;
         }
-    } else if (++m.jump_t >= JUMP_STEPS && (!m.jump_long || m.jump_t >= JUMP_LONG)) {
+    } else if (jump_tick() && ++m.jump_t >= JUMP_STEPS && (!m.jump_long || m.jump_t >= JUMP_LONG)) {
         m.jump_t = 0;
         m.jump_long = 0;
+        m.jump_frac = 0;
         m.road_t = 1;                       /* the landing step is on the road */
         m.events |= EV_LAND;
     }
@@ -496,13 +613,13 @@ void model_step(uint8_t in, uint8_t key)
     if (m.x >= TRACK_W_FP) {
         m.x -= TRACK_W_FP;
         m.events |= EV_WRAP;
-        m.fee += 10 * m.run_scene;          /* rule 5: each finished track pays */
-        m.scene_fee += 10 * m.run_scene;
+        m.fee += m.run_scene;               /* rule 5: each finished track pays */
+        m.scene_fee += m.run_scene;         /* 10 x the scene (money in £10s) */
         m.ev2 |= EV2_FEE;
         if (++m.track == NTRACKS) {         /* scene cleared: "THAT'S A PRINT!" */
             m.bonus = 0;
             if (m.take_no == 1) {
-                m.bonus = BONUS_X * 10 * m.run_scene;
+                m.bonus = BONUS_X * m.run_scene;
                 m.fee += m.bonus;
                 m.scene_fee += m.bonus;
                 m.ev2 |= EV2_BONUS;

@@ -40,4 +40,10 @@
     A4(19), A5(20), A4(20), A5(20), A4(20), A5(20), A4(20), A5(19), A4(19), A5(18), \
     A4(17), A5(16), A4(14), A5(13), A4(11), A5(8), A4(6), A5(3)
 
+/* F6d, the sci-fi hover bike (DESIGN "Vehicles": the one exception to the
+   standard handling): it floats, its jump the same arc on a slower clock,
+   JUMP_FLOAT / 256 of a step a step: 84 steps in the air become 100, the
+   slipway's 126 become 150. */
+#define JUMP_FLOAT   215u
+
 #endif

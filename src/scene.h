@@ -11,7 +11,8 @@
      GAP       left edge     width in px           lowest billing that shows it
      CEILING   left edge     art                   band line of its bottom edge
      RAMP      left edge     art                   -   (F5: fires a long jump)
-     JET       (F6)
+     JET       left edge     art                   phase, in 16ths of its period (F6a)
+     FLYER     start         art                   band line of its underside (F6a)
 
    F1 draws a scene; F3 makes the hazards move and collide (in src/model.c, from
    this same data, so the native model can use it too). */
@@ -28,6 +29,7 @@
 #define HZ_CEILING 5
 #define HZ_JET     6
 #define HZ_RAMP    7
+#define HZ_FLYER   8             /* a runner in the air: the rider passes under on the ground */
 
 #define SC_MAX 8                /* records per track (F5: room for every billing's hazards) */
 
@@ -43,28 +45,51 @@ struct hazard {
 
 uint8_t hz_shown(const struct hazard *h, uint8_t billing);
 
-struct palette {
-    uint8_t title_paper, title_ink;
-    uint8_t paper[48], ink[48];     /* per band line (DESIGN "Colour") */
-};
+/* A palette (DESIGN "Colour"): the title strip's paper and ink, then the
+   paper of band lines 0-47 and their ink, each as runs of one byte: the
+   line count << 3 | the colour (F6c: 98 bytes became about 25). */
+typedef uint8_t palette_t;
 
+/* Grounds (DESIGN "Ground styles", F6a): every ground handles the same; a
+   ground is its four lines' bytes, cells 2-39 repeating every 4 cells, and
+   how a gap looks: road missing (pixels cleared) or filled (pixels set:
+   rocks in water, the dark of a grave or a crevasse). */
 #define GROUND_ROAD  0           /* kerb and lane marks; a gap: road missing */
 #define GROUND_WATER 1           /* waves; a gap: rocks breaking the surface */
+#define GROUND_DIRT  2           /* a dusty street; a gap: a dry wash */
+#define GROUND_RAILS 3           /* rails on sleepers; a gap: broken track */
+#define GROUND_COBBLES 4         /* a cobbled lane; a gap: an open grave */
+#define GROUND_MOON  5           /* a bright surface; a gap: a crater */
+#define GROUND_STRIPES 6         /* a floor of warning stripes; a gap: a pit */
+#define GROUND_GRASS 7           /* a grassy hillside; a gap: the moat */
+#define GROUND_SNOW  8           /* a snowfield; a gap: a crevasse, filled dark */
+
+#define GR_KERB 1                /* line 0 starts at cell 1 (the road's kerb) */
+#define GR_FILL 2                /* a gap sets the pixels */
+struct ground {
+    uint8_t line[4][4];
+    uint8_t flags;
+};
+extern const struct ground grounds[];
 
 struct scene {
     const char *film;           /* title strip: film name */
     uint8_t number;             /* scene of the film, 1 or 2 */
     uint8_t vehicle;            /* VH_* (art.h) */
     uint8_t ground;             /* GROUND_* */
-    const struct palette *pal;
+    const palette_t *pal;
     struct hazard h[4][SC_MAX];
 };
 
-extern const struct scene scene_rhr1, scene_rhr2;
+extern const struct scene scene_rhr1, scene_rhr2, scene_dd1, scene_dd2, scene_nh1, scene_nh2,
+    scene_mp1, scene_mp2, scene_dk1, scene_dk2,
+    scene_cf1, scene_cf2;
+extern const char * const films[6];      /* the films' names, in season order */
 extern const struct scene scene_test;     /* no hazards: harness only */
+extern const struct scene scene_stress;   /* F6a: two every-step movers, three jets: harness only */
 
 /* the scene at a place in the run (1 ..): a season is 12 scenes, 6 films of
-   2; until F6 brings films 2-6, film 1's two scenes take turns.  Test builds
+   2 (F6).  Test builds
    with -DSCENE=x ride scene x everywhere (scene_pick). */
 const struct scene *scene_at(uint8_t run_scene);
 extern const struct scene *scene_only;    /* set: every scene is this one */

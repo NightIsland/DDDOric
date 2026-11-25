@@ -31,7 +31,7 @@
 ; line has the highest index and the burst counts X down to 0.
 
         .export         _spr_region, _line_lo, _line_hi, _line_addr, _spr_move, _spr_erase
-        .export         _rope_or, _rope_and, _bulbs, _bulb_lo, _bulb_hi
+        .export         _rope_xor, _bulbs, _bulb_lo, _bulb_hi
         .exportzp       _rp_b, _rp_y, _rp_c, _r_fast
         .export         _sp_on, _sp_y, _sp_c, _sp_w, _sp_h, _sp_lo, _sp_hi
         .exportzp       _n_y, _n_c, _n_img
@@ -63,7 +63,7 @@ _n_img: .res 2                  ;   picture
 sn:     .res 1                  ;   and the sprite's number
 _r_fast: .res 1                 ; spr_region: 1 = the box holds only the old picture on a
                                 ; blank background (Bob, BUILD 11): no reading, no XOR out
-_rp_b:  .res 1                  ; rope_or / rope_and: the pixel's bit (and: its inverse),
+_rp_b:  .res 1                  ; rope_xor: the pixel's bit,
 _rp_y:  .res 1                  ;   first line,
 _rp_c:  .res 1                  ;   cell
 
@@ -224,15 +224,11 @@ _spr_move:
         sta     _sp_hi,x
         rts
 
-; void __fastcall__ rope_or(uint8_t y1), rope_and(uint8_t y1): a dangler's
-; rope, one pixel a line in cell rp_c, from line rp_y to y1 - 1: set (rp_b) or
-; cleared (rp_b = the bit's inverse).  Single pixels: no burst needed.
-_rope_or:
-        ldy     #$11            ; ora (p),y
-        bne     rope
-_rope_and:
-        ldy     #$31            ; and (p),y
-rope:   sty     @op
+; void __fastcall__ rope_xor(uint8_t y1): a dangler's rope, one pixel a line
+; in cell rp_c, from line rp_y to y1 - 1, flipped (rp_b): drawn and taken off
+; alike.  (Bob, BUILD 26: set and cleared, it cut into a bat crossing it, and
+; the bat's next move left those pixels behind.)  Single pixels: no burst.
+_rope_xor:
         sta     k
         ldx     _rp_y
 @l:     cpx     k
@@ -246,7 +242,7 @@ rope:   sty     @op
         sta     p+1
         ldy     #0
         lda     _rp_b
-@op:    ora     (p),y           ; (or and: set above)
+        eor     (p),y
         sta     (p),y
         inx
         bne     @l

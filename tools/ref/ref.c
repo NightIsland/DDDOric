@@ -94,14 +94,14 @@ static uint8_t scan_code(uint64_t held)
 
 int main(int argc, char **argv)
 {
-    if (argc != 3 && !(argc == 4 && !strcmp(argv[3], "test"))) {
-        fprintf(stderr, "usage: ref SCRIPT STEPS [test]\n");
+    if (argc != 3 && !(argc == 4 && (!strcmp(argv[3], "test") || !strcmp(argv[3], "stress")))) {
+        fprintf(stderr, "usage: ref SCRIPT STEPS [test|stress]\n");
         return 2;
     }
     load(argv[1]);
     long steps = strtol(argv[2], 0, 10);
     if (argc == 4)
-        scene_only = &scene_test;
+        scene_only = strcmp(argv[3], "stress") ? &scene_test : &scene_stress;
     model_init(1);
     for (long n = 1; n <= steps; n++) {
         uint64_t held = 0;

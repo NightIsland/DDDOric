@@ -104,7 +104,7 @@ class Result:
 
 
 def run(prog, frames=100, clock="mark", keys=None, keymap=None, out=None, max_cycles=None, start=None,
-        rom="atmos", stop_trace=None, tcycles=False, wlog=False, junk=None):
+        rom="atmos", stop_trace=None, tcycles=False, wlog=False, junk=None, prof=False):
     if not os.path.exists(EMU) or os.path.getmtime(EMU) < os.path.getmtime(os.path.join(ROOT, "tools/emu/emu.c")):
         build_emu()
     out = out or tempfile.mkdtemp(prefix="emu-")
@@ -123,6 +123,8 @@ def run(prog, frames=100, clock="mark", keys=None, keymap=None, out=None, max_cy
         cmd += ["--tcycles"]
     if junk:                        # BUILD 13: RAM full of junk at load, as on a booted Oric
         cmd += ["--junk", str(junk)]
+    if prof:                        # F6a: out/prof.bin = cycles spent at each PC (uint32 x 65536)
+        cmd += ["--prof"]
     if wlog:                        # BUILD 2: Result.wlog = [(addr, value, cycle)] of HIRES writes
         cmd += ["--wlog"]
     if keys:

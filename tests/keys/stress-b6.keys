@@ -1,0 +1,33 @@
+# solve 6 2: billing 6 from the title, 2 scene(s), each on its first take
+1 L
+3 L
+5 L
+7 L
+9 L
+11 1
+18-32 accel
+38-92 accel
+123-137 accel
+143-252 accel
+338-427 accel
+453-604 accel
+614-628 accel
+634-688 accel
+719-733 accel
+739-848 accel
+934-1023 accel
+1049-1200 accel
+12 jump
+168 jump
+253 jump
+340 jump
+463 jump
+606 jump
+608 jump
+764 jump
+849 jump
+936 jump
+1059 jump
+452 stop
+1048 stop
+# 1200 steps

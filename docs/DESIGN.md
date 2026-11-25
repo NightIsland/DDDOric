@@ -492,7 +492,7 @@ spacing is wider than on land.
 | Laser gate | Jet: an emitter in the floor, beam up to 16 lines | 4 × 16 when on |
 | Blast door | Low ceiling block, underside at line 24 | 20 wide |
 | Conduit | High ceiling block, underside at line 9 | 60 wide |
-| Crusher piston | Dangler | 14 × 12 |
+| Crusher piston | Dangler | 12 × 12 (F6d: a dangler over 13 px wide misses the beam pace) |
 | Launch pad | Ramp | 16 × 6 |
 
 - Track 1, crate and gate: crate at 80, laser gate at 160.
@@ -564,7 +564,7 @@ spacing is wider than on land.
 | Hazard | Behaviour | Size (px) |
 | --- | --- | --- |
 | Tank trap | Block | 14 × 12 |
-| Enemy snowmobile | Runner | 16 × 12 |
+| Enemy snowmobile | Runner | 12 × 12 (F6f: with the 18 px autogyro, two wide movers starved a draw) |
 | Autogyro | Flyer, underside at line 22 | 18 × 10 |
 | Steam vent | Jet | 8 × 16 when on |
 | Ski-lift chair | High ceiling block, underside at line 9 | 12 wide, on the cable |

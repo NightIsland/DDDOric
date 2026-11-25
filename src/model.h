@@ -94,8 +94,8 @@ struct model {
     uint8_t  takes;         /* takes left in the run, TAKES .. 1 (0 during the last crash) */
     uint8_t  take_no;       /* this scene's take, 1 .. */
     uint8_t  run_scene;     /* the scene's number in the run, 1 .. (fees: 10 x this) */
-    uint16_t fee;           /* pounds earned this run */
-    uint16_t best;          /* best fee this session */
+    uint16_t fee;           /* earned this run, in £10s (F6: a whole career passes 65,535 pounds) */
+    uint16_t best;          /* best fee this session (£10s, as are the other fees) */
     uint8_t  hz_sum;        /* the moving hazards' positions folded into a byte (trace) */
     uint8_t  mode;          /* M_*: F4 */
     uint8_t  t;             /* steps in this mode (wraps) */
@@ -108,14 +108,22 @@ struct model {
     uint8_t  name_slot;     /* M_NAME: the top-five line being named */
     uint8_t  name_len;      /*   initials typed */
     uint8_t  jump_long;     /* 1: this jump came off a slipway (JUMP_LONG steps) */
+    uint8_t  jump_frac;     /* F6d, the hover bike: the jump's clock, 1/256 step */
     const struct scene *scene;  /* the scene being played (scene_at(run_scene)) */
 };
 
 extern struct model m;
+#ifdef SCENE_PICK
+extern uint8_t pick_scene;      /* debug build (make pick): P on the title picks the start scene */
+#endif
 
 /* hazards, per slot track * SC_MAX + i: where to draw them */
 extern uint8_t hz_px[NHAZ];     /* x in pixels (runners move) */
-extern uint8_t hz_drop[NHAZ];   /* danglers: lines below the top position, 0 .. DANGLE_MAX */
+extern uint8_t hz_drop[NHAZ];   /* danglers: lines below the top position, 0 .. DANGLE_MAX;
+                                   jets: JET_OFF, JET_WARNING or JET_ON */
+#define JET_OFF     0
+#define JET_WARNING 1
+#define JET_ON      2
 #define DANGLE_MAX 25           /* M1: the line runs 1 .. 26 lines */
 #define DANGLE_TOP 6            /* band line of a dangler's top when up */
 
