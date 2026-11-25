@@ -8,8 +8,6 @@
 #   make solve        build/solve/solve: searches winning runs (tools/solve/solve.c)
 #   make wins         re-searches tests/keys/win-b1..6.keys (each billing's proof),
 #                     takeback.keys and season.keys
-#   make pick         build/pick/stuntbob.tap: an Oricutron debug build where P on the
-#                     title screen picks the scene to start on (Bob, BUILD 25)
 #   make clean
 # On Linux x86_64 the vendored cc65 2.19 is used (tools/vendor/cc65); elsewhere
 # cc65 must be on PATH (macOS: brew install cc65).
@@ -102,9 +100,6 @@ test:
 	$(MAKE) B=build/stress CDEFS=-DSCENE=scene_stress build/stress/$(NAME).tap
 	$(MAKE) build/emu/emu build/ref/ref
 	python3 tools/test_f0.py
-
-pick:
-	$(MAKE) B=build/pick CDEFS="-DORICUTRON=1 -DSCENE_PICK" AFLAGS="--cpu 6502 -D ORICUTRON=1" build/pick/$(NAME).tap
 
 clean:
 	rm -rf build
